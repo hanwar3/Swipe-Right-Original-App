@@ -16,6 +16,8 @@ export interface CardRecommendation {
   isInPortfolio: boolean;
   portfolioNickname?: string;
   relevantOffers: MerchantOffer[];
+  effectiveRate?: number;
+  offerAppliedText?: string;
 }
 
 export interface RecommendCardsResponse {
@@ -52,7 +54,7 @@ export const recommend = api<RecommendCardsParams, RecommendCardsResponse>(
     
     // Get all cards with relevant categories
     const cardRows = await cardsDB.queryAll`
-      SELECT DISTINCT c.id, c.name, c.issuer, c.image_url, c.annual_fee, c.network, c.type,
+      SELECT DISTINCT c.id, c.name, c.issuer, c.image_url, c.annual_fee, c.network,
              cc.id as category_id, cc.category, cc.cashback_rate, cc.is_rotating, cc.valid_until
       FROM cards c
       JOIN card_categories cc ON c.id = cc.card_id
@@ -73,7 +75,6 @@ export const recommend = api<RecommendCardsParams, RecommendCardsResponse>(
           imageUrl: row.image_url,
           annualFee: row.annual_fee,
           network: row.network || 'Visa',
-          type: row.type || 'credit',
           categories: [],
           relevantCategory: null
         });
@@ -151,7 +152,6 @@ export const recommend = api<RecommendCardsParams, RecommendCardsResponse>(
         imageUrl: cardData.imageUrl,
         annualFee: cardData.annualFee,
         network: cardData.network,
-        type: cardData.type || 'credit',
         categories: cardData.categories
       };
       
@@ -159,12 +159,42 @@ export const recommend = api<RecommendCardsParams, RecommendCardsResponse>(
       const portfolioDetails = portfolioCardDetails.get(cardId);
       const relevantOffers = merchantOffers.filter(offer => offer.cardId === cardId);
       
+      // Calculate effective cashback rate, factoring in active merchant offers
+      let effectiveRate = cardData.relevantCategory.cashbackRate;
+      let activeOfferDescription = "";
+      
+      // We only apply merchant offers if the card is in the user's portfolio
+      if (isInPortfolio && relevantOffers.length > 0) {
+        // Find the best activated and unused offer
+        const activeOffer = relevantOffers.find(o => o.isActivated && !o.isUsed);
+        if (activeOffer) {
+          if (activeOffer.cashbackRate && activeOffer.cashbackRate > effectiveRate) {
+            effectiveRate = activeOffer.cashbackRate;
+            activeOfferDescription = `Active Offer: ${activeOffer.cashbackRate}% back at ${activeOffer.merchantName}`;
+          } else if (activeOffer.cashbackAmount && activeOffer.minimumSpend) {
+            const estimatedRate = (activeOffer.cashbackAmount / activeOffer.minimumSpend); // rate is in % (e.g. 10.0)
+            // Note: cashbackAmount in cents, e.g. 2500 for $25. minimumSpend in cents, e.g. 15000 for $150.
+            // Ratio is 2500 / 15000 = 0.1666...
+            // Multiply by 100 to get percentage = 16.67%
+            const pct = parseFloat(((activeOffer.cashbackAmount / activeOffer.minimumSpend) * 100).toFixed(2));
+            if (pct > effectiveRate) {
+              effectiveRate = pct;
+              activeOfferDescription = `Active Offer: Spend $${(activeOffer.minimumSpend / 100).toFixed(0)} get $${(activeOffer.cashbackAmount / 100).toFixed(0)} back at ${activeOffer.merchantName}`;
+            }
+          } else {
+            activeOfferDescription = `Active Offer: ${activeOffer.offerDescription}`;
+          }
+        }
+      }
+      
       const recommendation: CardRecommendation = {
         card,
         relevantCategory: cardData.relevantCategory,
         isInPortfolio,
         portfolioNickname: portfolioDetails?.nickname,
-        relevantOffers
+        relevantOffers,
+        effectiveRate,
+        offerAppliedText: activeOfferDescription || undefined
       };
       
       allRecommendations.push(recommendation);
@@ -174,9 +204,9 @@ export const recommend = api<RecommendCardsParams, RecommendCardsResponse>(
       }
     }
     
-    // Sort recommendations by cashback rate
-    allRecommendations.sort((a, b) => b.relevantCategory.cashbackRate - a.relevantCategory.cashbackRate);
-    portfolioRecommendations.sort((a, b) => b.relevantCategory.cashbackRate - a.relevantCategory.cashbackRate);
+    // Sort recommendations by effective cashback rate
+    allRecommendations.sort((a, b) => (b.effectiveRate || 0) - (a.effectiveRate || 0));
+    portfolioRecommendations.sort((a, b) => (b.effectiveRate || 0) - (a.effectiveRate || 0));
     
     return { 
       cards: allRecommendations, 

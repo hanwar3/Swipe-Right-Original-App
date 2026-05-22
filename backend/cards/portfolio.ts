@@ -39,7 +39,7 @@ export const getUserPortfolio = api<{ userId: string }, UserPortfolioResponse>(
     const portfolioRows = await cardsDB.queryAll`
       SELECT up.id, up.card_id, up.nickname, up.credit_limit, up.current_balance, 
              up.is_active, up.added_at,
-             c.name, c.issuer, c.image_url, c.annual_fee, c.network, c.type
+             c.name, c.issuer, c.image_url, c.annual_fee, c.network
       FROM user_portfolios up
       JOIN cards c ON up.card_id = c.id
       WHERE up.user_id = ${params.userId}
@@ -68,8 +68,6 @@ export const getUserPortfolio = api<{ userId: string }, UserPortfolioResponse>(
         issuer: row.issuer,
         imageUrl: row.image_url,
         annualFee: row.annual_fee,
-        network: row.network || 'Visa',
-        type: row.type || 'credit',
         categories
       };
       
@@ -125,7 +123,7 @@ export const addToPortfolio = api<AddToPortfolioRequest & { userId: string }, Us
     
     // Get full card details
     const cardDetails = await cardsDB.queryRow`
-      SELECT name, issuer, image_url, annual_fee, network, type
+      SELECT name, issuer, image_url, annual_fee, network
       FROM cards WHERE id = ${cardId}
     `;
     
@@ -150,8 +148,6 @@ export const addToPortfolio = api<AddToPortfolioRequest & { userId: string }, Us
       issuer: cardDetails!.issuer,
       imageUrl: cardDetails!.image_url,
       annualFee: cardDetails!.annual_fee,
-      network: cardDetails!.network || 'Visa',
-      type: cardDetails!.type || 'credit',
       categories
     };
     
@@ -210,7 +206,7 @@ export const updatePortfolioCard = api<UpdatePortfolioCardRequest & { userId: st
     
     // Get full card details
     const cardDetails = await cardsDB.queryRow`
-      SELECT name, issuer, image_url, annual_fee, network, type
+      SELECT name, issuer, image_url, annual_fee, network
       FROM cards WHERE id = ${updatedCard.card_id}
     `;
     
@@ -235,8 +231,6 @@ export const updatePortfolioCard = api<UpdatePortfolioCardRequest & { userId: st
       issuer: cardDetails!.issuer,
       imageUrl: cardDetails!.image_url,
       annualFee: cardDetails!.annual_fee,
-      network: cardDetails!.network || 'Visa',
-      type: cardDetails!.type || 'credit',
       categories
     };
     

@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { CreditCard, Home, Target, Bot } from 'lucide-react';
+import { CreditCard, Home, Target, Bot, Mic } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '../contexts/AuthContext';
 import AuthModal from './AuthModal';
 import UserMenu from './UserMenu';
+import SiriOverlay from './SiriOverlay';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -15,6 +16,7 @@ export default function Layout({ children }: LayoutProps) {
   const { user, isLoading } = useAuth();
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [authModalMode, setAuthModalMode] = useState<'signin' | 'signup'>('signin');
+  const [isSiriOpen, setIsSiriOpen] = useState(false);
 
   const navItems = [
     { path: '/', icon: Home, label: 'Home' },
@@ -36,7 +38,7 @@ export default function Layout({ children }: LayoutProps) {
           <div className="flex items-center justify-between h-16">
             <div className="flex items-center space-x-3">
               <div className="w-10 h-10 bg-gradient-to-br from-teal-500 to-green-500 rounded-xl flex items-center justify-center">
-                <CreditCard className="h-6 w-6 text-white" />
+                <CreditCard className="h-6 w-6 text-white animate-pulse" />
               </div>
               <div>
                 <h1 className="text-xl font-bold bg-gradient-to-r from-teal-600 to-green-600 bg-clip-text text-transparent">
@@ -58,14 +60,14 @@ export default function Layout({ children }: LayoutProps) {
                     variant="ghost"
                     size="sm"
                     onClick={() => openAuthModal('signin')}
-                    className="text-gray-600 hover:text-teal-600"
+                    className="text-gray-600 hover:text-teal-600 text-xs font-semibold"
                   >
                     Sign In
                   </Button>
                   <Button
                     size="sm"
                     onClick={() => openAuthModal('signup')}
-                    className="bg-teal-500 hover:bg-teal-600"
+                    className="bg-teal-500 hover:bg-teal-600 text-xs font-semibold"
                   >
                     Register
                   </Button>
@@ -77,9 +79,26 @@ export default function Layout({ children }: LayoutProps) {
       </header>
 
       {/* Main Content */}
-      <main className="flex-1 pb-20">
+      <main className="flex-1 pb-24">
         {children}
       </main>
+
+      {/* Global Siri Voice Activation Button */}
+      <div className="fixed bottom-20 right-6 z-40">
+        <div className="relative group">
+          {/* Pulsating breathing outer rings */}
+          <span className="absolute -inset-1.5 rounded-full bg-gradient-to-r from-teal-500 to-green-500 opacity-30 group-hover:opacity-75 blur-md animate-pulse"></span>
+          <span className="absolute -inset-3 rounded-full bg-gradient-to-r from-cyan-400 to-emerald-400 opacity-15 group-hover:opacity-40 blur-lg animate-ping duration-1000"></span>
+          
+          <button
+            onClick={() => setIsSiriOpen(true)}
+            className="relative w-14 h-14 bg-gradient-to-r from-teal-500 to-green-500 rounded-full flex items-center justify-center text-white shadow-[0_4px_20px_rgba(20,184,166,0.4)] hover:scale-110 active:scale-95 transition-all duration-300 cursor-pointer"
+            title="Ask Voice Assistant"
+          >
+            <Mic className="h-6 w-6 animate-pulse" />
+          </button>
+        </div>
+      </div>
 
       {/* Bottom Navigation */}
       <nav className="fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-md border-t border-teal-100 z-50">
@@ -106,6 +125,9 @@ export default function Layout({ children }: LayoutProps) {
         </div>
       </nav>
 
+      {/* Siri Screen Overlay */}
+      <SiriOverlay isOpen={isSiriOpen} onClose={() => setIsSiriOpen(false)} />
+
       {/* Auth Modal */}
       <AuthModal
         isOpen={isAuthModalOpen}
@@ -115,3 +137,4 @@ export default function Layout({ children }: LayoutProps) {
     </div>
   );
 }
+

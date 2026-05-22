@@ -1,23 +1,136 @@
-import React, { useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
-import { Search, Target, TrendingUp, Star, Gift, ExternalLink } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { 
+  Search, Target, TrendingUp, Star, Gift, ExternalLink, 
+  Shield, CheckCircle, Info, RefreshCw, Smartphone, Chrome, 
+  AlertTriangle, ArrowRight, Zap, Check, Wallet, Award
+} from 'lucide-react';
 import backend from '~backend/client';
-import { Card, CardContent, CardHeader } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { useToast } from '@/components/ui/use-toast';
 import { useAuth } from '../contexts/AuthContext';
 import type { CardRecommendation } from '~backend/cards/recommend';
+
 
 const popularCategories = [
   'Groceries', 'Gas', 'Dining', 'Travel', 'Shopping', 'Streaming'
 ];
 
 export default function Recommendations() {
-  const [category, setCategory] = useState('');
-  const [searchTriggered, setSearchTriggered] = useState(false);
+  const [searchParams] = useSearchParams();
+  const catParam = searchParams.get('cat') || '';
+  const [category, setCategory] = useState(catParam);
+  const [searchTriggered, setSearchTriggered] = useState(!!catParam);
+  
+  useEffect(() => {
+    if (catParam) {
+      setCategory(catParam);
+      setSearchTriggered(true);
+    }
+  }, [catParam]);
+
   const { user } = useAuth();
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+
+  // Load user's portfolio cards to distribute synced offers
+  const { data: portfolioData } = useQuery({
+    queryKey: ['portfolio', user?.userId],
+    queryFn: () => user ? backend.cards.getUserPortfolio({ userId: user.userId }) : null,
+    enabled: !!user,
+  });
+
+  const portfolioCards = portfolioData?.cards || [];
+
+  // Browser Extension Sync simulator mutation
+  const syncMutation = useMutation({
+    mutationFn: async () => {
+      if (!user) throw new Error('Not authenticated');
+      if (portfolioCards.length === 0) {
+        throw new Error('Please add at least one card to your portfolio in the "Credit Cards" tab first so we can sync offers to it.');
+      }
+      
+      const mockOffers = [
+        {
+          merchantName: "Amazon Fresh",
+          offerDescription: "10% back on groceries at Amazon Fresh",
+          cashbackRate: 10.0,
+          offerType: "cashback",
+          endDate: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000).toISOString().split('T')[0], // expiring in 5 days
+          isActivated: true
+        },
+        {
+          merchantName: "Food Lion",
+          offerDescription: "7% back on standard groceries",
+          cashbackRate: 7.0,
+          offerType: "cashback",
+          endDate: new Date(Date.now() + 15 * 24 * 60 * 60 * 1000).toISOString().split('T')[0], // expiring in 15 days
+          isActivated: true
+        },
+        {
+          merchantName: "Nike",
+          offerDescription: "Spend $150 get $25 statement credit back",
+          cashbackAmount: 2500, // $25 in cents
+          minimumSpend: 15000, // $150 in cents
+          offerType: "cashback",
+          endDate: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000).toISOString().split('T')[0], // expiring in 2 days
+          isActivated: true
+        },
+        {
+          merchantName: "Rayban",
+          offerDescription: "Spend $50 get $25 back on Rayban Glasses",
+          cashbackAmount: 2500,
+          minimumSpend: 5000,
+          offerType: "cashback",
+          endDate: new Date(Date.now() + 45 * 24 * 60 * 60 * 1000).toISOString().split('T')[0], // expiring in 45 days
+          isActivated: true
+        },
+        {
+          merchantName: "Uber",
+          offerDescription: "5% back on rides and Uber Eats",
+          cashbackRate: 5.0,
+          offerType: "cashback",
+          endDate: new Date(Date.now() + 28 * 24 * 60 * 60 * 1000).toISOString().split('T')[0], // expiring in 28 days
+          isActivated: true
+        }
+      ];
+
+      // Distribute mock offers across portfolio cards
+      const offersWithCardIds = mockOffers.map((o, idx) => {
+        const targetCard = portfolioCards[idx % portfolioCards.length];
+        return {
+          ...o,
+          cardId: targetCard.card.id
+        };
+      });
+
+      return backend.cards.syncMerchantOffers({
+        userId: user.userId,
+        offers: offersWithCardIds
+      });
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['recommendations'] });
+      queryClient.invalidateQueries({ queryKey: ['merchant-offers'] });
+      queryClient.invalidateQueries({ queryKey: ['portfolio', user?.userId] });
+      toast({
+        title: "Simulator Extension Sync Successful!",
+        description: `Synced ${data.synced} new offers and updated ${data.updated} offers across your portfolio cards!`,
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Sync Error",
+        description: error.message || "Failed to sync offers.",
+        variant: "destructive"
+      });
+    }
+  });
 
   const { data: recommendationsData, isLoading } = useQuery({
     queryKey: ['recommendations', category, user?.userId],
@@ -52,12 +165,6 @@ export default function Recommendations() {
   const portfolioRecommendations = recommendationsData?.portfolioRecommendations || [];
   const merchantOffers = merchantOffersData?.offers || [];
 
-  const bestPortfolioCredit = portfolioRecommendations.find(r => r.card.type === 'credit');
-  const bestPortfolioDebit = portfolioRecommendations.find(r => r.card.type === 'debit');
-
-  const bestCreditCard = allRecommendations.find(r => r.card.type === 'credit');
-  const bestDebitCard = allRecommendations.find(r => r.card.type === 'debit');
-
   return (
     <div className="max-w-4xl mx-auto px-4 py-8 space-y-8">
       {/* Header */}
@@ -75,7 +182,7 @@ export default function Recommendations() {
         </h1>
         
         <p className="text-gray-600 max-w-2xl mx-auto">
-          Tell us what you're buying and we'll recommend the best cards in your portfolio and overall to maximize your rewards.
+          Tell us what you're buying and we'll recommend the best credit cards to maximize your rewards.
         </p>
       </div>
 
@@ -120,6 +227,83 @@ export default function Recommendations() {
         </div>
       </div>
 
+      {/* Browser Extension Sync Simulator Widget */}
+      {user && (
+        <Card className="border border-slate-100 shadow-[0_8px_30px_rgb(0,0,0,0.04)] rounded-3xl overflow-hidden bg-white">
+          <CardHeader className="pb-3 border-b border-slate-50">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+              <div className="flex items-center space-x-3">
+                <div className="p-2 bg-teal-50 text-teal-600 rounded-xl">
+                  <Chrome className="h-5 w-5" />
+                </div>
+                <div>
+                  <CardTitle className="text-base font-bold text-slate-800">Browser Extension Connector</CardTitle>
+                  <CardDescription className="text-xs">Synchronize Chase, Amex, and Capital One active merchant deals securely</CardDescription>
+                </div>
+              </div>
+              <Button 
+                onClick={() => syncMutation.mutate()} 
+                disabled={syncMutation.isPending || portfolioCards.length === 0}
+                className="bg-teal-500 hover:bg-teal-600 text-white font-bold rounded-xl text-xs px-4 py-2 self-start sm:self-auto shadow-md border-0"
+              >
+                {syncMutation.isPending ? (
+                  <>
+                    <RefreshCw className="h-3.5 w-3.5 mr-2 animate-spin" />
+                    Syncing Wallet...
+                  </>
+                ) : (
+                  <>
+                    <RefreshCw className="h-3.5 w-3.5 mr-2" />
+                    Simulate Sync
+                  </>
+                )}
+              </Button>
+            </div>
+          </CardHeader>
+          <CardContent className="pt-4 space-y-4">
+            {/* Quick Status */}
+            <div className="flex flex-wrap items-center gap-4 text-xs font-semibold">
+              <div className="flex items-center space-x-1.5 text-slate-600">
+                <CheckCircle className="h-4 w-4 text-emerald-500" />
+                <span>Parser Status: <span className="text-emerald-600 font-bold">Connected & Safe</span></span>
+              </div>
+              <div className="flex items-center space-x-1.5 text-slate-600">
+                <Gift className="h-4 w-4 text-orange-500" />
+                <span>Active synced offers: <span className="text-orange-600 font-bold">{syncMutation.isSuccess ? '5 Hot Deals Synced' : '0 Synced'}</span></span>
+              </div>
+            </div>
+
+            {/* Architecture / Security Breakdown Accordion */}
+            <div className="bg-slate-50 border border-slate-100 p-3.5 rounded-2xl space-y-3 text-left">
+              <div className="flex items-center space-x-1.5 text-slate-800 font-bold text-xs">
+                <Shield className="h-4 w-4 text-teal-600" />
+                <span>SwipeRight Security & Architectural Strategy</span>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-[11px] leading-relaxed">
+                <div className="space-y-1.5 bg-red-50/50 border border-red-100 p-3 rounded-xl">
+                  <div className="flex items-center space-x-1 text-red-800 font-bold">
+                    <AlertTriangle className="h-3.5 w-3.5" />
+                    <span>Native App Screen-Mining (RISKY)</span>
+                  </div>
+                  <p className="text-red-700 font-medium text-[11px]">
+                    Scraping bank mobile apps using on-device accessibility tools or screen-recording violates Apple App Store security policies and Bank Terms of Service. It risks leaking credentials, account numbers, and triggers firewalls (ThreatMetrix/Arkose Labs).
+                  </p>
+                </div>
+                <div className="space-y-1.5 bg-emerald-50/50 border border-emerald-100 p-3 rounded-xl">
+                  <div className="flex items-center space-x-1 text-emerald-800 font-bold">
+                    <Zap className="h-3.5 w-3.5" />
+                    <span>SwipeRight Parser Sync (OPTIMAL)</span>
+                  </div>
+                  <p className="text-emerald-700 font-medium text-[11px]">
+                    Our Chrome extension operates client-side inside your logged-in session. It parses plain HTML tables on your Chase/Amex deals tab, triggers bank activations, and pushes clean merchant offer metadata without touching credentials or account numbers.
+                  </p>
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Loading */}
       {isLoading && (
         <div className="space-y-4">
@@ -139,6 +323,102 @@ export default function Recommendations() {
             </h2>
             <p className="text-gray-600">Ranked by cashback rate and value</p>
           </div>
+
+          {/* Decision Panel */}
+          {user && portfolioRecommendations.length > 0 && (
+            (() => {
+              const topChoiceOverall = allRecommendations[0];
+              const topChoicePortfolio = portfolioRecommendations[0];
+              
+              const isAligned = topChoiceOverall.card.id === topChoicePortfolio.card.id;
+              const rateDiff = parseFloat(((topChoiceOverall.effectiveRate || 0) - (topChoicePortfolio.effectiveRate || 0)).toFixed(2));
+              
+              return (
+                <Card className="border border-slate-100 shadow-[0_12px_40px_rgba(0,0,0,0.05)] rounded-3xl overflow-hidden bg-gradient-to-b from-slate-50 to-white text-left">
+                  <CardHeader className="pb-3 bg-slate-50/60 border-b border-slate-100">
+                    <div className="flex items-center space-x-2">
+                      <Award className="h-5 w-5 text-teal-600" />
+                      <CardTitle className="text-base font-extrabold text-slate-800">SwipeRight Decision Verdict</CardTitle>
+                    </div>
+                  </CardHeader>
+                  <CardContent className="pt-6 space-y-6">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      {/* Left: Portfolio Choice */}
+                      <div className="p-4 bg-gradient-to-br from-blue-500/10 via-indigo-500/5 to-white border border-blue-150 rounded-2xl flex flex-col justify-between space-y-4">
+                        <div className="space-y-1">
+                          <span className="text-[10px] font-bold text-blue-600 uppercase tracking-widest bg-blue-50 px-2 py-0.5 rounded-full border border-blue-100">Pocket Swipe</span>
+                          <h4 className="font-extrabold text-slate-800 text-sm mt-2">{topChoicePortfolio.portfolioNickname || topChoicePortfolio.card.name}</h4>
+                          <span className="text-xs text-slate-500 font-semibold">{topChoicePortfolio.card.issuer} • {topChoicePortfolio.card.network}</span>
+                        </div>
+                        
+                        <div className="space-y-1">
+                          <div className="text-3xl font-black text-indigo-600">{topChoicePortfolio.effectiveRate || topChoicePortfolio.relevantCategory.cashbackRate}%</div>
+                          <span className="text-[10px] font-bold text-indigo-500 block uppercase">{topChoicePortfolio.offerAppliedText ? "Merchant Promo Applied" : "Base Category Rate"}</span>
+                          {topChoicePortfolio.offerAppliedText && (
+                            <p className="text-[11px] text-emerald-700 bg-emerald-50 border border-emerald-100 p-2.5 rounded-xl font-bold leading-tight mt-1.5">{topChoicePortfolio.offerAppliedText}</p>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Right: Overall Choice */}
+                      <div className="p-4 bg-gradient-to-br from-teal-500/10 via-emerald-500/5 to-white border border-teal-150 rounded-2xl flex flex-col justify-between space-y-4">
+                        <div className="space-y-1">
+                          <span className="text-[10px] font-bold text-teal-600 uppercase tracking-widest bg-teal-50 px-2 py-0.5 rounded-full border border-teal-100">Best in World</span>
+                          <h4 className="font-extrabold text-slate-800 text-sm mt-2">{topChoiceOverall.card.name}</h4>
+                          <span className="text-xs text-slate-500 font-semibold">{topChoiceOverall.card.issuer} • {topChoiceOverall.card.network}</span>
+                        </div>
+                        
+                        <div className="space-y-1">
+                          <div className="text-3xl font-black text-teal-600">{topChoiceOverall.effectiveRate || topChoiceOverall.relevantCategory.cashbackRate}%</div>
+                          <span className="text-[10px] font-bold text-teal-500 block uppercase">Max Reward Rate</span>
+                          {isAligned ? (
+                            <p className="text-[11px] text-teal-700 bg-teal-50 border border-teal-100 p-2.5 rounded-xl font-bold leading-tight mt-1.5">You own the best card in the world!</p>
+                          ) : (
+                            <p className="text-[11px] text-slate-600 bg-slate-50 border border-slate-150 p-2.5 rounded-xl font-bold leading-tight mt-1.5">Available in database</p>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Wingman's Verdict Alert Box */}
+                    {isAligned ? (
+                      <div className="bg-emerald-50 border border-emerald-250 p-4 rounded-2xl flex items-start space-x-3 shadow-inner">
+                        <CheckCircle className="h-5 w-5 text-emerald-600 mt-0.5 flex-shrink-0" />
+                        <div>
+                          <strong className="text-emerald-950 font-black text-sm block font-extrabold">Wallet Alignment: 100%</strong>
+                          <p className="text-emerald-800 text-xs font-semibold leading-relaxed mt-0.5">
+                            You're a master optimizer! You already have the absolute best card in the world for this purchase in your wallet. Swipe your <strong>{topChoicePortfolio.portfolioNickname || topChoicePortfolio.card.name}</strong> to capture the full <strong>{topChoicePortfolio.effectiveRate}%</strong> cashback!
+                          </p>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="bg-amber-50 border border-amber-250 p-4 rounded-2xl flex items-start space-x-3 shadow-inner">
+                        <AlertTriangle className="h-5 w-5 text-amber-600 mt-0.5 flex-shrink-0" />
+                        <div>
+                          <strong className="text-amber-950 font-black text-sm block font-extrabold">Swipe Optimization Opportunity</strong>
+                          <p className="text-amber-800 text-xs font-semibold leading-relaxed mt-0.5">
+                            You are leaving rewards on the table. Swiping your <strong>{topChoicePortfolio.portfolioNickname || topChoicePortfolio.card.name}</strong> gets you <strong>{topChoicePortfolio.effectiveRate}%</strong>, but applying for the <strong>{topChoiceOverall.card.name}</strong> will elevate your cashback to <strong>{topChoiceOverall.effectiveRate}%</strong>. That's a <strong>{rateDiff}%</strong> increase in rewards!
+                          </p>
+                          <div className="flex gap-2 mt-3">
+                            {topChoiceOverall.card.applyUrl && (
+                              <Button 
+                                size="sm" 
+                                className="bg-amber-600 hover:bg-amber-700 text-white font-bold rounded-xl text-xs py-1 px-3 border-0"
+                                onClick={() => window.open(topChoiceOverall.card.applyUrl, '_blank')}
+                              >
+                                <ExternalLink className="h-3 w-3 mr-1" />
+                                Apply Now
+                              </Button>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              );
+            })()
+          )}
 
           {/* Merchant Offers */}
           {merchantOffers.length > 0 && (
@@ -182,98 +462,6 @@ export default function Recommendations() {
             </Card>
           )}
 
-          {/* Smart Portfolio Maximization Strategy */}
-          {user && portfolioRecommendations.length > 0 && (
-            <Card className="border-0 bg-gradient-to-br from-indigo-950 via-slate-900 to-teal-950 text-white shadow-xl overflow-hidden relative border border-slate-800">
-              <div className="absolute top-0 right-0 w-64 h-64 bg-teal-500/10 rounded-full blur-3xl pointer-events-none" />
-              <div className="absolute bottom-0 left-0 w-64 h-64 bg-indigo-500/10 rounded-full blur-3xl pointer-events-none" />
-              
-              <CardContent className="p-6 relative z-10 space-y-4">
-                <div className="flex items-center space-x-2">
-                  <TrendingUp className="h-5 w-5 text-teal-400" />
-                  <h3 className="font-bold text-lg text-teal-300">Your Swipe Strategy for "{recommendationsData?.category}"</h3>
-                </div>
-                
-                {/* Comparison Details */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-2">
-                  {/* Credit Card Option */}
-                  <div className="p-4 bg-white/5 rounded-xl border border-white/10 flex flex-col justify-between hover:bg-white/10 transition-colors">
-                    <div>
-                      <span className="text-xs font-semibold text-indigo-300 uppercase tracking-wider">Best Portfolio Credit Card</span>
-                      {bestPortfolioCredit ? (
-                        <div className="mt-2">
-                          <h4 className="font-bold text-white text-base">{bestPortfolioCredit.portfolioNickname || bestPortfolioCredit.card.name}</h4>
-                          <p className="text-xs text-slate-400">{bestPortfolioCredit.card.issuer}</p>
-                        </div>
-                      ) : (
-                        <p className="text-sm text-slate-400 mt-2">No Credit Cards added for this category</p>
-                      )}
-                    </div>
-                    {bestPortfolioCredit && (
-                      <div className="mt-4 flex items-baseline justify-between border-t border-white/5 pt-3">
-                        <span className="text-xs text-slate-400">Cashback Rate</span>
-                        <span className="text-xl font-bold text-indigo-400">{bestPortfolioCredit.relevantCategory.cashbackRate}%</span>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Debit Card Option */}
-                  <div className="p-4 bg-white/5 rounded-xl border border-white/10 flex flex-col justify-between hover:bg-white/10 transition-colors">
-                    <div>
-                      <span className="text-xs font-semibold text-teal-300 uppercase tracking-wider">Best Portfolio Debit Card</span>
-                      {bestPortfolioDebit ? (
-                        <div className="mt-2">
-                          <h4 className="font-bold text-white text-base">{bestPortfolioDebit.portfolioNickname || bestPortfolioDebit.card.name}</h4>
-                          <p className="text-xs text-slate-400">{bestPortfolioDebit.card.issuer}</p>
-                        </div>
-                      ) : (
-                        <p className="text-sm text-slate-400 mt-2">No Debit Cards added for this category</p>
-                      )}
-                    </div>
-                    {bestPortfolioDebit && (
-                      <div className="mt-4 flex items-baseline justify-between border-t border-white/5 pt-3">
-                        <span className="text-xs text-slate-400">Cashback Rate</span>
-                        <span className="text-xl font-bold text-teal-400">{bestPortfolioDebit.relevantCategory.cashbackRate}%</span>
-                      </div>
-                    )}
-                  </div>
-                </div>
-
-                {/* Ultimate Decision banner */}
-                {(() => {
-                  const creditRate = bestPortfolioCredit?.relevantCategory.cashbackRate || 0;
-                  const debitRate = bestPortfolioDebit?.relevantCategory.cashbackRate || 0;
-                  
-                  if (creditRate === 0 && debitRate === 0) return null;
-                  
-                  const winner = creditRate >= debitRate ? bestPortfolioCredit : bestPortfolioDebit;
-                  const rateDiff = Math.abs(creditRate - debitRate);
-                  
-                  return (
-                    <div className="mt-4 p-4 bg-gradient-to-r from-teal-500/20 to-indigo-500/20 border border-teal-500/30 rounded-xl flex items-center justify-between">
-                      <div className="space-y-1">
-                        <span className="text-xs font-semibold text-teal-400 uppercase tracking-wider">Recommended Swipe</span>
-                        <p className="text-sm text-slate-200">
-                          Use your <strong className="text-white">{winner?.portfolioNickname || winner?.card.name}</strong> ({winner?.card.type}) to earn <strong className="text-teal-400 font-bold">{winner?.relevantCategory.cashbackRate}% back</strong>!
-                        </p>
-                        {rateDiff > 0 && bestPortfolioCredit && bestPortfolioDebit && (
-                          <p className="text-xs text-slate-400">
-                            This earns {rateDiff.toFixed(1)}% more than your best {winner?.card.type === 'credit' ? 'debit' : 'credit'} card.
-                          </p>
-                        )}
-                      </div>
-                      <div className="hidden sm:block">
-                        <Badge className="bg-teal-500 hover:bg-teal-600 text-white font-bold px-3 py-1 text-sm shadow-md animate-pulse">
-                          +{winner?.relevantCategory.cashbackRate}% Back
-                        </Badge>
-                      </div>
-                    </div>
-                  );
-                })()}
-              </CardContent>
-            </Card>
-          )}
-
           {/* Recommendations Tabs */}
           <Tabs defaultValue="all" className="w-full">
             <TabsList className="grid w-full grid-cols-2">
@@ -290,8 +478,6 @@ export default function Recommendations() {
                   recommendation={recommendation} 
                   rank={index + 1} 
                   category={category} 
-                  isBestCredit={recommendation.card.id === bestCreditCard?.card.id}
-                  isBestDebit={recommendation.card.id === bestDebitCard?.card.id}
                 />
               ))}
             </TabsContent>
@@ -312,8 +498,6 @@ export default function Recommendations() {
                       rank={index + 1} 
                       category={category}
                       isPortfolioCard={true}
-                      isBestCredit={recommendation.card.id === bestPortfolioCredit?.card.id}
-                      isBestDebit={recommendation.card.id === bestPortfolioDebit?.card.id}
                     />
                   ))}
                 </>
@@ -347,18 +531,14 @@ function RecommendationCard({
   recommendation, 
   rank, 
   category, 
-  isPortfolioCard = false,
-  isBestCredit = false,
-  isBestDebit = false
+  isPortfolioCard = false 
 }: { 
   recommendation: CardRecommendation; 
   rank: number; 
   category: string;
   isPortfolioCard?: boolean;
-  isBestCredit?: boolean;
-  isBestDebit?: boolean;
 }) {
-  const { card, relevantCategory, isInPortfolio, portfolioNickname, relevantOffers } = recommendation;
+  const { card, relevantCategory, isInPortfolio, portfolioNickname, relevantOffers, effectiveRate, offerAppliedText } = recommendation;
   const isTopChoice = rank === 1;
 
   const getNetworkColor = (network: string) => {
@@ -410,22 +590,9 @@ function RecommendationCard({
           <div className="flex-1 space-y-3">
             <div className="flex items-start justify-between">
               <div>
-                <h3 className="font-semibold text-gray-900 flex flex-wrap items-center gap-2">
+                <h3 className="font-semibold text-gray-900 flex items-center space-x-2">
                   <span>{portfolioNickname || card.name}</span>
-                  <Badge className={card.type === 'debit' ? 'bg-indigo-50 text-indigo-700 border-indigo-200' : 'bg-slate-50 text-slate-700 border-slate-200'} variant="outline">
-                    {card.type === 'debit' ? 'Debit' : 'Credit'}
-                  </Badge>
-                  {isBestCredit && (
-                    <Badge className="bg-gradient-to-r from-indigo-500 to-blue-600 text-white font-medium">
-                      Best Credit
-                    </Badge>
-                  )}
-                  {isBestDebit && (
-                    <Badge className="bg-gradient-to-r from-teal-500 to-emerald-600 text-white font-medium">
-                      Best Debit
-                    </Badge>
-                  )}
-                  {isTopChoice && !isPortfolioCard && !isBestCredit && !isBestDebit && (
+                  {isTopChoice && !isPortfolioCard && (
                     <Badge className="bg-gradient-to-r from-teal-500 to-green-500 text-white">
                       <Star className="h-3 w-3 mr-1" />
                       Best Choice
@@ -451,11 +618,16 @@ function RecommendationCard({
                     {card.network}
                   </Badge>
                 </div>
+                {offerAppliedText && (
+                  <div className="mt-2 text-xs font-bold text-emerald-700 bg-emerald-50 border border-emerald-100 rounded-lg px-2.5 py-1.5 inline-block animate-pulse">
+                    {offerAppliedText}
+                  </div>
+                )}
               </div>
               
               <div className="text-right">
                 <div className="text-2xl font-bold text-teal-600">
-                  {relevantCategory.cashbackRate}%
+                  {effectiveRate || relevantCategory.cashbackRate}%
                 </div>
                 <div className="text-xs text-gray-500">cashback</div>
               </div>

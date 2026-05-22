@@ -22,9 +22,9 @@ export default function Cards() {
   
   // Comprehensive cards filters
   const [searchQuery, setSearchQuery] = useState('');
-  const [selectedIssuer, setSelectedIssuer] = useState<string>('all');
-  const [selectedNetwork, setSelectedNetwork] = useState<string>('all');
-  const [selectedCategory, setSelectedCategory] = useState<string>('all');
+  const [selectedIssuer, setSelectedIssuer] = useState<string>('');
+  const [selectedNetwork, setSelectedNetwork] = useState<string>('');
+  const [selectedCategory, setSelectedCategory] = useState<string>('');
   const [maxAnnualFee, setMaxAnnualFee] = useState<number[]>([500]);
   const [minCashback, setMinCashback] = useState<number[]>([0]);
   
@@ -43,9 +43,9 @@ export default function Cards() {
     queryKey: ['comprehensive-cards', searchQuery, selectedIssuer, selectedNetwork, selectedCategory, maxAnnualFee[0], minCashback[0]],
     queryFn: () => backend.cards.getComprehensiveCards({
       query: searchQuery || undefined,
-      issuer: selectedIssuer === 'all' ? undefined : selectedIssuer,
-      network: selectedNetwork === 'all' ? undefined : selectedNetwork,
-      category: selectedCategory === 'all' ? undefined : selectedCategory,
+      issuer: selectedIssuer || undefined,
+      network: selectedNetwork || undefined,
+      category: selectedCategory || undefined,
       maxAnnualFee: maxAnnualFee[0],
       minCashback: minCashback[0],
       limit: 50
@@ -112,8 +112,8 @@ export default function Cards() {
   const popularCards = comprehensiveData?.popularCards || [];
   const portfolioCards = portfolioData?.cards || [];
   
-  const issuers = [...new Set(comprehensiveCards.map(card => card.issuer).filter(Boolean))];
-  const networks = [...new Set(comprehensiveCards.map(card => card.network).filter(Boolean))];
+  const issuers = [...new Set(comprehensiveCards.map(card => card.issuer))];
+  const networks = [...new Set(comprehensiveCards.map(card => card.network))];
   const categories = ['Groceries', 'Gas', 'Dining', 'Travel', 'Shopping', 'Streaming', 'All Purchases'];
 
   const handleAddCard = () => {
@@ -152,9 +152,9 @@ export default function Cards() {
 
   const clearFilters = () => {
     setSearchQuery('');
-    setSelectedIssuer('all');
-    setSelectedNetwork('all');
-    setSelectedCategory('all');
+    setSelectedIssuer('');
+    setSelectedNetwork('');
+    setSelectedCategory('');
     setMaxAnnualFee([500]);
     setMinCashback([0]);
   };
@@ -164,8 +164,8 @@ export default function Cards() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="space-y-2">
-          <h1 className="text-3xl font-bold text-gray-900">Credit & Debit Cards</h1>
-          <p className="text-gray-600">Explore our comprehensive database and manage your card portfolio</p>
+          <h1 className="text-3xl font-bold text-gray-900">Credit Cards</h1>
+          <p className="text-gray-600">Explore our comprehensive database and manage your portfolio</p>
         </div>
         
         <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
@@ -177,7 +177,7 @@ export default function Cards() {
           </DialogTrigger>
           <DialogContent>
             <DialogHeader>
-              <DialogTitle>Add New Credit or Debit Card</DialogTitle>
+              <DialogTitle>Add New Credit Card</DialogTitle>
             </DialogHeader>
             <div className="space-y-4">
               <div className="space-y-2">
@@ -296,7 +296,7 @@ export default function Cards() {
                     <SelectValue placeholder="All Issuers" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="all">All Issuers</SelectItem>
+                    <SelectItem value="">All Issuers</SelectItem>
                     {issuers.map(issuer => (
                       <SelectItem key={issuer} value={issuer}>{issuer}</SelectItem>
                     ))}
@@ -312,7 +312,7 @@ export default function Cards() {
                     <SelectValue placeholder="All Networks" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="all">All Networks</SelectItem>
+                    <SelectItem value="">All Networks</SelectItem>
                     {networks.map(network => (
                       <SelectItem key={network} value={network}>{network}</SelectItem>
                     ))}
@@ -328,7 +328,7 @@ export default function Cards() {
                     <SelectValue placeholder="All Categories" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="all">All Categories</SelectItem>
+                    <SelectItem value="">All Categories</SelectItem>
                     {categories.map(category => (
                       <SelectItem key={category} value={category}>{category}</SelectItem>
                     ))}
@@ -456,6 +456,144 @@ export default function Cards() {
   );
 }
 
+function CreditCardRender({ 
+  name, 
+  issuer, 
+  network, 
+  imageUrl 
+}: { 
+  name: string; 
+  issuer: string; 
+  network: string; 
+  imageUrl?: string; 
+}) {
+  const [imageError, setImageError] = useState(false);
+  const normalizedIssuer = issuer.toLowerCase();
+  const normalizedNetwork = network.toLowerCase();
+  const normalizedName = name.toLowerCase();
+
+  // Curated premium card styling based on issuer/brand colorways
+  const getCardStyle = () => {
+    if (normalizedIssuer.includes('chase')) {
+      if (normalizedName.includes('reserve')) {
+        return 'from-slate-900 via-indigo-950 to-slate-900 text-slate-100 border border-slate-800 shadow-[0_12px_30px_rgba(15,23,42,0.4)]';
+      }
+      if (normalizedName.includes('preferred')) {
+        return 'from-indigo-900 via-blue-900 to-indigo-950 text-white border border-indigo-900/60 shadow-[0_12px_30px_rgba(30,58,138,0.4)]';
+      }
+      return 'from-blue-600 via-blue-700 to-indigo-900 text-white shadow-[0_12px_30px_rgba(29,78,216,0.35)]';
+    }
+    if (normalizedIssuer.includes('american express') || normalizedIssuer.includes('amex')) {
+      if (normalizedName.includes('platinum')) {
+        return 'from-slate-350 via-zinc-150 to-slate-400 text-zinc-800 border border-slate-300 shadow-[0_12px_30px_rgba(100,116,139,0.25)]';
+      }
+      if (normalizedName.includes('gold')) {
+        return 'from-amber-200 via-amber-400 to-yellow-600 text-amber-950 border border-amber-300 shadow-[0_12px_30px_rgba(217,119,6,0.35)]';
+      }
+      if (normalizedName.includes('blue cash')) {
+        return 'from-sky-850 via-blue-900 to-slate-950 text-white border border-blue-950 shadow-[0_12px_30px_rgba(3,105,161,0.3)]';
+      }
+      return 'from-amber-500 via-yellow-500 to-yellow-600 text-amber-950 shadow-[0_12px_30px_rgba(245,158,11,0.3)]';
+    }
+    if (normalizedIssuer.includes('capital one')) {
+      if (normalizedName.includes('venture')) {
+        return 'from-slate-800 via-slate-900 to-slate-950 text-slate-100 border border-slate-800/80 shadow-[0_12px_30px_rgba(15,23,42,0.4)]';
+      }
+      if (normalizedName.includes('savor')) {
+        return 'from-amber-900 via-yellow-950 to-amber-950 text-amber-100 border border-amber-900/60 shadow-[0_12px_30px_rgba(120,53,4,0.3)]';
+      }
+      return 'from-slate-700 via-slate-850 to-slate-900 text-white border border-slate-800';
+    }
+    if (normalizedIssuer.includes('citi')) {
+      return 'from-cyan-500 via-blue-600 to-blue-800 text-white border border-blue-600/40 shadow-[0_12px_30px_rgba(6,182,212,0.3)]';
+    }
+    if (normalizedIssuer.includes('discover')) {
+      return 'from-orange-500 via-red-500 to-pink-600 text-white shadow-[0_12px_30px_rgba(249,115,22,0.3)]';
+    }
+    if (normalizedIssuer.includes('apple')) {
+      return 'from-zinc-50 via-zinc-100 to-zinc-250 text-slate-800 border border-zinc-200 shadow-[0_12px_30px_rgba(0,0,0,0.06)]';
+    }
+    return 'from-teal-600 via-emerald-600 to-emerald-800 text-white shadow-[0_12px_30px_rgba(13,148,136,0.3)]';
+  };
+
+  const renderNetworkLogo = () => {
+    switch (normalizedNetwork) {
+      case 'visa':
+        return <span className="text-xl font-black italic tracking-widest text-blue-100 drop-shadow-[0_1px_2px_rgba(0,0,0,0.3)]">VISA</span>;
+      case 'mastercard':
+        return (
+          <div className="flex items-center">
+            <span className="w-4.5 h-4.5 rounded-full bg-red-500 opacity-95"></span>
+            <span className="w-4.5 h-4.5 rounded-full bg-yellow-500 opacity-95 -ml-2.5"></span>
+            <span className="text-[9px] font-black text-white ml-1.5 uppercase tracking-tighter drop-shadow-sm">mc</span>
+          </div>
+        );
+      case 'american express':
+      case 'amex':
+        return (
+          <div className="border border-white/40 px-1.5 py-0.5 rounded bg-cyan-600/10 flex items-center justify-center">
+            <span className="text-[7.5px] font-black uppercase tracking-widest text-white">AMEX</span>
+          </div>
+        );
+      case 'discover':
+        return <span className="text-xs font-black tracking-tight text-white uppercase drop-shadow-[0_1px_2px_rgba(0,0,0,0.3)]">DISCOVER</span>;
+      default:
+        return <span className="text-[9px] font-bold text-white/60 uppercase">{network}</span>;
+    }
+  };
+
+  if (imageUrl && !imageError) {
+    return (
+      <div className="relative w-full aspect-[1.586/1] rounded-2xl overflow-hidden shadow-lg border border-gray-100 transition-all duration-300">
+        <img 
+          src={imageUrl} 
+          alt={name}
+          className="w-full h-full object-cover"
+          onError={() => setImageError(true)}
+        />
+        {/* Apple HIG soft glare layer */}
+        <div className="absolute inset-0 bg-gradient-to-tr from-transparent via-white/5 to-white/10 pointer-events-none" />
+      </div>
+    );
+  }
+
+  // Premium CSS fallback
+  return (
+    <div className={`relative w-full aspect-[1.586/1] rounded-2xl p-5 flex flex-col justify-between overflow-hidden bg-gradient-to-br transition-all duration-500 shadow-xl ${getCardStyle()}`}>
+      <div className="absolute inset-0 bg-gradient-to-tr from-transparent via-white/5 to-white/12 pointer-events-none" />
+      
+      {/* Top Section */}
+      <div className="flex justify-between items-start z-10">
+        <div className="space-y-0.5">
+          <span className="text-[9px] font-black uppercase tracking-widest opacity-80 block">{issuer}</span>
+          <span className="text-sm font-black tracking-tight block leading-tight drop-shadow-md">{name}</span>
+        </div>
+        
+        {/* Realistic Gold EMV Metallic Chip */}
+        <div className="w-8.5 h-6.5 bg-gradient-to-br from-amber-200 via-yellow-400 to-amber-300 rounded-md border border-yellow-600/35 relative flex items-center justify-center shadow-md">
+          <div className="absolute top-0 bottom-0 left-3 w-px bg-yellow-800/20" />
+          <div className="absolute top-0 bottom-0 right-3 w-px bg-yellow-800/20" />
+          <div className="absolute left-0 right-0 top-3 h-px bg-yellow-800/20" />
+        </div>
+      </div>
+
+      {/* Bottom Section */}
+      <div className="flex justify-between items-end z-10">
+        <div className="space-y-0.5">
+          <span className="text-[8px] uppercase tracking-widest opacity-70 block font-semibold">Wallet Wingman</span>
+          <span className="text-[9px] font-mono tracking-widest opacity-85 block">•••• •••• •••• 2026</span>
+        </div>
+        <div className="flex items-center justify-center">
+          {renderNetworkLogo()}
+        </div>
+      </div>
+
+      {/* Futuristic soft background circle mesh */}
+      <div className="absolute -right-12 -bottom-12 w-28 h-28 bg-white/5 rounded-full blur-xl pointer-events-none" />
+    </div>
+  );
+}
+
 function ComprehensiveCardComponent({ 
   card, 
   isInPortfolio, 
@@ -478,137 +616,116 @@ function ComprehensiveCardComponent({
       )
     : { cashbackRate: 0, category: 'N/A', id: 0, isRotating: false };
 
-  const getNetworkColor = (network: string | undefined) => {
-    if (!network) return 'bg-gray-100 text-gray-700';
+  const getNetworkColor = (network: string) => {
     switch (network.toLowerCase()) {
-      case 'visa': return 'bg-blue-100 text-blue-700';
-      case 'mastercard': return 'bg-red-100 text-red-700';
-      case 'american express': return 'bg-green-100 text-green-700';
-      case 'discover': return 'bg-orange-100 text-orange-700';
-      default: return 'bg-gray-100 text-gray-700';
+      case 'visa': return 'bg-blue-100 text-blue-700 border-blue-200';
+      case 'mastercard': return 'bg-red-100 text-red-700 border-red-200';
+      case 'american express': return 'bg-teal-100 text-teal-700 border-teal-200';
+      case 'discover': return 'bg-orange-100 text-orange-700 border-orange-200';
+      default: return 'bg-gray-100 text-gray-700 border-gray-200';
     }
   };
 
   return (
-    <Card className={`group hover:shadow-lg transition-all duration-300 border-0 ${isPopular ? 'ring-2 ring-yellow-200 bg-gradient-to-br from-yellow-50 to-orange-50' : 'bg-white'}`}>
-      <CardHeader className="pb-4">
+    <Card className={`group hover:shadow-2xl transition-all duration-500 border border-slate-100/80 rounded-3xl overflow-hidden flex flex-col justify-between ${isPopular ? 'ring-2 ring-yellow-250 bg-gradient-to-br from-yellow-50/70 via-orange-50/20 to-white' : 'bg-white'}`}>
+      
+      {/* Top Banner Renders */}
+      <div className="p-4 pb-0">
+        <CreditCardRender 
+          name={card.name} 
+          issuer={card.issuer} 
+          network={card.network} 
+          imageUrl={card.imageUrl} 
+        />
+      </div>
+
+      <CardHeader className="pt-4 pb-2 px-5">
         <div className="flex items-start justify-between">
-          <div className="flex items-center space-x-3">
-            <div className="w-16 h-10 bg-gradient-to-r from-gray-100 to-gray-200 rounded-lg flex items-center justify-center overflow-hidden">
-              {card.imageUrl ? (
-                <img 
-                  src={card.imageUrl} 
-                  alt={card.name}
-                  className="w-full h-full object-cover"
-                  onError={(e) => {
-                    const target = e.target as HTMLImageElement;
-                    target.style.display = 'none';
-                    target.parentElement!.innerHTML = `<span class="text-xs font-medium text-gray-500">${card.issuer}</span>`;
-                  }}
-                />
-              ) : (
-                <span className="text-xs font-medium text-gray-500">{card.issuer}</span>
-              )}
+          <div className="space-y-1">
+            <div className="flex items-center space-x-2">
+              <h3 className="font-extrabold text-slate-800 group-hover:text-teal-600 transition-colors text-base tracking-tight leading-tight">
+                {card.name}
+              </h3>
+              {isPopular && <Star className="h-4 w-4 text-yellow-500 fill-yellow-500" />}
             </div>
-            <div className="flex-1">
-              <div className="flex items-center space-x-2">
-                <h3 className="font-semibold text-gray-900 group-hover:text-teal-600 transition-colors text-sm">
-                  {card.name}
-                </h3>
-                {isPopular && <Star className="h-4 w-4 text-yellow-500" />}
-              </div>
-              <div className="flex items-center space-x-2 mt-1">
-                <p className="text-xs text-gray-600">{card.issuer}</p>
-                {card.network && (
-                  <Badge className={`text-xs ${getNetworkColor(card.network)}`}>
-                    {card.network}
-                  </Badge>
-                )}
-                <Badge className={`text-xs font-semibold ${card.type === 'debit' ? 'bg-cyan-100 text-cyan-800 border-cyan-200' : 'bg-purple-100 text-purple-800 border-purple-200'}`}>
-                  {card.type === 'debit' ? 'Debit' : 'Credit'}
-                </Badge>
-              </div>
+            <div className="flex items-center space-x-2">
+              <p className="text-xs text-slate-500 font-semibold">{card.issuer}</p>
+              <Badge variant="outline" className={`text-[10px] font-bold py-px px-2 border rounded-full ${getNetworkColor(card.network)}`}>
+                {card.network}
+              </Badge>
             </div>
           </div>
           <div className="text-right">
-            <div className="flex items-center space-x-1">
-              <Star className="h-3 w-3 text-yellow-500" />
-              <span className="text-xs font-medium">{card.rating !== undefined ? card.rating : 4.0}</span>
+            <div className="flex items-center space-x-0.5 justify-end">
+              <Star className="h-3.5 w-3.5 text-yellow-500 fill-yellow-500" />
+              <span className="text-xs font-bold text-slate-800">{card.rating}</span>
             </div>
-            <p className="text-xs text-gray-500">{card.reviewCount !== undefined ? card.reviewCount : 0} reviews</p>
+            <p className="text-[10px] text-slate-400 font-medium">{card.reviewCount} reviews</p>
           </div>
         </div>
       </CardHeader>
       
-      <CardContent className="pt-0 space-y-3">
-        <div className="flex items-center justify-between text-sm">
-          <span className="text-gray-600">Annual Fee</span>
-          <span className="font-medium text-gray-900">
-            {card.annualFee === 0 ? 'No Fee' : `$${card.annualFee}`}
-          </span>
-        </div>
-
-        <div className="space-y-2">
-          <div className="flex items-center justify-between">
-            <span className="text-sm text-gray-600">Best Rate</span>
-            <Badge variant="secondary" className="bg-teal-100 text-teal-700 text-xs">
-              {bestCategory.cashbackRate}% {bestCategory.category}
-            </Badge>
+      <CardContent className="pt-0 px-5 pb-5 space-y-4 flex-1 flex flex-col justify-between">
+        <div className="space-y-3">
+          <div className="flex items-center justify-between text-xs font-medium border-b border-slate-100 pb-2">
+            <span className="text-slate-500">Annual Fee</span>
+            <span className="font-extrabold text-slate-800">
+              {card.annualFee === 0 ? 'No Fee' : `$${card.annualFee}`}
+            </span>
           </div>
-          
-          {bestCategory.isRotating && bestCategory.validUntil && (
-            <div className="flex items-center space-x-1 text-xs text-orange-600">
-              <TrendingUp className="h-3 w-3" />
-              <span>Valid until {new Date(bestCategory.validUntil).toLocaleDateString()}</span>
-            </div>
-          )}
-        </div>
 
-        {card.welcomeBonus && (
-          <div className="text-xs text-green-700 bg-green-50 p-2 rounded">
-            <strong>Welcome Bonus:</strong> {card.welcomeBonus}
-          </div>
-        )}
-
-        <div className="space-y-1">
-          <span className="text-sm font-medium text-gray-700">Categories:</span>
-          <div className="flex flex-wrap gap-1">
-            {card.categories && card.categories.length > 0 ? (
-              <>
-                {card.categories.slice(0, 3).map((category, index) => (
-                  <Badge key={index} variant="outline" className="text-xs">
-                    {category.cashbackRate}% {category.category}
-                  </Badge>
-                ))}
-                {card.categories.length > 3 && (
-                  <Badge variant="outline" className="text-xs">
-                    +{card.categories.length - 3} more
-                  </Badge>
-                )}
-              </>
-            ) : (
-              <Badge variant="outline" className="text-xs">
-                No categories available
+          <div className="space-y-1.5">
+            <div className="flex items-center justify-between">
+              <span className="text-xs text-slate-500 font-medium">Top Reward</span>
+              <Badge variant="secondary" className="bg-teal-50 border border-teal-100 text-teal-700 text-xs font-black py-0.5 rounded-lg">
+                {bestCategory.cashbackRate}% {bestCategory.category}
               </Badge>
+            </div>
+            
+            {bestCategory.isRotating && bestCategory.validUntil && (
+              <div className="flex items-center space-x-1 text-[10px] text-orange-600 font-bold bg-orange-50 border border-orange-100 p-1 rounded-md">
+                <TrendingUp className="h-3.5 w-3.5 text-orange-500" />
+                <span>Expires {new Date(bestCategory.validUntil).toLocaleDateString()}</span>
+              </div>
             )}
           </div>
-        </div>
 
-        {card.features && card.features.length > 0 && (
-          <div className="space-y-1">
-            <span className="text-sm font-medium text-gray-700">Features:</span>
-            <div className="text-xs text-gray-600">
-              {card.features.slice(0, 2).join(' • ')}
-              {card.features.length > 2 && ` • +${card.features.length - 2} more`}
+          {card.welcomeBonus && (
+            <div className="text-[11px] text-emerald-800 bg-emerald-50/70 border border-emerald-100/60 p-2.5 rounded-xl font-medium leading-normal">
+              <strong className="text-emerald-950 font-bold">Welcome Bonus:</strong> {card.welcomeBonus}
+            </div>
+          )}
+
+          <div className="space-y-1.5">
+            <span className="text-xs font-bold text-slate-700">Categorized Perks:</span>
+            <div className="flex flex-wrap gap-1">
+              {card.categories && card.categories.length > 0 ? (
+                <>
+                  {card.categories.slice(0, 3).map((category, index) => (
+                    <Badge key={index} variant="outline" className="text-[10px] font-bold py-0.5 px-2 border border-slate-200 text-slate-600 rounded-md">
+                      {category.cashbackRate}% {category.category}
+                    </Badge>
+                  ))}
+                  {card.categories.length > 3 && (
+                    <Badge variant="outline" className="text-[10px] font-bold py-0.5 px-1.5 border border-slate-200 text-slate-400 rounded-md">
+                      +{card.categories.length - 3} more
+                    </Badge>
+                  )}
+                </>
+              ) : (
+                <Badge variant="outline" className="text-[10px]">
+                  No rates recorded
+                </Badge>
+              )}
             </div>
           </div>
-        )}
+        </div>
 
-        <div className="flex space-x-2 pt-2">
+        <div className="flex space-x-2 pt-3 border-t border-slate-100">
           {showAddButton && (
             <div className="flex-1">
               {isInPortfolio ? (
-                <Badge className="bg-green-100 text-green-700 w-full justify-center text-xs">
+                <Badge className="bg-green-50 border border-green-200 text-green-700 font-extrabold w-full py-1.5 justify-center rounded-xl text-xs">
                   In Portfolio
                 </Badge>
               ) : (
@@ -616,7 +733,7 @@ function ComprehensiveCardComponent({
                   onClick={onAddToPortfolio}
                   disabled={isAddingToPortfolio}
                   size="sm"
-                  className="w-full bg-teal-500 hover:bg-teal-600 text-xs"
+                  className="w-full bg-teal-500 hover:bg-teal-600 text-white font-extrabold rounded-xl py-1.5 text-xs shadow-md transition-all active:scale-[0.98]"
                 >
                   {isAddingToPortfolio ? 'Adding...' : 'Add to Portfolio'}
                 </Button>
@@ -627,10 +744,10 @@ function ComprehensiveCardComponent({
             <Button 
               variant="outline" 
               size="sm" 
-              className="text-xs"
+              className="text-xs font-extrabold border-slate-200 hover:bg-slate-50 text-slate-700 rounded-xl"
               onClick={() => window.open(card.applyUrl, '_blank')}
             >
-              <ExternalLink className="h-3 w-3 mr-1" />
+              <ExternalLink className="h-3.5 w-3.5 mr-1" />
               Apply
             </Button>
           )}
@@ -650,100 +767,90 @@ function PortfolioCardComponent({ userCard }: { userCard: UserCard }) {
       )
     : { cashbackRate: 0, category: 'N/A', id: 0, isRotating: false };
 
-  const getNetworkColor = (network: string | undefined) => {
-    if (!network) return 'bg-gray-100 text-gray-700';
+  const getNetworkColor = (network: string) => {
     switch (network.toLowerCase()) {
-      case 'visa': return 'bg-blue-100 text-blue-700';
-      case 'mastercard': return 'bg-red-100 text-red-700';
-      case 'american express': return 'bg-green-100 text-green-700';
-      case 'discover': return 'bg-orange-100 text-orange-700';
-      default: return 'bg-gray-100 text-gray-700';
+      case 'visa': return 'bg-blue-100 text-blue-700 border-blue-200';
+      case 'mastercard': return 'bg-red-100 text-red-700 border-red-200';
+      case 'american express': return 'bg-teal-100 text-teal-700 border-teal-200';
+      case 'discover': return 'bg-orange-100 text-orange-700 border-orange-200';
+      default: return 'bg-gray-100 text-gray-700 border-gray-200';
     }
   };
 
   return (
-    <Card className="group hover:shadow-lg transition-all duration-300 border-0 bg-gradient-to-br from-teal-50 to-green-50">
-      <CardHeader className="pb-4">
-        <div className="flex items-center space-x-4">
-          <div className="w-16 h-10 bg-gradient-to-r from-gray-100 to-gray-200 rounded-lg flex items-center justify-center overflow-hidden">
-            {card.imageUrl ? (
-              <img 
-                src={card.imageUrl} 
-                alt={card.name}
-                className="w-full h-full object-cover"
-                onError={(e) => {
-                  const target = e.target as HTMLImageElement;
-                  target.style.display = 'none';
-                  target.parentElement!.innerHTML = `<span class="text-xs font-medium text-gray-500">${card.issuer}</span>`;
-                }}
-              />
-            ) : (
-              <span className="text-xs font-medium text-gray-500">{card.issuer}</span>
-            )}
-          </div>
+    <Card className="group hover:shadow-2xl transition-all duration-500 border border-slate-100/80 rounded-3xl overflow-hidden bg-gradient-to-br from-slate-50/60 via-teal-50/10 to-white flex flex-col justify-between">
+      
+      {/* Top Banner aspect-ratio renders */}
+      <div className="p-4 pb-0">
+        <CreditCardRender 
+          name={card.name} 
+          issuer={card.issuer} 
+          network={card.network} 
+          imageUrl={card.imageUrl} 
+        />
+      </div>
+
+      <CardHeader className="pt-4 pb-2 px-5">
+        <div className="flex items-center space-x-3">
           <div className="flex-1">
-            <h3 className="font-semibold text-gray-900">
+            <h3 className="font-extrabold text-slate-800 text-base tracking-tight leading-tight">
               {userCard.nickname || card.name}
             </h3>
             {userCard.nickname && (
-              <p className="text-xs text-gray-500">{card.name}</p>
+              <p className="text-[10px] text-slate-400 font-medium leading-none mt-1">{card.name}</p>
             )}
             <div className="flex items-center space-x-2 mt-1">
-              <p className="text-sm text-gray-600">{card.issuer}</p>
-              {card.network && (
-                <Badge className={`text-xs ${getNetworkColor(card.network)}`}>
-                  {card.network}
-                </Badge>
-              )}
-              <Badge className={`text-xs font-semibold ${card.type === 'debit' ? 'bg-cyan-100 text-cyan-800 border-cyan-200' : 'bg-purple-100 text-purple-800 border-purple-200'}`}>
-                {card.type === 'debit' ? 'Debit' : 'Credit'}
+              <p className="text-xs text-slate-500 font-semibold leading-none">{card.issuer}</p>
+              <Badge variant="outline" className={`text-[9px] font-black py-0.5 px-2 border rounded-full ${getNetworkColor(card.network)}`}>
+                {card.network}
               </Badge>
             </div>
           </div>
         </div>
       </CardHeader>
       
-      <CardContent className="pt-0 space-y-4">
+      <CardContent className="pt-0 px-5 pb-5 space-y-4">
         {userCard.creditLimit && (
-          <div className="flex items-center justify-between">
-            <span className="text-sm text-gray-600">Credit Limit</span>
-            <span className="font-medium text-gray-900">${userCard.creditLimit.toLocaleString()}</span>
+          <div className="flex items-center justify-between text-xs font-semibold border-b border-slate-100/60 pb-2">
+            <span className="text-slate-500">Credit Limit</span>
+            <span className="font-extrabold text-slate-800">${userCard.creditLimit.toLocaleString()}</span>
           </div>
         )}
 
-        <div className="flex items-center justify-between">
-          <span className="text-sm text-gray-600">Best Rate</span>
-          <Badge variant="secondary" className="bg-teal-100 text-teal-700">
+        <div className="flex items-center justify-between text-xs font-semibold border-b border-slate-100/60 pb-2">
+          <span className="text-slate-500 font-semibold">Best Portfolio Rate</span>
+          <Badge variant="secondary" className="bg-teal-50 border border-teal-150 text-teal-700 font-black rounded-lg">
             {bestCategory.cashbackRate}% {bestCategory.category}
           </Badge>
         </div>
 
-        <div className="space-y-1">
-          <span className="text-sm font-medium text-gray-700">Categories:</span>
+        <div className="space-y-1.5">
+          <span className="text-xs font-bold text-slate-700">Category Cashback Rates:</span>
           <div className="flex flex-wrap gap-1">
             {card.categories && card.categories.length > 0 ? (
               <>
                 {card.categories.slice(0, 3).map((category, index) => (
-                  <Badge key={index} variant="outline" className="text-xs">
+                  <Badge key={index} variant="outline" className="text-[10px] font-bold py-0.5 px-2 border border-slate-200 text-slate-600 rounded-md">
                     {category.cashbackRate}% {category.category}
                   </Badge>
                 ))}
                 {card.categories.length > 3 && (
-                  <Badge variant="outline" className="text-xs">
+                  <Badge variant="outline" className="text-[10px] font-bold py-0.5 px-1.5 border border-slate-200 text-slate-400 rounded-md">
                     +{card.categories.length - 3} more
                   </Badge>
                 )}
               </>
             ) : (
-              <Badge variant="outline" className="text-xs">
-                No categories available
+              <Badge variant="outline" className="text-[10px]">
+                No category details available
               </Badge>
             )}
           </div>
         </div>
 
-        <div className="text-xs text-gray-500">
-          Added {new Date(userCard.addedAt).toLocaleDateString()}
+        <div className="text-[10px] text-slate-400 font-semibold pt-1 border-t border-slate-100/60 flex items-center justify-between">
+          <span>Added {new Date(userCard.addedAt).toLocaleDateString()}</span>
+          <span className="text-emerald-600 font-bold bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-100">Wallet Synced</span>
         </div>
       </CardContent>
     </Card>

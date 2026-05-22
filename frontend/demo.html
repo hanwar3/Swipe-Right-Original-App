@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SwipeRight - Credit Card Cash Back Optimizer</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        .gradient-bg {
+            background: linear-gradient(135deg, #0d9488 0%, #059669 100%);
+        }
+        .gradient-text {
+            background: linear-gradient(135deg, #0d9488 0%, #059669 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        .card-hover {
+            transition: all 0.3s ease;
+        }
+        .card-hover:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+        }
+    </style>
+</head>
+<body class="bg-gray-50 min-h-screen">
+    <!-- Header -->
+    <header class="bg-white/80 backdrop-blur-md border-b border-teal-100 sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex items-center justify-between h-16">
+                <div class="flex items-center space-x-3">
+                    <div class="w-10 h-10 gradient-bg rounded-xl flex items-center justify-center">
+                        <i class="fas fa-credit-card text-white text-lg"></i>
+                    </div>
+                    <div>
+                        <h1 class="text-xl font-bold gradient-text">SwipeRight</h1>
+                        <p class="text-xs text-gray-500 -mt-1">Your Wallet's Wingman</p>
+                    </div>
+                </div>
+                <div class="flex items-center space-x-3">
+                    <button class="px-4 py-2 text-gray-600 hover:text-teal-600 transition-colors">Sign In</button>
+                    <button class="px-4 py-2 gradient-bg text-white rounded-lg hover:opacity-90 transition-opacity">Register</button>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Hero Section -->
+    <section class="py-16 px-4">
+        <div class="max-w-4xl mx-auto text-center space-y-8">
+            <div class="inline-flex items-center space-x-2 gradient-bg text-white px-4 py-2 rounded-full text-sm font-medium">
+                <i class="fas fa-sparkles"></i>
+                <span>Max out your cash back, not your credit card</span>
+            </div>
+            
+            <h1 class="text-5xl font-bold text-gray-900 leading-tight">
+                Optimize Your
+                <span class="block gradient-text">Credit Card Cash Back</span>
+            </h1>
+            
+            <p class="text-xl text-gray-600 max-w-2xl mx-auto">
+                Discover the best credit cards for every purchase and maximize your cashback with intelligent recommendations.
+            </p>
+
+            <div class="flex flex-col sm:flex-row gap-4 justify-center">
+                <button class="px-8 py-3 gradient-bg text-white rounded-lg hover:opacity-90 transition-opacity font-semibold">
+                    Get Started
+                </button>
+                <button class="px-8 py-3 border-2 border-teal-500 text-teal-600 rounded-lg hover:bg-teal-50 transition-colors font-semibold">
+                    Learn More
+                </button>
+            </div>
+        </div>
+    </section>
+
+    <!-- Quick Actions -->
+    <section class="py-16 px-4">
+        <div class="max-w-4xl mx-auto">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div class="card-hover bg-gradient-to-br from-teal-50 to-teal-100 p-8 rounded-2xl border-0">
+                    <div class="flex items-center space-x-4">
+                        <div class="p-4 bg-teal-500 rounded-xl text-white">
+                            <i class="fas fa-bullseye text-2xl"></i>
+                        </div>
+                        <div>
+                            <h3 class="text-xl font-semibold text-gray-900">Smart Recommendations</h3>
+                            <p class="text-gray-600">AI-powered suggestions to maximize your cashback on every purchase</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card-hover bg-gradient-to-br from-green-50 to-green-100 p-8 rounded-2xl border-0">
+                    <div class="flex items-center space-x-4">
+                        <div class="p-4 bg-green-500 rounded-xl text-white">
+                            <i class="fas fa-credit-card text-2xl"></i>
+                        </div>
+                        <div>
+                            <h3 class="text-xl font-semibold text-gray-900">Card Portfolio</h3>
+                            <p class="text-gray-600">Track and manage all your credit cards in one place</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Features Section -->
+    <section class="py-16 px-4 bg-white">
+        <div class="max-w-6xl mx-auto">
+            <div class="text-center mb-12">
+                <h2 class="text-3xl font-bold text-gray-900 mb-4">Why Choose SwipeRight?</h2>
+                <p class="text-gray-600 text-lg">Join thousands of users maximizing their credit card benefits</p>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+                <div class="text-center">
+                    <div class="w-16 h-16 bg-teal-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                        <i class="fas fa-shield-alt text-2xl text-teal-600"></i>
+                    </div>
+                    <h3 class="text-xl font-semibold text-gray-900 mb-2">Secure & Private</h3>
+                    <p class="text-gray-600">Your financial data is encrypted and never shared with third parties.</p>
+                </div>
+
+                <div class="text-center">
+                    <div class="w-16 h-16 bg-green-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                        <i class="fas fa-chart-line text-2xl text-green-600"></i>
+                    </div>
+                    <h3 class="text-xl font-semibold text-gray-900 mb-2">Smart Analytics</h3>
+                    <p class="text-gray-600">Track your spending patterns and optimize your card usage.</p>
+                </div>
+
+                <div class="text-center">
+                    <div class="w-16 h-16 bg-blue-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                        <i class="fas fa-users text-2xl text-blue-600"></i>
+                    </div>
+                    <h3 class="text-xl font-semibold text-gray-900 mb-2">Community Driven</h3>
+                    <p class="text-gray-600">Real user reviews and experiences to help you make informed decisions.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Demo Cards Section -->
+    <section class="py-16 px-4">
+        <div class="max-w-6xl mx-auto">
+            <div class="text-center mb-12">
+                <h2 class="text-3xl font-bold text-gray-900 mb-4">Featured Credit Cards</h2>
+                <p class="text-gray-600">Discover cards that could maximize your cashback</p>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <!-- Chase Freedom Flex -->
+                <div class="card-hover bg-white rounded-2xl shadow-lg overflow-hidden">
+                    <div class="p-6">
+                        <div class="flex items-center justify-between mb-4">
+                            <div class="w-12 h-12 bg-blue-500 rounded-lg flex items-center justify-center">
+                                <i class="fas fa-credit-card text-white text-lg"></i>
+                            </div>
+                            <span class="text-sm font-medium text-blue-600">Chase</span>
+                        </div>
+                        <h3 class="text-lg font-semibold text-gray-900 mb-2">Freedom Flex</h3>
+                        <p class="text-gray-600 text-sm mb-4">5% cashback on rotating categories, 3% on dining and drugstores</p>
+                        <div class="flex items-center justify-between">
+                            <span class="text-2xl font-bold text-green-600">5%</span>
+                            <span class="text-sm text-gray-500">Max Cashback</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Citi Double Cash -->
+                <div class="card-hover bg-white rounded-2xl shadow-lg overflow-hidden">
+                    <div class="p-6">
+                        <div class="flex items-center justify-between mb-4">
+                            <div class="w-12 h-12 bg-red-500 rounded-lg flex items-center justify-center">
+                                <i class="fas fa-credit-card text-white text-lg"></i>
+                            </div>
+                            <span class="text-sm font-medium text-red-600">Citi</span>
+                        </div>
+                        <h3 class="text-lg font-semibold text-gray-900 mb-2">Double Cash</h3>
+                        <p class="text-gray-600 text-sm mb-4">2% cashback on all purchases - 1% when you buy, 1% when you pay</p>
+                        <div class="flex items-center justify-between">
+                            <span class="text-2xl font-bold text-green-600">2%</span>
+                            <span class="text-sm text-gray-500">All Purchases</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Amex Blue Cash Preferred -->
+                <div class="card-hover bg-white rounded-2xl shadow-lg overflow-hidden">
+                    <div class="p-6">
+                        <div class="flex items-center justify-between mb-4">
+                            <div class="w-12 h-12 bg-indigo-500 rounded-lg flex items-center justify-center">
+                                <i class="fas fa-credit-card text-white text-lg"></i>
+                            </div>
+                            <span class="text-sm font-medium text-indigo-600">Amex</span>
+                        </div>
+                        <h3 class="text-lg font-semibold text-gray-900 mb-2">Blue Cash Preferred</h3>
+                        <p class="text-gray-600 text-sm mb-4">6% cashback on groceries, 3% on gas and transit</p>
+                        <div class="flex items-center justify-between">
+                            <span class="text-2xl font-bold text-green-600">6%</span>
+                            <span class="text-sm text-gray-500">Groceries</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Stats Section -->
+    <section class="py-16 px-4 bg-gradient-to-r from-teal-500 to-green-500 text-white">
+        <div class="max-w-4xl mx-auto text-center">
+            <div class="grid grid-cols-3 gap-8">
+                <div>
+                    <div class="text-4xl font-bold mb-2">50+</div>
+                    <div class="text-teal-100">Credit Cards</div>
+                </div>
+                <div>
+                    <div class="text-4xl font-bold mb-2">5%</div>
+                    <div class="text-teal-100">Max Cashback</div>
+                </div>
+                <div>
+                    <div class="text-4xl font-bold mb-2">24/7</div>
+                    <div class="text-teal-100">AI Support</div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- CTA Section -->
+    <section class="py-16 px-4">
+        <div class="max-w-4xl mx-auto text-center">
+            <h2 class="text-3xl font-bold text-gray-900 mb-4">Ready to Maximize Your Cashback?</h2>
+            <p class="text-gray-600 text-lg mb-8">Join thousands of users who are already saving money with SwipeRight</p>
+            <button class="px-8 py-4 gradient-bg text-white rounded-lg hover:opacity-90 transition-opacity font-semibold text-lg">
+                Get Started Today
+            </button>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="bg-gray-900 text-white py-12 px-4">
+        <div class="max-w-6xl mx-auto">
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-8">
+                <div>
+                    <div class="flex items-center space-x-3 mb-4">
+                        <div class="w-8 h-8 gradient-bg rounded-lg flex items-center justify-center">
+                            <i class="fas fa-credit-card text-white"></i>
+                        </div>
+                        <span class="text-xl font-bold">SwipeRight</span>
+                    </div>
+                    <p class="text-gray-400">Your wallet's wingman for maximizing credit card rewards.</p>
+                </div>
+                <div>
+                    <h4 class="font-semibold mb-4">Product</h4>
+                    <ul class="space-y-2 text-gray-400">
+                        <li><a href="#" class="hover:text-white transition-colors">Features</a></li>
+                        <li><a href="#" class="hover:text-white transition-colors">Pricing</a></li>
+                        <li><a href="#" class="hover:text-white transition-colors">API</a></li>
+                    </ul>
+                </div>
+                <div>
+                    <h4 class="font-semibold mb-4">Company</h4>
+                    <ul class="space-y-2 text-gray-400">
+                        <li><a href="#" class="hover:text-white transition-colors">About</a></li>
+                        <li><a href="#" class="hover:text-white transition-colors">Blog</a></li>
+                        <li><a href="#" class="hover:text-white transition-colors">Careers</a></li>
+                    </ul>
+                </div>
+                <div>
+                    <h4 class="font-semibold mb-4">Support</h4>
+                    <ul class="space-y-2 text-gray-400">
+                        <li><a href="#" class="hover:text-white transition-colors">Help Center</a></li>
+                        <li><a href="#" class="hover:text-white transition-colors">Contact</a></li>
+                        <li><a href="#" class="hover:text-white transition-colors">Status</a></li>
+                    </ul>
+                </div>
+            </div>
+            <div class="border-t border-gray-800 mt-8 pt-8 text-center text-gray-400">
+                <p>&copy; 2024 SwipeRight. All rights reserved.</p>
+            </div>
+        </div>
+    </footer>
+
+    <script>
+        // Simple interactivity for demo purposes
+        document.addEventListener('DOMContentLoaded', function() {
+            // Add click handlers for buttons
+            const buttons = document.querySelectorAll('button');
+            buttons.forEach(button => {
+                button.addEventListener('click', function() {
+                    if (this.textContent.includes('Sign In') || this.textContent.includes('Register')) {
+                        alert('Authentication system is currently in development. This is a demo version.');
+                    } else if (this.textContent.includes('Get Started')) {
+                        alert('Welcome to SwipeRight! This is a demo version showcasing the app interface.');
+                    } else if (this.textContent.includes('Learn More')) {
+                        alert('SwipeRight helps you choose the best credit card for every purchase to maximize your cashback rewards.');
+                    }
+                });
+            });
+
+            // Add hover effects for cards
+            const cards = document.querySelectorAll('.card-hover');
+            cards.forEach(card => {
+                card.addEventListener('mouseenter', function() {
+                    this.style.transform = 'translateY(-5px)';
+                });
+                card.addEventListener('mouseleave', function() {
+                    this.style.transform = 'translateY(0)';
+                });
+            });
+        });
+    </script>
+</body>
+</html>
+
