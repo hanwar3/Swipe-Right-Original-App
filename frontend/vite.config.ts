@@ -11,15 +11,9 @@ export default defineConfig({
       '~backend': path.resolve(__dirname, '../backend'),
     },
   },
-  plugins: [
-    tailwindcss(),
-    react(),
-  ],
+  plugins: [tailwindcss(), react()],
   mode: "development",
   build: {
     minify: false,
-  },
-  define: {
-    'import.meta.env.VITE_CLIENT_TARGET': JSON.stringify('http://localhost:4000')
   }
 })

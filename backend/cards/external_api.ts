@@ -51,14 +51,14 @@ export const fetchCardData = api<FetchCardDataRequest, FetchCardDataResponse>(
         return { cardData: null, found: false };
       }
 
-      const searchData = await searchResponse.json();
+      const searchData = await searchResponse.json() as { cards?: { id: string }[] };
       
       if (!searchData.cards || searchData.cards.length === 0) {
         return { cardData: null, found: false };
       }
 
       // Get detailed data for the first matching card
-      const cardId = searchData.cards[0].id;
+      const cardId = searchData.cards![0].id;
       const detailResponse = await fetch(`https://api.rewardscc.com/v1/cards/${cardId}`, {
         headers: {
           'Authorization': `Bearer ${rewardsCCApiKey()}`,
@@ -71,18 +71,34 @@ export const fetchCardData = api<FetchCardDataRequest, FetchCardDataResponse>(
         return { cardData: null, found: false };
       }
 
-      const cardDetail = await detailResponse.json();
+      const cardDetail = await detailResponse.json() as {
+        id?: string;
+        name?: string;
+        issuer?: string;
+        network?: string;
+        image_url?: string;
+        imageUrl?: string;
+        annual_fee?: number;
+        annualFee?: number;
+        categories?: { name?: string; category?: string; rate?: number; cashbackRate?: number; rotating?: boolean; isRotating?: boolean; valid_until?: string; validUntil?: string }[];
+        features?: string[];
+        welcome_bonus?: string;
+        welcomeBonus?: string;
+        credit_range?: string;
+        creditRange?: string;
+        apply_url?: string;
+        applyUrl?: string;
+      };
       
-      // Transform the API response to our format
       const cardData: ExternalCardData = {
-        id: cardDetail.id,
+        id: cardDetail.id || `ext_${Date.now()}`,
         name: cardDetail.name || cardName,
         issuer: cardDetail.issuer || inferIssuerFromName(cardName),
         network: cardDetail.network || inferNetworkFromName(cardName),
         imageUrl: cardDetail.image_url || cardDetail.imageUrl || generateFallbackImageUrl(cardName),
         annualFee: cardDetail.annual_fee || cardDetail.annualFee || 0,
-        categories: (cardDetail.categories || []).map((cat: any) => ({
-          category: cat.name || cat.category,
+        categories: (cardDetail.categories || []).map((cat) => ({
+          category: cat.name || cat.category || 'Other',
           cashbackRate: cat.rate || cat.cashbackRate || 1.0,
           isRotating: cat.rotating || cat.isRotating || false,
           validUntil: cat.valid_until || cat.validUntil

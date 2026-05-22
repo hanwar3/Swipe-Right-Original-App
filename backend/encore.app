@@ -1,1 +1,1 @@
-{"lang": "typescript"}
+{"id": "swiperight-credit-card-app-x4n2", "lang": "typescript"}

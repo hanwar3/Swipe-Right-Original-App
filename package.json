@@ -2,12 +2,9 @@
   "name": "leap-app",
   "version": "1.0.0",
   "type": "module",
-  "packageManager": "npm",
+  "packageManager": "bun",
   "workspaces": [
     "backend",
     "frontend"
-  ],
-  "devDependencies": {
-    "@types/node": "^25.9.1"
-  }
+  ]
 }

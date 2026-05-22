@@ -2,16 +2,15 @@
   "name": "backend",
   "version": "1.0.0",
   "type": "module",
-  "packageManager": "npm",
+  "packageManager": "bun",
   "scripts": {
-    "build": "cd ../frontend && npm install && node \"../node_modules/vite/bin/vite.js\" build --outDir=../backend/frontend/dist"
+    "build": "cd ../frontend \u0026\u0026 bun install \u0026\u0026 npx vite build --outDir=../backend/frontend/dist"
   },
   "dependencies": {
-    "bcryptjs": "^2.4.3",
-    "encore.dev": "^1.57.5"
+    "bcryptjs": "^3.0.2",
+    "encore.dev": "^1.56.0"
   },
   "devDependencies": {
-    "@types/bcryptjs": "^2.4.6",
     "typescript": "^5.8.3"
   }
 }

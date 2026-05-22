@@ -19,7 +19,7 @@ export const search = api<SearchCardsParams, SearchCardsResponse>(
     const cards: Card[] = [];
     
     const cardRows = await cardsDB.queryAll`
-      SELECT id, name, issuer, image_url, annual_fee, network
+      SELECT id, name, issuer, image_url, annual_fee, network, type
       FROM cards 
       WHERE LOWER(name) LIKE ${searchTerm} OR LOWER(issuer) LIKE ${searchTerm}
       ORDER BY name
@@ -48,6 +48,7 @@ export const search = api<SearchCardsParams, SearchCardsResponse>(
         imageUrl: cardRow.image_url,
         annualFee: cardRow.annual_fee,
         network: cardRow.network || 'Visa',
+        type: cardRow.type || 'credit',
         categories
       });
     }

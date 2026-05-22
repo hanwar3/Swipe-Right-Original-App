@@ -9,6 +9,7 @@ export interface ComprehensiveCard {
   network: string;
   imageUrl: string;
   annualFee: number;
+  type: string; // 'credit' | 'debit'
   categories: CardCategory[];
   features: string[];
   welcomeBonus?: string;
@@ -116,7 +117,7 @@ export const getComprehensiveCards = api<SearchComprehensiveCardsParams, Compreh
 
     // Get cards with pagination
     const cardsQuery = `
-      SELECT DISTINCT c.id, c.name, c.issuer, c.network, c.image_url, c.annual_fee,
+      SELECT DISTINCT c.id, c.name, c.issuer, c.network, c.image_url, c.annual_fee, c.type,
              c.features, c.welcome_bonus, c.credit_range, c.apply_url, c.is_popular,
              COALESCE(c.rating, 4.0) as rating, COALESCE(c.review_count, 0) as review_count
       FROM cards c
@@ -153,6 +154,7 @@ export const getComprehensiveCards = api<SearchComprehensiveCardsParams, Compreh
         network: cardRow.network || 'Visa',
         imageUrl: cardRow.image_url,
         annualFee: cardRow.annual_fee,
+        type: cardRow.type || 'credit',
         categories,
         features: cardRow.features ? JSON.parse(cardRow.features) : [],
         welcomeBonus: cardRow.welcome_bonus,
@@ -166,7 +168,7 @@ export const getComprehensiveCards = api<SearchComprehensiveCardsParams, Compreh
 
     // Get popular cards separately
     const popularCardsRows = await cardsDB.queryAll`
-      SELECT id, name, issuer, network, image_url, annual_fee,
+      SELECT id, name, issuer, network, image_url, annual_fee, type,
              features, welcome_bonus, credit_range, apply_url, is_popular,
              COALESCE(rating, 4.0) as rating, COALESCE(review_count, 0) as review_count
       FROM cards 
@@ -200,6 +202,7 @@ export const getComprehensiveCards = api<SearchComprehensiveCardsParams, Compreh
         network: cardRow.network || 'Visa',
         imageUrl: cardRow.image_url,
         annualFee: cardRow.annual_fee,
+        type: cardRow.type || 'credit',
         categories,
         features: cardRow.features ? JSON.parse(cardRow.features) : [],
         welcomeBonus: cardRow.welcome_bonus,
@@ -230,7 +233,7 @@ export const getCardDetails = api<GetCardDetailsParams, CardDetailsResponse>(
     const { cardId } = params;
     
     const cardRow = await cardsDB.queryRow`
-      SELECT id, name, issuer, network, image_url, annual_fee,
+      SELECT id, name, issuer, network, image_url, annual_fee, type,
              features, welcome_bonus, credit_range, apply_url, is_popular,
              COALESCE(rating, 4.0) as rating, COALESCE(review_count, 0) as review_count
       FROM cards 
@@ -263,6 +266,7 @@ export const getCardDetails = api<GetCardDetailsParams, CardDetailsResponse>(
       network: cardRow.network || 'Visa',
       imageUrl: cardRow.image_url,
       annualFee: cardRow.annual_fee,
+      type: cardRow.type || 'credit',
       categories,
       features: cardRow.features ? JSON.parse(cardRow.features) : [],
       welcomeBonus: cardRow.welcome_bonus,
