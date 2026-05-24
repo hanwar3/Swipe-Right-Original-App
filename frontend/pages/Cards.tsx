@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Search, Filter, Plus, CreditCard as CreditCardIcon, User, Wallet, Star, ExternalLink, TrendingUp } from 'lucide-react';
+import { Search, Filter, Plus, CreditCard as CreditCardIcon, User, Wallet, Star, ExternalLink, TrendingUp, Calendar, Clock } from 'lucide-react';
 import backend from '~backend/client';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -59,6 +59,13 @@ export default function Cards() {
     enabled: !!user,
   });
 
+  // User merchant offers query
+  const { data: offersData, isLoading: isOffersLoading } = useQuery({
+    queryKey: ['merchant-offers', user?.userId],
+    queryFn: () => user ? backend.cards.getUserMerchantOffers({ userId: user.userId }) : null,
+    enabled: !!user,
+  });
+
   const addCardMutation = useMutation({
     mutationFn: (data: { name: string; issuer?: string; useExternalApi?: boolean }) => 
       backend.cards.addCard(data),
@@ -111,6 +118,7 @@ export default function Cards() {
   const comprehensiveCards = comprehensiveData?.cards || [];
   const popularCards = comprehensiveData?.popularCards || [];
   const portfolioCards = portfolioData?.cards || [];
+  const merchantOffers = offersData?.offers || [];
   
   const issuers = [...new Set(comprehensiveCards.filter(Boolean).map(card => card.issuer).filter(Boolean))];
   const networks = [...new Set(comprehensiveCards.filter(Boolean).map(card => card.network).filter(Boolean))];
@@ -229,7 +237,7 @@ export default function Cards() {
 
       {/* Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="grid w-full grid-cols-2">
+        <TabsList className="grid w-full grid-cols-3">
           <TabsTrigger value="comprehensive" className="flex items-center space-x-2">
             <CreditCardIcon className="h-4 w-4" />
             <span>All Cards Database</span>
@@ -237,6 +245,10 @@ export default function Cards() {
           <TabsTrigger value="portfolio" className="flex items-center space-x-2" disabled={!user}>
             <Wallet className="h-4 w-4" />
             <span>My Cards Portfolio</span>
+          </TabsTrigger>
+          <TabsTrigger value="expiring" className="flex items-center space-x-2" disabled={!user}>
+            <Calendar className="h-4 w-4" />
+            <span>Reward Deadlines</span>
           </TabsTrigger>
         </TabsList>
 
@@ -451,10 +463,160 @@ export default function Cards() {
             </div>
           )}
         </TabsContent>
+
+        <TabsContent value="expiring" className="space-y-6">
+          <div className="bg-gradient-to-r from-teal-500/10 via-emerald-500/5 to-transparent p-6 rounded-3xl border border-teal-500/15 space-y-2">
+            <div className="flex items-center space-x-2 text-teal-700">
+              <Calendar className="h-5 w-5" />
+              <h2 className="text-lg font-bold">Reward Deadlines & Expiring Benefits</h2>
+            </div>
+            <p className="text-sm text-gray-600 max-w-2xl">
+              Never let valuable credits expire. This panel aggregates static annual resetting benefits for cards in your wallet and dynamic merchant offers from your synced accounts.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* Left Column: Annual Card Credits */}
+            <div className="space-y-4">
+              <div className="flex items-center space-x-2">
+                <Wallet className="h-5 w-5 text-gray-700" />
+                <h3 className="text-md font-bold text-gray-900">Annual Statement Credits</h3>
+              </div>
+
+              <div className="space-y-3">
+                {portfolioCards.length > 0 ? (
+                  (() => {
+                    let hasCredits = false;
+                    const rendered = portfolioCards.map((userCard) => {
+                      const card = userCard?.card;
+                      if (!card) return null;
+                      
+                      const credits = getAnnualCredits(card.id);
+                      if (credits.length === 0) return null;
+                      hasCredits = true;
+                      
+                      return (
+                        <Card key={userCard.id} className="border border-slate-100/80 rounded-2xl p-4 bg-white hover:shadow-md transition-all">
+                          <div className="flex items-start justify-between">
+                            <div className="space-y-1">
+                              <span className="text-[10px] uppercase font-bold tracking-wider text-teal-600 block">{card.name}</span>
+                              {credits.map((cr, idx) => (
+                                <div key={idx} className="space-y-1 mt-2 pt-2 border-t border-slate-50 first:border-t-0 first:mt-0 first:pt-0">
+                                  <h4 className="text-sm font-extrabold text-slate-800">{cr.name}</h4>
+                                  <p className="text-xs text-slate-500 leading-normal">{cr.description}</p>
+                                  <div className="flex items-center space-x-1 text-[10px] text-teal-600 font-bold bg-teal-50 px-2 py-0.5 rounded-md w-fit mt-1">
+                                    <Clock className="h-3 w-3" />
+                                    <span>Resets: {cr.resets}</span>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        </Card>
+                      );
+                    });
+                    
+                    return hasCredits ? rendered : (
+                      <div className="text-center py-8 bg-slate-50 rounded-2xl border border-slate-100">
+                        <p className="text-sm text-gray-500">Your portfolio cards do not have annual resetting credits recorded.</p>
+                      </div>
+                    );
+                  })()
+                ) : (
+                  <div className="text-center py-8 bg-slate-50 rounded-2xl border border-slate-100">
+                    <p className="text-sm text-gray-500">Add cards to your portfolio to view their annual credits.</p>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Right Column: Synced Merchant Offers */}
+            <div className="space-y-4">
+              <div className="flex items-center space-x-2">
+                <Clock className="h-5 w-5 text-gray-700" />
+                <h3 className="text-md font-bold text-gray-900">Expiring Merchant Offers</h3>
+              </div>
+
+              <div className="space-y-3">
+                {isOffersLoading ? (
+                  <div className="space-y-3">
+                    {[...Array(3)].map((_, i) => (
+                      <div key={i} className="h-24 bg-gray-100 animate-pulse rounded-2xl border border-gray-150" />
+                    ))}
+                  </div>
+                ) : merchantOffers.length > 0 ? (
+                  <div className="space-y-3">
+                    {merchantOffers.slice().sort((a: any, b: any) => {
+                      return a.merchantName.localeCompare(b.merchantName);
+                    }).map((offer: any) => {
+                      const isUrgent = offer.offerDescription.toLowerCase().includes("10%") || offer.offerDescription.toLowerCase().includes("10");
+                      return (
+                        <Card key={offer.offerId} className="border border-slate-100/80 rounded-2xl p-4 bg-white hover:shadow-md transition-all">
+                          <div className="flex items-start justify-between">
+                            <div className="space-y-1 flex-1">
+                              <div className="flex items-center justify-between">
+                                <span className="text-sm font-extrabold text-slate-800">{offer.merchantName}</span>
+                                <Badge className={isUrgent ? "bg-orange-100 text-orange-700 text-[10px] font-bold" : "bg-teal-100 text-teal-700 text-[10px] font-bold"}>
+                                  {isUrgent ? "Expiring Soon!" : "Active"}
+                                </Badge>
+                              </div>
+                              <p className="text-xs text-slate-600 leading-normal">{offer.offerDescription}</p>
+                              
+                              <div className="flex items-center justify-between pt-2 mt-2 border-t border-slate-50">
+                                <span className="text-[10px] text-slate-400 font-semibold">Ends: {new Date(offer.endDate).toLocaleDateString()}</span>
+                                <span className="text-[10px] text-emerald-600 font-bold bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-100">Simulated Sync</span>
+                              </div>
+                            </div>
+                          </div>
+                        </Card>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <div className="text-center py-8 bg-slate-50 rounded-2xl border border-slate-100">
+                    <p className="text-sm text-gray-500">No active merchant offers synced. Sync your cards to pull targeted bank deals.</p>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        </TabsContent>
       </Tabs>
     </div>
   );
 }
+
+const getAnnualCredits = (cardId: number) => {
+  switch (cardId) {
+    case 101: // Chase Sapphire Preferred
+      return [
+        { name: "$50 Annual Hotel Credit", description: "Statement credit for hotel stays booked through Chase Travel.", resets: "December 31, 2026" }
+      ];
+    case 107: // Chase Sapphire Reserve
+      return [
+        { name: "$300 Annual Travel Credit", description: "Automatic statement credit for travel purchases charged to your card.", resets: "December 31, 2026" }
+      ];
+    case 102: // Amex Gold
+      return [
+        { name: "$120 Annual Dining Credit", description: "Earn up to $10/month in statement credits at Grubhub, Cheesecake Factory, etc.", resets: "Monthly (Dec 31, 2026)" },
+        { name: "$120 Uber Cash", description: "Earn $10/month in Uber Cash added to your Uber account for rides or Uber Eats.", resets: "Monthly (Dec 31, 2026)" }
+      ];
+    case 110: // Amex Platinum
+      return [
+        { name: "$200 Hotel Credit", description: "Statement credit for prepaid Fine Hotels + Resorts bookings via Amex Travel.", resets: "December 31, 2026" },
+        { name: "$200 Airline Fee Credit", description: "Statement credit for incidental airline fees charged to your card.", resets: "December 31, 2026" },
+        { name: "$200 Uber Cash", description: "$15/month in Uber Cash (plus a $20 bonus in December) for U.S. rides and eats.", resets: "Monthly (Dec 31, 2026)" },
+        { name: "$189 CLEAR® Plus Credit", description: "Statement credit for annual CLEAR Plus biometric security membership.", resets: "December 31, 2026" }
+      ];
+    case 106: // Venture X
+      return [
+        { name: "$300 Annual Travel Credit", description: "Statement credit for travel bookings made through Capital One Travel.", resets: "December 31, 2026" },
+        { name: "10,000 Anniversary Miles", description: "Bonus miles awarded on every account anniversary worth $100 in travel.", resets: "Card Anniversary Date" }
+      ];
+    default:
+      return [];
+  }
+};
 
 function CreditCardRender({ 
   name, 
