@@ -51,7 +51,7 @@ export const fetchCardData = api<FetchCardDataRequest, FetchCardDataResponse>(
         return { cardData: null, found: false };
       }
 
-      const searchData = await searchResponse.json();
+      const searchData = await searchResponse.json() as { cards?: { id: string }[] };
       
       if (!searchData.cards || searchData.cards.length === 0) {
         return { cardData: null, found: false };
@@ -71,7 +71,13 @@ export const fetchCardData = api<FetchCardDataRequest, FetchCardDataResponse>(
         return { cardData: null, found: false };
       }
 
-      const cardDetail = await detailResponse.json();
+      const cardDetail = await detailResponse.json() as {
+        id: string; name?: string; issuer?: string; network?: string;
+        image_url?: string; imageUrl?: string; annual_fee?: number; annualFee?: number;
+        categories?: { name?: string; category?: string; rate?: number; cashbackRate?: number; rotating?: boolean; isRotating?: boolean; valid_until?: string; validUntil?: string }[];
+        features?: string[]; welcome_bonus?: string; welcomeBonus?: string;
+        credit_range?: string; creditRange?: string; apply_url?: string; applyUrl?: string;
+      };
       
       // Transform the API response to our format
       const cardData: ExternalCardData = {

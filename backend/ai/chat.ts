@@ -49,7 +49,7 @@ Context about available cards: Chase Freedom Flex (5% rotating categories), Chas
         throw new Error(`OpenAI API error: ${response.status}`);
       }
 
-      const data = await response.json();
+      const data = await response.json() as { choices?: { message?: { content?: string } }[] };
       const aiResponse = data.choices?.[0]?.message?.content || "I'm sorry, I couldn't process your request. Please try again.";
 
       return { response: aiResponse };
