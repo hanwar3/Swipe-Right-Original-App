@@ -178,11 +178,8 @@ export default function AIChat() {
           setVoiceState('idle');
           console.warn("[SwipeRight Voice Engine] Network drop detected. Attempting to reconnect speech recognition in 2 seconds...");
           
-          // Gently toast a non-destructive reconnecting status notification
-          toast({
-            title: "Voice Engine Reconnecting",
-            description: "Connection dropped. Speech recognition is automatically reconnecting...",
-          });
+          // No popup toasts! We update the voiceResponse with a quiet message so it appears under the orb
+          setVoiceResponse("Voice connection dropped. Note: Microphone access requires HTTPS or localhost.");
 
           setTimeout(() => {
             if (isVoiceModeRef.current && recognitionRef.current) {
@@ -449,7 +446,7 @@ export default function AIChat() {
               {voiceState === 'listening' && (voiceTranscript || '"Where should I swipe my card for grocery shopping?"')}
               {voiceState === 'thinking' && "Finding matching cashback offers in database..."}
               {voiceState === 'speaking' && voiceResponse}
-              {voiceState === 'idle' && "Ask your wingman: 'Where should I go for gas?' or 'What's the best dining card?'"}
+              {voiceState === 'idle' && (voiceResponse.includes("connection dropped") ? voiceResponse : "Ask your wingman: 'Where should I go for gas?' or 'What's the best dining card?'")}
             </p>
 
             <div className="flex justify-center gap-4 pt-4">
