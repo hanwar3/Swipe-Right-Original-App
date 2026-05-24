@@ -44,8 +44,13 @@ export default function AIChat() {
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const recognitionRef = useRef<any>(null);
+  const isVoiceModeRef = useRef(isVoiceMode);
   const dictationRecognitionRef = useRef<any>(null);
   const { toast } = useToast();
+
+  useEffect(() => {
+    isVoiceModeRef.current = isVoiceMode;
+  }, [isVoiceMode]);
 
   const speakText = (text: string, onEndCallback?: () => void) => {
     window.speechSynthesis.cancel();
@@ -156,15 +161,44 @@ export default function AIChat() {
       
       rec.onerror = (err: any) => {
         console.error("Speech Recognition Error:", err);
-        // Don't toast on no-speech or aborted errors as they occur normally in voice flow
-        if (err.error !== 'no-speech' && err.error !== 'aborted') {
+        
+        // Suppress toasts for normal voice flow disconnects (no-speech, aborted, network)
+        const isTransientError = err.error === 'no-speech' || err.error === 'aborted' || err.error === 'network';
+        
+        if (!isTransientError) {
           toast({
             title: "Voice Recognition Warning",
-            description: `Voice engine encountered an error: ${err.error}. Reconnecting...`,
+            description: `Voice engine encountered an error: ${err.error}.`,
             variant: "destructive"
           });
         }
-        setVoiceState('idle');
+        
+        // If it's a network error, we attempt a graceful reconnect in continuous voice mode!
+        if (err.error === 'network' && isVoiceModeRef.current) {
+          setVoiceState('idle');
+          console.warn("[SwipeRight Voice Engine] Network drop detected. Attempting to reconnect speech recognition in 2 seconds...");
+          
+          // Gently toast a non-destructive reconnecting status notification
+          toast({
+            title: "Voice Engine Reconnecting",
+            description: "Connection dropped. Speech recognition is automatically reconnecting...",
+          });
+
+          setTimeout(() => {
+            if (isVoiceModeRef.current && recognitionRef.current) {
+              try {
+                console.log("[SwipeRight Voice Engine] Reconnecting speech recognition...");
+                setVoiceState('listening');
+                recognitionRef.current.start();
+              } catch (e) {
+                console.error("[SwipeRight Voice Engine] Reconnect failed:", e);
+                setVoiceState('idle');
+              }
+            }
+          }, 2000);
+        } else {
+          setVoiceState('idle');
+        }
       };
       
       recognitionRef.current = rec;
