@@ -9,6 +9,7 @@ export interface Card {
   annualFee: number;
   network: string;
   type: string; // 'credit' | 'debit'
+  applyUrl?: string;
   categories: CardCategory[];
 }
 

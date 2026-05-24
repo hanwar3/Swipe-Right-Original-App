@@ -54,6 +54,7 @@ export const addCard = api<AddCardRequest, AddCardResponse>(
         imageUrl: existingCard.image_url || generateFallbackImageUrl(existingCard.name, existingCard.issuer, existingCard.network),
         annualFee: existingCard.annual_fee,
         network: existingCard.network || 'Visa',
+        type: existingCard.type || 'credit',
         categories
       };
 
@@ -73,7 +74,7 @@ export const addCard = api<AddCardRequest, AddCardResponse>(
         });
 
         if (externalResponse.ok) {
-          const externalData = await externalResponse.json();
+          const externalData = await externalResponse.json() as { found: boolean; cardData: unknown };
           if (externalData.found && externalData.cardData) {
             cardData = externalData.cardData;
             fromExternalApi = true;
@@ -172,6 +173,7 @@ export const addCard = api<AddCardRequest, AddCardResponse>(
       imageUrl: newCard.image_url || generateFallbackImageUrl(newCard.name, newCard.issuer, newCard.network),
       annualFee: newCard.annual_fee,
       network: newCard.network || 'Visa',
+      type: newCard.type || 'credit',
       categories
     };
 
