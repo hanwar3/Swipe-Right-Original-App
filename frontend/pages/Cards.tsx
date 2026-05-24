@@ -112,8 +112,8 @@ export default function Cards() {
   const popularCards = comprehensiveData?.popularCards || [];
   const portfolioCards = portfolioData?.cards || [];
   
-  const issuers = [...new Set(comprehensiveCards.map(card => card.issuer))];
-  const networks = [...new Set(comprehensiveCards.map(card => card.network))];
+  const issuers = [...new Set(comprehensiveCards.filter(Boolean).map(card => card.issuer).filter(Boolean))];
+  const networks = [...new Set(comprehensiveCards.filter(Boolean).map(card => card.network).filter(Boolean))];
   const categories = ['Groceries', 'Gas', 'Dining', 'Travel', 'Shopping', 'Streaming', 'All Purchases'];
 
   const handleAddCard = () => {
@@ -147,7 +147,7 @@ export default function Cards() {
   };
 
   const isCardInPortfolio = (cardId: number) => {
-    return portfolioCards.some(pc => pc.card.id === cardId);
+    return portfolioCards.some(pc => pc && pc.card && pc.card.id === cardId);
   };
 
   const clearFilters = () => {
@@ -249,7 +249,7 @@ export default function Cards() {
                 <h2 className="text-xl font-semibold text-gray-900">Popular Cards</h2>
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {popularCards.slice(0, 6).map((card) => (
+                {popularCards.filter(card => card && card.id).slice(0, 6).map((card) => (
                   <ComprehensiveCardComponent 
                     key={card.id} 
                     card={card} 
@@ -385,7 +385,7 @@ export default function Cards() {
                 </h3>
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {comprehensiveCards.map((card) => (
+                {comprehensiveCards.filter(card => card && card.id).map((card) => (
                   <ComprehensiveCardComponent 
                     key={card.id} 
                     card={card} 
@@ -609,6 +609,8 @@ function ComprehensiveCardComponent({
   isAddingToPortfolio: boolean;
   isPopular?: boolean;
 }) {
+  if (!card) return null;
+
   // Fix the reduce error by providing a default value and checking for empty array
   const bestCategory = card.categories && card.categories.length > 0 
     ? card.categories.reduce((best, current) => 
@@ -758,7 +760,8 @@ function ComprehensiveCardComponent({
 }
 
 function PortfolioCardComponent({ userCard }: { userCard: UserCard }) {
-  const { card } = userCard;
+  const card = userCard?.card;
+  if (!card) return null;
   
   // Fix the reduce error by providing a default value and checking for empty array
   const bestCategory = card.categories && card.categories.length > 0 

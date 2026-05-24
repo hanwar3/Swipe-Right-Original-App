@@ -678,7 +678,7 @@ function RecommendationCard({
             )}
 
             <div className="flex flex-wrap gap-1">
-              {card.categories.slice(0, 4).map((cat, index) => (
+              {card.categories && card.categories.slice(0, 4).map((cat, index) => (
                 <Badge key={index} variant="outline" className="text-xs">
                   {cat.cashbackRate}% {cat.category}
                 </Badge>
