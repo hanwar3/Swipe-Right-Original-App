@@ -54,7 +54,7 @@ export const recommend = api<RecommendCardsParams, RecommendCardsResponse>(
     
     // Get all cards with relevant categories
     const cardRows = await cardsDB.queryAll`
-      SELECT DISTINCT c.id, c.name, c.issuer, c.image_url, c.annual_fee, c.network, c.type,
+      SELECT DISTINCT c.id, c.name, c.issuer, c.image_url, c.annual_fee, c.network,
              cc.id as category_id, cc.category, cc.cashback_rate, cc.is_rotating, cc.valid_until
       FROM cards c
       JOIN card_categories cc ON c.id = cc.card_id
@@ -75,7 +75,6 @@ export const recommend = api<RecommendCardsParams, RecommendCardsResponse>(
           imageUrl: row.image_url,
           annualFee: row.annual_fee,
           network: row.network || 'Visa',
-          type: row.type || 'credit',
           categories: [],
           relevantCategory: null
         });
@@ -153,7 +152,6 @@ export const recommend = api<RecommendCardsParams, RecommendCardsResponse>(
         imageUrl: cardData.imageUrl,
         annualFee: cardData.annualFee,
         network: cardData.network,
-        type: cardData.type || 'credit',
         categories: cardData.categories
       };
       

@@ -527,6 +527,50 @@ export default function Recommendations() {
   );
 }
 
+function MiniCreditCardRender({ name, issuer }: { name: string; issuer: string }) {
+  const normalizedIssuer = issuer.toLowerCase();
+  const normalizedName = name.toLowerCase();
+
+  const getCardStyle = () => {
+    if (normalizedIssuer.includes('chase')) {
+      if (normalizedName.includes('reserve')) return 'from-slate-900 via-indigo-950 to-slate-900 text-white';
+      if (normalizedName.includes('preferred')) return 'from-indigo-900 to-blue-900 text-white';
+      return 'from-blue-600 to-indigo-800 text-white';
+    }
+    if (normalizedIssuer.includes('american express') || normalizedIssuer.includes('amex')) {
+      if (normalizedName.includes('platinum')) return 'from-slate-350 via-zinc-150 to-slate-400 text-slate-800';
+      if (normalizedName.includes('gold')) return 'from-amber-200 via-amber-450 to-yellow-600 text-amber-950';
+      if (normalizedName.includes('blue cash')) return 'from-sky-850 to-blue-950 text-white';
+      return 'from-amber-400 to-yellow-600 text-amber-950';
+    }
+    if (normalizedIssuer.includes('capital one')) {
+      if (normalizedName.includes('venture')) return 'from-slate-800 to-slate-950 text-white';
+      if (normalizedName.includes('savor')) return 'from-amber-900 to-amber-950 text-amber-100';
+      return 'from-slate-700 to-slate-900 text-white';
+    }
+    if (normalizedIssuer.includes('citi')) {
+      return 'from-cyan-500 via-blue-600 to-blue-800 text-white';
+    }
+    if (normalizedIssuer.includes('discover')) {
+      return 'from-orange-500 to-red-500 text-white';
+    }
+    if (normalizedIssuer.includes('apple')) {
+      return 'from-zinc-50 via-zinc-100 to-zinc-200 text-slate-800 border border-zinc-200';
+    }
+    return 'from-teal-600 to-emerald-800 text-white';
+  };
+
+  return (
+    <div className={`w-16 h-10 rounded-lg p-1.5 flex flex-col justify-between overflow-hidden bg-gradient-to-br text-[7px] font-black uppercase tracking-tighter leading-none shadow-sm ${getCardStyle()}`}>
+      <span className="opacity-70 text-[5.5px] block truncate">{issuer}</span>
+      <span className="block truncate font-bold text-[6.5px] leading-tight mt-0.5">{name.split(' ').pop()}</span>
+      <div className="flex justify-end mt-1">
+        <div className="w-1.5 h-1.5 bg-yellow-400/85 rounded-sm shadow-inner" />
+      </div>
+    </div>
+  );
+}
+
 function RecommendationCard({ 
   recommendation, 
   rank, 
@@ -572,19 +616,8 @@ function RecommendationCard({
             {rank}
           </div>
 
-          {/* Card Image */}
-          <div className="w-16 h-10 bg-gradient-to-r from-gray-100 to-gray-200 rounded-lg flex items-center justify-center overflow-hidden">
-            <img 
-              src={card.imageUrl} 
-              alt={card.name}
-              className="w-full h-full object-cover"
-              onError={(e) => {
-                const target = e.target as HTMLImageElement;
-                target.style.display = 'none';
-                target.parentElement!.innerHTML = `<span class="text-xs font-medium text-gray-500">${card.issuer}</span>`;
-              }}
-            />
-          </div>
+          {/* Mini Themed Card Render */}
+          <MiniCreditCardRender name={card.name} issuer={card.issuer} />
 
           {/* Card Details */}
           <div className="flex-1 space-y-3">

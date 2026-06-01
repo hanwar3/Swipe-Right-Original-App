@@ -3,315 +3,1066 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SwipeRight - Credit Card Cash Back Optimizer</title>
+    <title>SwipeRight - Premium Credit Card Cashback Optimizer</title>
+    <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Outfit', 'Inter', 'sans-serif'],
+                    },
+                    colors: {
+                        teal: {
+                            50: '#f0fdfa',
+                            100: '#ccfbf1',
+                            500: '#14b8a6',
+                            600: '#0d9488',
+                            700: '#0f766e',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- FontAwesome Icons -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
     <style>
-        .gradient-bg {
-            background: linear-gradient(135deg, #0d9488 0%, #059669 100%);
+        body {
+            font-family: 'Outfit', sans-serif;
+            background-color: #0f172a;
+            color: #f8fafc;
+            overflow-x: hidden;
         }
-        .gradient-text {
-            background: linear-gradient(135deg, #0d9488 0%, #059669 100%);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
+        /* Custom scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
         }
-        .card-hover {
-            transition: all 0.3s ease;
+        ::-webkit-scrollbar-track {
+            background: #1e293b;
         }
-        .card-hover:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+        ::-webkit-scrollbar-thumb {
+            background: #334155;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #475569;
+        }
+        /* Glassmorphism */
+        .glass-panel {
+            background: rgba(30, 41, 59, 0.7);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+        .glass-card {
+            background: rgba(30, 41, 59, 0.45);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.06);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .glass-card:hover {
+            transform: translateY(-4px);
+            border-color: rgba(20, 184, 166, 0.4);
+            box-shadow: 0 12px 20px -8px rgba(20, 184, 166, 0.3);
+        }
+        .active-tab-btn {
+            background: linear-gradient(135deg, #14b8a6 0%, #0d9488 100%);
+            box-shadow: 0 4px 12px rgba(20, 184, 166, 0.35);
+        }
+        .metallic-shine {
+            position: relative;
+            overflow: hidden;
+        }
+        .metallic-shine::after {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -60%;
+            width: 30%;
+            height: 200%;
+            background: rgba(255, 255, 255, 0.13);
+            transform: rotate(30deg);
+            transition: all 0.6s ease;
+            opacity: 0;
+        }
+        .metallic-shine:hover::after {
+            left: 120%;
+            opacity: 1;
         }
     </style>
 </head>
-<body class="bg-gray-50 min-h-screen">
-    <!-- Header -->
-    <header class="bg-white/80 backdrop-blur-md border-b border-teal-100 sticky top-0 z-50">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div class="flex items-center justify-between h-16">
-                <div class="flex items-center space-x-3">
-                    <div class="w-10 h-10 gradient-bg rounded-xl flex items-center justify-center">
-                        <i class="fas fa-credit-card text-white text-lg"></i>
-                    </div>
-                    <div>
-                        <h1 class="text-xl font-bold gradient-text">SwipeRight</h1>
-                        <p class="text-xs text-gray-500 -mt-1">Your Wallet's Wingman</p>
-                    </div>
-                </div>
-                <div class="flex items-center space-x-3">
-                    <button class="px-4 py-2 text-gray-600 hover:text-teal-600 transition-colors">Sign In</button>
-                    <button class="px-4 py-2 gradient-bg text-white rounded-lg hover:opacity-90 transition-opacity">Register</button>
-                </div>
+<body class="min-h-screen flex flex-col">
+    <!-- Top Header -->
+    <header class="glass-panel sticky top-0 z-50 px-6 py-4 flex items-center justify-between border-b border-slate-800">
+        <div class="flex items-center space-x-3">
+            <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-teal-500 to-emerald-400 flex items-center justify-center shadow-lg shadow-teal-500/20">
+                <i class="fas fa-credit-card text-slate-900 text-lg font-bold"></i>
             </div>
+            <div>
+                <h1 class="text-xl font-bold tracking-tight bg-gradient-to-r from-teal-400 to-emerald-300 bg-clip-text text-transparent">SwipeRight</h1>
+                <p class="text-xs text-slate-400">Your Cashback Optimizer & Wallet Companion</p>
+            </div>
+        </div>
+        
+        <!-- Navigation Tabs -->
+        <nav class="hidden md:flex items-center space-x-2 bg-slate-900/60 p-1 rounded-xl border border-slate-800">
+            <button onclick="switchTab('comprehensive')" id="nav-comprehensive" class="px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 text-slate-300 hover:text-teal-400">
+                <i class="fas fa-database mr-2"></i>All Cards Database
+            </button>
+            <button onclick="switchTab('portfolio')" id="nav-portfolio" class="px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 text-slate-300 hover:text-teal-400">
+                <i class="fas fa-wallet mr-2"></i>My Portfolio
+            </button>
+            <button onclick="switchTab('deadlines')" id="nav-deadlines" class="px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 text-slate-300 hover:text-teal-400">
+                <i class="fas fa-calendar-alt mr-2"></i>Reward Deadlines
+            </button>
+        </nav>
+
+        <!-- Status -->
+        <div class="flex items-center space-x-3">
+            <span class="inline-flex items-center bg-teal-500/10 text-teal-400 text-xs px-2.5 py-1 rounded-full border border-teal-500/20">
+                <span class="w-1.5 h-1.5 rounded-full bg-teal-400 mr-1.5 animate-pulse"></span>
+                Local Offline Viewer
+            </span>
         </div>
     </header>
 
-    <!-- Hero Section -->
-    <section class="py-16 px-4">
-        <div class="max-w-4xl mx-auto text-center space-y-8">
-            <div class="inline-flex items-center space-x-2 gradient-bg text-white px-4 py-2 rounded-full text-sm font-medium">
-                <i class="fas fa-sparkles"></i>
-                <span>Max out your cash back, not your credit card</span>
+    <!-- Main Container -->
+    <main class="flex-grow max-w-7xl w-full mx-auto px-4 md:px-8 py-8 space-y-8">
+        
+        <!-- Banner Alert -->
+        <div class="glass-panel rounded-2xl p-6 flex flex-col md:flex-row items-center justify-between gap-4 border border-teal-500/20 bg-gradient-to-r from-slate-900 via-teal-950/20 to-slate-900">
+            <div class="space-y-1 text-center md:text-left">
+                <h2 class="text-lg font-bold text-teal-300 flex items-center justify-center md:justify-start">
+                    <i class="fas fa-circle-check mr-2"></i> SwipeRight Local Workspace Active
+                </h2>
+                <p class="text-sm text-slate-300">
+                    This single-file offline client lets you test the latest Cards system and the brand-new <b>Reward Deadlines</b> dashboard directly.
+                </p>
             </div>
-            
-            <h1 class="text-5xl font-bold text-gray-900 leading-tight">
-                Optimize Your
-                <span class="block gradient-text">Credit Card Cash Back</span>
-            </h1>
-            
-            <p class="text-xl text-gray-600 max-w-2xl mx-auto">
-                Discover the best credit cards for every purchase and maximize your cashback with intelligent recommendations.
-            </p>
-
-            <div class="flex flex-col sm:flex-row gap-4 justify-center">
-                <button class="px-8 py-3 gradient-bg text-white rounded-lg hover:opacity-90 transition-opacity font-semibold">
-                    Get Started
-                </button>
-                <button class="px-8 py-3 border-2 border-teal-500 text-teal-600 rounded-lg hover:bg-teal-50 transition-colors font-semibold">
-                    Learn More
+            <div class="flex items-center gap-3">
+                <button onclick="resetDemoData()" class="px-4 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 text-sm font-semibold transition">
+                    <i class="fas fa-rotate-left mr-2"></i> Reset Demo Data
                 </button>
             </div>
         </div>
-    </section>
 
-    <!-- Quick Actions -->
-    <section class="py-16 px-4">
-        <div class="max-w-4xl mx-auto">
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div class="card-hover bg-gradient-to-br from-teal-50 to-teal-100 p-8 rounded-2xl border-0">
-                    <div class="flex items-center space-x-4">
-                        <div class="p-4 bg-teal-500 rounded-xl text-white">
-                            <i class="fas fa-bullseye text-2xl"></i>
-                        </div>
-                        <div>
-                            <h3 class="text-xl font-semibold text-gray-900">Smart Recommendations</h3>
-                            <p class="text-gray-600">AI-powered suggestions to maximize your cashback on every purchase</p>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="card-hover bg-gradient-to-br from-green-50 to-green-100 p-8 rounded-2xl border-0">
-                    <div class="flex items-center space-x-4">
-                        <div class="p-4 bg-green-500 rounded-xl text-white">
-                            <i class="fas fa-credit-card text-2xl"></i>
-                        </div>
-                        <div>
-                            <h3 class="text-xl font-semibold text-gray-900">Card Portfolio</h3>
-                            <p class="text-gray-600">Track and manage all your credit cards in one place</p>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </section>
-
-    <!-- Features Section -->
-    <section class="py-16 px-4 bg-white">
-        <div class="max-w-6xl mx-auto">
-            <div class="text-center mb-12">
-                <h2 class="text-3xl font-bold text-gray-900 mb-4">Why Choose SwipeRight?</h2>
-                <p class="text-gray-600 text-lg">Join thousands of users maximizing their credit card benefits</p>
-            </div>
-
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
-                <div class="text-center">
-                    <div class="w-16 h-16 bg-teal-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
-                        <i class="fas fa-shield-alt text-2xl text-teal-600"></i>
-                    </div>
-                    <h3 class="text-xl font-semibold text-gray-900 mb-2">Secure & Private</h3>
-                    <p class="text-gray-600">Your financial data is encrypted and never shared with third parties.</p>
-                </div>
-
-                <div class="text-center">
-                    <div class="w-16 h-16 bg-green-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
-                        <i class="fas fa-chart-line text-2xl text-green-600"></i>
-                    </div>
-                    <h3 class="text-xl font-semibold text-gray-900 mb-2">Smart Analytics</h3>
-                    <p class="text-gray-600">Track your spending patterns and optimize your card usage.</p>
-                </div>
-
-                <div class="text-center">
-                    <div class="w-16 h-16 bg-blue-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
-                        <i class="fas fa-users text-2xl text-blue-600"></i>
-                    </div>
-                    <h3 class="text-xl font-semibold text-gray-900 mb-2">Community Driven</h3>
-                    <p class="text-gray-600">Real user reviews and experiences to help you make informed decisions.</p>
-                </div>
-            </div>
-        </div>
-    </section>
-
-    <!-- Demo Cards Section -->
-    <section class="py-16 px-4">
-        <div class="max-w-6xl mx-auto">
-            <div class="text-center mb-12">
-                <h2 class="text-3xl font-bold text-gray-900 mb-4">Featured Credit Cards</h2>
-                <p class="text-gray-600">Discover cards that could maximize your cashback</p>
-            </div>
-
-            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                <!-- Chase Freedom Flex -->
-                <div class="card-hover bg-white rounded-2xl shadow-lg overflow-hidden">
-                    <div class="p-6">
-                        <div class="flex items-center justify-between mb-4">
-                            <div class="w-12 h-12 bg-blue-500 rounded-lg flex items-center justify-center">
-                                <i class="fas fa-credit-card text-white text-lg"></i>
-                            </div>
-                            <span class="text-sm font-medium text-blue-600">Chase</span>
-                        </div>
-                        <h3 class="text-lg font-semibold text-gray-900 mb-2">Freedom Flex</h3>
-                        <p class="text-gray-600 text-sm mb-4">5% cashback on rotating categories, 3% on dining and drugstores</p>
-                        <div class="flex items-center justify-between">
-                            <span class="text-2xl font-bold text-green-600">5%</span>
-                            <span class="text-sm text-gray-500">Max Cashback</span>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Citi Double Cash -->
-                <div class="card-hover bg-white rounded-2xl shadow-lg overflow-hidden">
-                    <div class="p-6">
-                        <div class="flex items-center justify-between mb-4">
-                            <div class="w-12 h-12 bg-red-500 rounded-lg flex items-center justify-center">
-                                <i class="fas fa-credit-card text-white text-lg"></i>
-                            </div>
-                            <span class="text-sm font-medium text-red-600">Citi</span>
-                        </div>
-                        <h3 class="text-lg font-semibold text-gray-900 mb-2">Double Cash</h3>
-                        <p class="text-gray-600 text-sm mb-4">2% cashback on all purchases - 1% when you buy, 1% when you pay</p>
-                        <div class="flex items-center justify-between">
-                            <span class="text-2xl font-bold text-green-600">2%</span>
-                            <span class="text-sm text-gray-500">All Purchases</span>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Amex Blue Cash Preferred -->
-                <div class="card-hover bg-white rounded-2xl shadow-lg overflow-hidden">
-                    <div class="p-6">
-                        <div class="flex items-center justify-between mb-4">
-                            <div class="w-12 h-12 bg-indigo-500 rounded-lg flex items-center justify-center">
-                                <i class="fas fa-credit-card text-white text-lg"></i>
-                            </div>
-                            <span class="text-sm font-medium text-indigo-600">Amex</span>
-                        </div>
-                        <h3 class="text-lg font-semibold text-gray-900 mb-2">Blue Cash Preferred</h3>
-                        <p class="text-gray-600 text-sm mb-4">6% cashback on groceries, 3% on gas and transit</p>
-                        <div class="flex items-center justify-between">
-                            <span class="text-2xl font-bold text-green-600">6%</span>
-                            <span class="text-sm text-gray-500">Groceries</span>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </section>
-
-    <!-- Stats Section -->
-    <section class="py-16 px-4 bg-gradient-to-r from-teal-500 to-green-500 text-white">
-        <div class="max-w-4xl mx-auto text-center">
-            <div class="grid grid-cols-3 gap-8">
-                <div>
-                    <div class="text-4xl font-bold mb-2">50+</div>
-                    <div class="text-teal-100">Credit Cards</div>
-                </div>
-                <div>
-                    <div class="text-4xl font-bold mb-2">5%</div>
-                    <div class="text-teal-100">Max Cashback</div>
-                </div>
-                <div>
-                    <div class="text-4xl font-bold mb-2">24/7</div>
-                    <div class="text-teal-100">AI Support</div>
-                </div>
-            </div>
-        </div>
-    </section>
-
-    <!-- CTA Section -->
-    <section class="py-16 px-4">
-        <div class="max-w-4xl mx-auto text-center">
-            <h2 class="text-3xl font-bold text-gray-900 mb-4">Ready to Maximize Your Cashback?</h2>
-            <p class="text-gray-600 text-lg mb-8">Join thousands of users who are already saving money with SwipeRight</p>
-            <button class="px-8 py-4 gradient-bg text-white rounded-lg hover:opacity-90 transition-opacity font-semibold text-lg">
-                Get Started Today
+        <!-- MOBILE TAB BAR -->
+        <div class="md:hidden grid grid-cols-3 gap-2 bg-slate-900/80 p-1.5 rounded-xl border border-slate-800">
+            <button onclick="switchTab('comprehensive')" id="mob-comprehensive" class="py-2.5 text-center rounded-lg text-xs font-semibold transition-all">
+                <i class="fas fa-database block mb-1 text-base"></i> Database
+            </button>
+            <button onclick="switchTab('portfolio')" id="mob-portfolio" class="py-2.5 text-center rounded-lg text-xs font-semibold transition-all">
+                <i class="fas fa-wallet block mb-1 text-base"></i> Portfolio
+            </button>
+            <button onclick="switchTab('deadlines')" id="mob-deadlines" class="py-2.5 text-center rounded-lg text-xs font-semibold transition-all">
+                <i class="fas fa-calendar-alt block mb-1 text-base"></i> Deadlines
             </button>
         </div>
-    </section>
 
-    <!-- Footer -->
-    <footer class="bg-gray-900 text-white py-12 px-4">
-        <div class="max-w-6xl mx-auto">
-            <div class="grid grid-cols-1 md:grid-cols-4 gap-8">
-                <div>
-                    <div class="flex items-center space-x-3 mb-4">
-                        <div class="w-8 h-8 gradient-bg rounded-lg flex items-center justify-center">
-                            <i class="fas fa-credit-card text-white"></i>
-                        </div>
-                        <span class="text-xl font-bold">SwipeRight</span>
+        <!-- ==================== TAB 1: ALL CARDS DATABASE ==================== -->
+        <section id="tab-comprehensive-content" class="space-y-6">
+            <!-- Search and filters -->
+            <div class="glass-panel p-6 rounded-2xl space-y-4">
+                <div class="flex flex-col md:flex-row gap-4">
+                    <div class="relative flex-grow">
+                        <i class="fas fa-search absolute left-3.5 top-3.5 text-slate-400"></i>
+                        <input id="search-input" oninput="applyFilters()" type="text" placeholder="Search by name, issuer, or cashback categories..." class="w-full pl-11 pr-4 py-3 bg-slate-950 rounded-xl border border-slate-800 text-slate-200 placeholder-slate-500 focus:outline-none focus:border-teal-500 transition">
                     </div>
-                    <p class="text-gray-400">Your wallet's wingman for maximizing credit card rewards.</p>
-                </div>
-                <div>
-                    <h4 class="font-semibold mb-4">Product</h4>
-                    <ul class="space-y-2 text-gray-400">
-                        <li><a href="#" class="hover:text-white transition-colors">Features</a></li>
-                        <li><a href="#" class="hover:text-white transition-colors">Pricing</a></li>
-                        <li><a href="#" class="hover:text-white transition-colors">API</a></li>
-                    </ul>
-                </div>
-                <div>
-                    <h4 class="font-semibold mb-4">Company</h4>
-                    <ul class="space-y-2 text-gray-400">
-                        <li><a href="#" class="hover:text-white transition-colors">About</a></li>
-                        <li><a href="#" class="hover:text-white transition-colors">Blog</a></li>
-                        <li><a href="#" class="hover:text-white transition-colors">Careers</a></li>
-                    </ul>
-                </div>
-                <div>
-                    <h4 class="font-semibold mb-4">Support</h4>
-                    <ul class="space-y-2 text-gray-400">
-                        <li><a href="#" class="hover:text-white transition-colors">Help Center</a></li>
-                        <li><a href="#" class="hover:text-white transition-colors">Contact</a></li>
-                        <li><a href="#" class="hover:text-white transition-colors">Status</a></li>
-                    </ul>
+                    <div class="flex flex-wrap gap-3">
+                        <select id="issuer-select" onchange="applyFilters()" class="bg-slate-950 text-slate-300 py-3 px-4 rounded-xl border border-slate-800 focus:outline-none focus:border-teal-500 transition">
+                            <option value="">All Issuers</option>
+                            <option value="Chase">Chase</option>
+                            <option value="American Express">American Express</option>
+                            <option value="Capital One">Capital One</option>
+                            <option value="Citi">Citi</option>
+                            <option value="Discover">Discover</option>
+                            <option value="Wells Fargo">Wells Fargo</option>
+                            <option value="US Bank">US Bank</option>
+                            <option value="Bank of America">Bank of America</option>
+                        </select>
+                        <select id="fee-select" onchange="applyFilters()" class="bg-slate-950 text-slate-300 py-3 px-4 rounded-xl border border-slate-800 focus:outline-none focus:border-teal-500 transition">
+                            <option value="all">Any Annual Fee</option>
+                            <option value="no-fee">No Annual Fee ($0)</option>
+                            <option value="low-fee">Under $100</option>
+                            <option value="premium">Premium ($250+)</option>
+                        </select>
+                    </div>
                 </div>
             </div>
-            <div class="border-t border-gray-800 mt-8 pt-8 text-center text-gray-400">
-                <p>&copy; 2024 SwipeRight. All rights reserved.</p>
+
+            <!-- Cards Grid -->
+            <div class="space-y-4">
+                <div class="flex justify-between items-center">
+                    <h3 class="text-xl font-bold text-slate-200">
+                        Available Cards Database 
+                        <span id="card-count" class="text-sm font-semibold bg-teal-500/10 text-teal-400 px-2 py-0.5 rounded-full ml-2">21 Cards</span>
+                    </h3>
+                </div>
+                
+                <div id="cards-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    <!-- Cards will be populated here dynamically -->
+                </div>
+            </div>
+        </section>
+
+        <!-- ==================== TAB 2: MY PORTFOLIO ==================== -->
+        <section id="tab-portfolio-content" class="hidden space-y-6">
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <!-- Portfolio Stats -->
+                <div class="lg:col-span-1 space-y-6">
+                    <div class="glass-panel p-6 rounded-2xl space-y-4 bg-gradient-to-b from-slate-900 to-slate-900/60">
+                        <h3 class="text-lg font-bold text-slate-200 border-b border-slate-800 pb-3 flex items-center justify-between">
+                            <span>Portfolio Statistics</span>
+                            <i class="fas fa-chart-pie text-teal-400"></i>
+                        </h3>
+                        <div class="space-y-4">
+                            <div>
+                                <p class="text-xs text-slate-400 uppercase tracking-wider font-semibold">Active Cards</p>
+                                <p id="stat-card-count" class="text-3xl font-black text-slate-100">0</p>
+                            </div>
+                            <div>
+                                <p class="text-xs text-slate-400 uppercase tracking-wider font-semibold">Total Annual Fees</p>
+                                <p id="stat-total-fees" class="text-3xl font-black text-teal-400">$0</p>
+                            </div>
+                            <div>
+                                <p class="text-xs text-slate-400 uppercase tracking-wider font-semibold">Total Statement Credits Available</p>
+                                <p id="stat-credits-total" class="text-3xl font-black text-emerald-400">$0</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Portfolio Cards List -->
+                <div class="lg:col-span-2 space-y-4">
+                    <div class="flex justify-between items-center">
+                        <h3 class="text-xl font-bold text-slate-200">
+                            Active Wallet Portfolio
+                        </h3>
+                    </div>
+                    
+                    <div id="portfolio-list" class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <!-- Portfolio cards dynamic -->
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ==================== TAB 3: REWARD DEADLINES ==================== -->
+        <section id="tab-deadlines-content" class="hidden space-y-6">
+            <!-- Header description -->
+            <div class="space-y-2">
+                <h3 class="text-2xl font-black text-slate-100">Reward Deadlines Dashboard</h3>
+                <p class="text-sm text-slate-400">Avoid leaving money on the table. Track resetting annual credits, monthly rewards, and expiring benefits based on your portfolio.</p>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <!-- Upcoming Deadlines Timeline -->
+                <div class="lg:col-span-2 space-y-6">
+                    <div class="glass-panel p-6 rounded-2xl space-y-4">
+                        <h4 class="text-lg font-bold text-slate-200 flex items-center justify-between pb-3 border-b border-slate-800">
+                            <span>Time-Sensitive Statement Credits</span>
+                            <span class="text-xs font-semibold text-teal-400 px-2 py-0.5 bg-teal-500/10 rounded">Auto-calculated</span>
+                        </h4>
+                        
+                        <div id="deadlines-timeline" class="space-y-4">
+                            <!-- Populated dynamically -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Expiring Merchant Offers (Simulated Email Sync) -->
+                <div class="space-y-6">
+                    <div class="glass-panel p-6 rounded-2xl space-y-4">
+                        <h4 class="text-lg font-bold text-slate-200 flex items-center justify-between pb-3 border-b border-slate-800">
+                            <span>Special Merchant Offers</span>
+                            <span class="text-xs font-bold text-teal-400 px-2 py-0.5 bg-teal-500/10 rounded">Expired Control</span>
+                        </h4>
+                        
+                        <p class="text-xs text-slate-400">Custom user-specific deals matching credit card ecosystems (e.g. Chase Offers, Amex Offers).</p>
+
+                        <div id="merchant-offers-list" class="space-y-3">
+                            <!-- Dynamically generated custom merchant offers -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- Footer -->
+    <footer class="glass-panel mt-12 py-8 px-6 text-center border-t border-slate-800 text-slate-400 text-sm">
+        <div class="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-4">
+            <p>&copy; 2026 SwipeRight. All rights reserved. Designed for study and optimization purposes.</p>
+            <div class="flex space-x-4 text-slate-400 text-lg">
+                <i class="fab fa-github hover:text-white cursor-pointer transition"></i>
+                <i class="fab fa-twitter hover:text-white cursor-pointer transition"></i>
+                <i class="fab fa-linkedin hover:text-white cursor-pointer transition"></i>
             </div>
         </div>
     </footer>
 
+    <!-- Script database and business logic -->
     <script>
-        // Simple interactivity for demo purposes
-        document.addEventListener('DOMContentLoaded', function() {
-            // Add click handlers for buttons
-            const buttons = document.querySelectorAll('button');
-            buttons.forEach(button => {
-                button.addEventListener('click', function() {
-                    if (this.textContent.includes('Sign In') || this.textContent.includes('Register')) {
-                        alert('Authentication system is currently in development. This is a demo version.');
-                    } else if (this.textContent.includes('Get Started')) {
-                        alert('Welcome to SwipeRight! This is a demo version showcasing the app interface.');
-                    } else if (this.textContent.includes('Learn More')) {
-                        alert('SwipeRight helps you choose the best credit card for every purchase to maximize your cashback rewards.');
-                    }
-                });
+        // 21 Pre-loaded premium cards matching backend migrations and user discussions
+        const ALL_DB_CARDS = [
+            {
+                id: 1,
+                name: "Chase Sapphire Reserve",
+                issuer: "Chase",
+                annualFee: 550,
+                network: "Visa",
+                rating: 4.8,
+                reviewCount: 2547,
+                welcomeBonus: "60,000 bonus points after spending $4,000 in first 3 months",
+                colorHsl: "215, 60%, 25%", // Sapphire Blue
+                features: ["No Foreign Transaction Fees", "Travel Insurance", "Airport Lounge Access"],
+                categories: [
+                    { category: "Travel", rate: 3.0 },
+                    { category: "Dining", rate: 3.0 },
+                    { category: "Chase Dining", rate: 10.0 },
+                    { category: "Other", rate: 1.0 }
+                ]
+            },
+            {
+                id: 2,
+                name: "Chase Sapphire Preferred",
+                issuer: "Chase",
+                annualFee: 95,
+                network: "Visa",
+                rating: 4.5,
+                reviewCount: 1876,
+                welcomeBonus: "60,000 bonus points after spending $4,000 in first 3 months",
+                colorHsl: "205, 70%, 40%",
+                features: ["2x Points on Travel and Dining", "No Foreign Transaction Fees", "Transfer Partners"],
+                categories: [
+                    { category: "Travel", rate: 2.0 },
+                    { category: "Dining", rate: 3.0 },
+                    { category: "Other", rate: 1.0 }
+                ]
+            },
+            {
+                id: 3,
+                name: "Chase Freedom Unlimited",
+                issuer: "Chase",
+                annualFee: 0,
+                network: "Visa",
+                rating: 4.6,
+                reviewCount: 1823,
+                welcomeBonus: "$200 cash back after spending $500 in first 3 months",
+                colorHsl: "210, 80%, 45%",
+                features: ["No Annual Fee", "Cell Phone Protection", "Purchase Protection"],
+                categories: [
+                    { category: "Dining", rate: 3.0 },
+                    { category: "Drugstores", rate: 3.0 },
+                    { category: "All Purchases", rate: 1.5 }
+                ]
+            },
+            {
+                id: 4,
+                name: "Chase Freedom Flex",
+                issuer: "Chase",
+                annualFee: 0,
+                network: "Mastercard",
+                rating: 4.5,
+                reviewCount: 1456,
+                welcomeBonus: "5% cash back on rotating categories up to $1500 quarterly limit",
+                colorHsl: "200, 75%, 40%",
+                features: ["5% Rotating Categories", "No Annual Fee", "Cashback Match"],
+                categories: [
+                    { category: "Rotating Categories", rate: 5.0 },
+                    { category: "Dining", rate: 3.0 },
+                    { category: "Other", rate: 1.0 }
+                ]
+            },
+            {
+                id: 5,
+                name: "American Express Platinum Card",
+                issuer: "American Express",
+                annualFee: 695,
+                network: "American Express",
+                rating: 4.4,
+                reviewCount: 1234,
+                welcomeBonus: "80,000 Membership Rewards points after spending $6,000 in first 6 months",
+                colorHsl: "190, 10%, 80%", // Premium Silver
+                features: ["5x Points on Flights", "Centurion Lounge Access", "$200 Hotel Credit"],
+                categories: [
+                    { category: "Flights", rate: 5.0 },
+                    { category: "Hotels", rate: 5.0 },
+                    { category: "Other", rate: 1.0 }
+                ]
+            },
+            {
+                id: 6,
+                name: "American Express Gold Card",
+                issuer: "American Express",
+                annualFee: 250,
+                network: "American Express",
+                rating: 4.7,
+                reviewCount: 1987,
+                welcomeBonus: "60,000 Membership Rewards points after spending $4,000 in first 6 months",
+                colorHsl: "45, 50%, 60%", // Gold
+                features: ["4x Points on Dining", "4x Points on Groceries", "$120 Dining Credit"],
+                categories: [
+                    { category: "Dining", rate: 4.0 },
+                    { category: "Groceries", rate: 4.0 },
+                    { category: "Other", rate: 1.0 }
+                ]
+            },
+            {
+                id: 7,
+                name: "American Express Blue Cash Preferred",
+                issuer: "American Express",
+                annualFee: 95,
+                network: "American Express",
+                rating: 4.6,
+                reviewCount: 1432,
+                welcomeBonus: "$350 statement credit after spending $3,000 in first 6 months",
+                colorHsl: "220, 50%, 30%",
+                features: ["6% Cash Back at Groceries", "6% Cash Back on Streaming", "3% Cash Back on Gas"],
+                categories: [
+                    { category: "Groceries", rate: 6.0 },
+                    { category: "Streaming", rate: 6.0 },
+                    { category: "Gas", rate: 3.0 },
+                    { category: "Other", rate: 1.0 }
+                ]
+            },
+            {
+                id: 8,
+                name: "Capital One Venture X",
+                issuer: "Capital One",
+                annualFee: 395,
+                network: "Visa",
+                rating: 4.6,
+                reviewCount: 987,
+                welcomeBonus: "75,000 bonus miles after spending $4,000 in first 3 months",
+                colorHsl: "180, 50%, 20%",
+                features: ["2x Miles on Everything", "10,000 Mile Anniversary Bonus", "$300 Travel Credit"],
+                categories: [
+                    { category: "Travel Portal", rate: 10.0 },
+                    { category: "All Purchases", rate: 2.0 }
+                ]
+            },
+            {
+                id: 9,
+                name: "Capital One Savor One",
+                issuer: "Capital One",
+                annualFee: 0,
+                network: "Mastercard",
+                rating: 4.3,
+                reviewCount: 756,
+                welcomeBonus: "$200 cash bonus after spending $500 in first 3 months",
+                colorHsl: "15, 80%, 40%",
+                features: ["3% on Dining", "3% on Groceries", "3% on Streaming", "No Annual Fee"],
+                categories: [
+                    { category: "Dining", rate: 3.0 },
+                    { category: "Groceries", rate: 3.0 },
+                    { category: "Streaming", rate: 3.0 },
+                    { category: "Other", rate: 1.0 }
+                ]
+            },
+            {
+                id: 10,
+                name: "Capital One Quicksilver",
+                issuer: "Capital One",
+                annualFee: 0,
+                network: "Visa",
+                rating: 4.2,
+                reviewCount: 987,
+                welcomeBonus: "$200 cash bonus after spending $500 in first 3 months",
+                colorHsl: "210, 10%, 60%",
+                features: ["1.5% Cash Back on Everything", "No Annual Fee", "No Foreign Transaction Fees"],
+                categories: [
+                    { category: "All Purchases", rate: 1.5 }
+                ]
+            },
+            {
+                id: 11,
+                name: "Citi Double Cash Card",
+                issuer: "Citi",
+                annualFee: 0,
+                network: "Mastercard",
+                rating: 4.4,
+                reviewCount: 1567,
+                welcomeBonus: "$200 cash back after spending $1,500 in first 6 months",
+                colorHsl: "20, 90%, 50%",
+                features: ["2% Cash Back on Everything", "No Annual Fee", "18-Month 0% APR"],
+                categories: [
+                    { category: "All Purchases", rate: 2.0 }
+                ]
+            },
+            {
+                id: 12,
+                name: "Citi Premier Card",
+                issuer: "Citi",
+                annualFee: 95,
+                network: "Mastercard",
+                rating: 4.3,
+                reviewCount: 654,
+                welcomeBonus: "80,000 bonus points after spending $4,000 in first 3 months",
+                colorHsl: "190, 80%, 35%",
+                features: ["3x Points on Travel", "3x Points on Gas", "3x Points on Groceries"],
+                categories: [
+                    { category: "Travel", rate: 3.0 },
+                    { category: "Gas", rate: 3.0 },
+                    { category: "Groceries", rate: 3.0 },
+                    { category: "Dining", rate: 3.0 },
+                    { category: "Other", rate: 1.0 }
+                ]
+            },
+            {
+                id: 13,
+                name: "Discover it Cash Back",
+                issuer: "Discover",
+                annualFee: 0,
+                network: "Discover",
+                rating: 4.2,
+                reviewCount: 1098,
+                welcomeBonus: "Unlimited Cashback Match for your first year",
+                colorHsl: "30, 90%, 45%",
+                features: ["5% Rotating Categories", "Cashback Match", "No Annual Fee"],
+                categories: [
+                    { category: "Rotating Categories", rate: 5.0 },
+                    { category: "Other", rate: 1.0 }
+                ]
+            },
+            {
+                id: 14,
+                name: "Wells Fargo Active Cash Card",
+                issuer: "Wells Fargo",
+                annualFee: 0,
+                network: "Visa",
+                rating: 4.1,
+                reviewCount: 543,
+                welcomeBonus: "$200 cash rewards bonus after spending $1,000 in first 3 months",
+                colorHsl: "40, 80%, 45%",
+                features: ["2% Cash Back on Everything", "No Annual Fee", "Cell Phone Protection"],
+                categories: [
+                    { category: "All Purchases", rate: 2.0 }
+                ]
+            },
+            {
+                id: 15,
+                name: "Wells Fargo Bilt Mastercard",
+                issuer: "Wells Fargo",
+                annualFee: 0,
+                network: "Mastercard",
+                rating: 4.4,
+                reviewCount: 876,
+                welcomeBonus: "No welcome bonus, but earn points on rent purchases",
+                colorHsl: "0, 0%, 20%", // Sleek Dark Gray
+                features: ["3x Points on Dining", "2x Points on Travel", "1x Point on Rent"],
+                categories: [
+                    { category: "Dining", rate: 3.0 },
+                    { category: "Travel", rate: 2.0 },
+                    { category: "Rent", rate: 1.0 },
+                    { category: "Other", rate: 1.0 }
+                ]
+            },
+            {
+                id: 16,
+                name: "US Bank Altitude Go",
+                issuer: "US Bank",
+                annualFee: 0,
+                network: "Visa",
+                rating: 4.0,
+                reviewCount: 321,
+                welcomeBonus: "20,000 bonus points after spending $1,000 in first 3 months",
+                colorHsl: "350, 80%, 45%",
+                features: ["4x Points on Dining", "2x Points on Groceries", "2x Points on Streaming"],
+                categories: [
+                    { category: "Dining", rate: 4.0 },
+                    { category: "Groceries", rate: 2.0 },
+                    { category: "Streaming", rate: 2.0 },
+                    { category: "Other", rate: 1.0 }
+                ]
+            },
+            {
+                id: 17,
+                name: "Bank of America Premium Rewards",
+                issuer: "Bank of America",
+                annualFee: 95,
+                network: "Visa",
+                rating: 4.1,
+                reviewCount: 432,
+                welcomeBonus: "60,000 bonus points after spending $4,000 in first 3 months",
+                colorHsl: "210, 85%, 35%",
+                features: ["2x Points on Travel and Dining", "1.5x Points on Everything", "Airline Fee Credits"],
+                categories: [
+                    { category: "Travel", rate: 2.0 },
+                    { category: "Dining", rate: 2.0 },
+                    { category: "All Purchases", rate: 1.5 }
+                ]
+            },
+            {
+                id: 18,
+                name: "Apple Card",
+                issuer: "Apple",
+                annualFee: 0,
+                network: "Mastercard",
+                rating: 4.5,
+                reviewCount: 923,
+                welcomeBonus: "Get up to 3% Daily Cash back",
+                colorHsl: "0, 0%, 90%", // Sleek Silver/White
+                features: ["No Fees", "Daily Cash", "Deep Apple Integration", "Titanium Card"],
+                categories: [
+                    { category: "Apple Purchases", rate: 3.0 },
+                    { category: "Apple Pay", rate: 2.0 },
+                    { category: "Other", rate: 1.0 }
+                ]
+            },
+            {
+                id: 19,
+                name: "Fidelity Visa Signature",
+                issuer: "Fidelity",
+                annualFee: 0,
+                network: "Visa",
+                rating: 4.3,
+                reviewCount: 512,
+                welcomeBonus: "$150 bonus after spending $1,000 in first 3 months",
+                colorHsl: "120, 60%, 25%",
+                features: ["2% Cash Back", "Deposited directly into Fidelity accounts", "No Annual Fee"],
+                categories: [
+                    { category: "All Purchases", rate: 2.0 }
+                ]
+            },
+            {
+                id: 20,
+                name: "Amazon Prime Signature",
+                issuer: "Amazon",
+                annualFee: 0,
+                network: "Visa",
+                rating: 4.7,
+                reviewCount: 2210,
+                welcomeBonus: "$150 Amazon Gift Card instantly upon approval",
+                colorHsl: "220, 30%, 15%",
+                features: ["5% back on Amazon & Whole Foods", "No Foreign Fees", "Travel Protections"],
+                categories: [
+                    { category: "Amazon", rate: 5.0 },
+                    { category: "Whole Foods", rate: 5.0 },
+                    { category: "Dining & Gas", rate: 2.0 },
+                    { category: "Other", rate: 1.0 }
+                ]
+            },
+            {
+                id: 21,
+                name: "Costco Anywhere Visa",
+                issuer: "Citi",
+                annualFee: 0,
+                network: "Visa",
+                rating: 4.4,
+                reviewCount: 1654,
+                welcomeBonus: "Earn cashback rewards on gas, travel, dining and Costco purchases",
+                colorHsl: "200, 90%, 30%",
+                features: ["4% on Gas", "3% on Restaurants and Eligible Travel", "No Annual Fee with Costco Membership"],
+                categories: [
+                    { category: "Gas", rate: 4.0 },
+                    { category: "Dining & Travel", rate: 3.0 },
+                    { category: "Costco", rate: 2.0 },
+                    { category: "Other", rate: 1.0 }
+                ]
+            }
+        ];
+
+        // Annual Credit details mapping
+        const CARD_ANNUAL_CREDITS = {
+            "Chase Sapphire Reserve": [
+                { name: "$300 Travel Credit", amount: 300, reset: "Annually on statement date", type: "Travel" },
+                { name: "$60 Peloton Membership", amount: 60, reset: "Calendar Year", type: "Fitness" },
+                { name: "$100 TSA PreCheck Credit", amount: 100, reset: "Every 4 Years", type: "Travel" }
+            ],
+            "Chase Sapphire Preferred": [
+                { name: "$50 Annual Hotel Credit", amount: 50, reset: "Account Anniversary", type: "Travel" }
+            ],
+            "American Express Platinum Card": [
+                { name: "$200 Hotel Credit", amount: 200, reset: "Calendar Year", type: "Travel" },
+                { name: "$200 Airline Fee Credit", amount: 200, reset: "Calendar Year", type: "Travel" },
+                { name: "$240 Digital Entertainment Credit", amount: 240, reset: "Monthly ($20/mo)", type: "Entertainment" },
+                { name: "$200 Uber Cash Credit", amount: 200, reset: "Monthly ($15/mo, $35 in Dec)", type: "Dining/Transit" }
+            ],
+            "American Express Gold Card": [
+                { name: "$120 Uber Cash Credit", amount: 120, reset: "Monthly ($10/mo)", type: "Dining/Transit" },
+                { name: "$120 Dining Credit", amount: 120, reset: "Monthly ($10/mo)", type: "Dining" }
+            ],
+            "Capital One Venture X": [
+                { name: "$300 Travel Portal Credit", amount: 300, reset: "Annually", type: "Travel" },
+                { name: "$100 Anniversary Bonus Miles", amount: 100, reset: "Annually on Anniversary", type: "Travel" }
+            ]
+        };
+
+        // Simulated merchant offers sync
+        const SIMULATED_MERCHANT_OFFERS = [
+            { id: 101, merchant: "Nike", deal: "Spend $150, get $25 off", category: "Shopping", expiresDays: 12 },
+            { id: 102, merchant: "Samsung", deal: "10% cash back on mobile phones", category: "Electronics", expiresDays: 4 },
+            { id: 103, merchant: "Uber Eats", deal: "$10 off your next 3 orders", category: "Dining", expiresDays: 20 },
+            { id: 104, merchant: "Starbucks", deal: "15% cash back", category: "Dining", expiresDays: 3 }
+        ];
+
+        // State Manager
+        let myPortfolio = [];
+        let activeTab = 'comprehensive';
+
+        // Load data from LocalStorage or initialize with default portfolio
+        function initData() {
+            const saved = localStorage.getItem('swiperight_portfolio');
+            if (saved) {
+                myPortfolio = JSON.parse(saved);
+            } else {
+                // Preload default portfolio for demonstration
+                myPortfolio = [1, 5, 6]; // Chase Sapphire Reserve, Amex Platinum, Amex Gold
+                savePortfolio();
+            }
+            renderAll();
+        }
+
+        function savePortfolio() {
+            localStorage.setItem('swiperight_portfolio', JSON.stringify(myPortfolio));
+        }
+
+        function resetDemoData() {
+            localStorage.removeItem('swiperight_portfolio');
+            myPortfolio = [1, 5, 6];
+            savePortfolio();
+            renderAll();
+            alert("Demo data has been reset to defaults!");
+        }
+
+        // Switch Active Tab
+        function switchTab(tabId) {
+            activeTab = tabId;
+            
+            // Hide all tabs
+            document.getElementById('tab-comprehensive-content').classList.add('hidden');
+            document.getElementById('tab-portfolio-content').classList.add('hidden');
+            document.getElementById('tab-deadlines-content').classList.add('hidden');
+            
+            // Show selected tab
+            document.getElementById(`tab-${tabId}-content`).classList.remove('hidden');
+
+            // Update header nav buttons
+            ['comprehensive', 'portfolio', 'deadlines'].forEach(t => {
+                const btn = document.getElementById(`nav-${t}`);
+                const mobBtn = document.getElementById(`mob-${t}`);
+                if (t === tabId) {
+                    btn.className = "px-4 py-2 rounded-lg text-sm font-semibold transition-all duration-200 active-tab-btn text-slate-900";
+                    mobBtn.className = "py-2.5 text-center rounded-lg text-xs font-bold transition-all active-tab-btn text-slate-900";
+                } else {
+                    btn.className = "px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 text-slate-300 hover:text-teal-400 hover:bg-slate-800";
+                    mobBtn.className = "py-2.5 text-center rounded-lg text-xs font-semibold transition-all text-slate-300 hover:text-teal-400";
+                }
             });
 
-            // Add hover effects for cards
-            const cards = document.querySelectorAll('.card-hover');
-            cards.forEach(card => {
-                card.addEventListener('mouseenter', function() {
-                    this.style.transform = 'translateY(-5px)';
-                });
-                card.addEventListener('mouseleave', function() {
-                    this.style.transform = 'translateY(0)';
-                });
+            renderAll();
+        }
+
+        // Render Everything
+        function renderAll() {
+            renderComprehensiveDatabase();
+            renderPortfolio();
+            renderDeadlinesTab();
+            updateStats();
+        }
+
+        // Render All Cards Database
+        function renderComprehensiveDatabase() {
+            const grid = document.getElementById('cards-grid');
+            grid.innerHTML = '';
+
+            const query = document.getElementById('search-input').value.toLowerCase();
+            const issuerFilter = document.getElementById('issuer-select').value;
+            const feeFilter = document.getElementById('fee-select').value;
+
+            const filtered = ALL_DB_CARDS.filter(card => {
+                const matchesSearch = card.name.toLowerCase().includes(query) || 
+                                      card.issuer.toLowerCase().includes(query) || 
+                                      card.categories.some(c => c.category.toLowerCase().includes(query));
+                const matchesIssuer = !issuerFilter || card.issuer === issuerFilter;
+                
+                let matchesFee = true;
+                if (feeFilter === 'no-fee') matchesFee = card.annualFee === 0;
+                else if (feeFilter === 'low-fee') matchesFee = card.annualFee > 0 && card.annualFee < 100;
+                else if (feeFilter === 'premium') matchesFee = card.annualFee >= 250;
+
+                return matchesSearch && matchesIssuer && matchesFee;
             });
-        });
+
+            document.getElementById('card-count').innerText = `${filtered.length} Cards`;
+
+            if (filtered.length === 0) {
+                grid.innerHTML = `
+                    <div class="col-span-full py-12 text-center text-slate-500">
+                        <i class="fas fa-search block text-4xl mb-4"></i>
+                        <p class="text-lg">No cards match your filter criteria.</p>
+                    </div>
+                `;
+                return;
+            }
+
+            filtered.forEach(card => {
+                const inPortfolio = myPortfolio.includes(card.id);
+                const cardEl = document.createElement('div');
+                cardEl.className = 'glass-card rounded-2xl overflow-hidden flex flex-col justify-between metallic-shine';
+                
+                // Color banner HSL base
+                const bannerStyle = `background: linear-gradient(135deg, hsl(${card.colorHsl}) 0%, rgba(30, 41, 59, 0.95) 100%);`;
+
+                cardEl.innerHTML = `
+                    <div class="p-6 space-y-4">
+                        <!-- Top Header -->
+                        <div class="flex justify-between items-start">
+                            <div>
+                                <span class="text-xs uppercase tracking-wider font-semibold text-teal-400">${card.issuer}</span>
+                                <h4 class="text-lg font-black text-slate-100 mt-0.5">${card.name}</h4>
+                            </div>
+                            <span class="text-xs font-semibold px-2 py-1 bg-slate-900/80 rounded border border-slate-800 text-slate-300">
+                                ${card.network}
+                            </span>
+                        </div>
+
+                        <!-- Card Visual Design Box -->
+                        <div class="h-28 rounded-xl p-4 flex flex-col justify-between text-slate-100 shadow-inner" style="${bannerStyle}">
+                            <div class="flex justify-between items-start">
+                                <i class="fas fa-credit-card text-2xl opacity-80"></i>
+                                <span class="text-xs font-bold px-2 py-0.5 bg-black/30 rounded-full">
+                                    $${card.annualFee} / yr
+                                </span>
+                            </div>
+                            <div class="flex justify-between items-end">
+                                <span class="text-xs tracking-widest font-mono opacity-80">•••• •••• •••• ${1000 + card.id}</span>
+                                <span class="text-xs font-black uppercase">${card.issuer}</span>
+                            </div>
+                        </div>
+
+                        <!-- Cashback details -->
+                        <div class="space-y-2">
+                            <p class="text-xs text-slate-400 font-bold uppercase tracking-wider">Top Cashback Rules</p>
+                            <div class="flex flex-wrap gap-1.5">
+                                ${card.categories.map(c => `
+                                    <span class="inline-flex items-center text-xs bg-slate-900 text-slate-300 px-2 py-1 rounded border border-slate-800">
+                                        ${c.category}: <b class="text-emerald-400 ml-1">${c.rate}%</b>
+                                    </span>
+                                `).join('')}
+                            </div>
+                        </div>
+
+                        <!-- Welcome offer description -->
+                        <div class="text-xs text-slate-400 bg-slate-900/60 p-2.5 rounded-lg border border-slate-800/80">
+                            <b class="text-teal-400">Welcome Offer:</b> ${card.welcomeBonus}
+                        </div>
+                    </div>
+
+                    <!-- Footer Action buttons -->
+                    <div class="p-6 border-t border-slate-800/80 bg-slate-900/20 flex gap-2">
+                        ${inPortfolio ? `
+                            <button onclick="togglePortfolioCard(${card.id})" class="flex-grow py-2.5 px-4 rounded-xl bg-red-500/10 hover:bg-red-500/20 border border-red-500/20 text-red-400 text-sm font-semibold transition">
+                                <i class="fas fa-minus-circle mr-2"></i> Remove Portfolio
+                            </button>
+                        ` : `
+                            <button onclick="togglePortfolioCard(${card.id})" class="flex-grow py-2.5 px-4 rounded-xl bg-teal-500 hover:bg-teal-600 text-slate-950 text-sm font-bold shadow-lg shadow-teal-500/10 transition">
+                                <i class="fas fa-plus-circle mr-2"></i> Add to Portfolio
+                            </button>
+                        `}
+                    </div>
+                `;
+                grid.appendChild(cardEl);
+            });
+        }
+
+        // Apply Filters triggers database re-rendering
+        function applyFilters() {
+            renderComprehensiveDatabase();
+        }
+
+        // Add/Remove Portfolio Action
+        function togglePortfolioCard(cardId) {
+            const idx = myPortfolio.indexOf(cardId);
+            if (idx > -1) {
+                myPortfolio.splice(idx, 1);
+            } else {
+                myPortfolio.push(cardId);
+            }
+            savePortfolio();
+            renderAll();
+        }
+
+        // Render My Portfolio tab
+        function renderPortfolio() {
+            const list = document.getElementById('portfolio-list');
+            list.innerHTML = '';
+
+            if (myPortfolio.length === 0) {
+                list.innerHTML = `
+                    <div class="col-span-full py-16 text-center text-slate-500">
+                        <i class="fas fa-wallet block text-5xl mb-4"></i>
+                        <p class="text-lg font-bold">Your Wallet is Empty</p>
+                        <p class="text-sm mt-1 mb-6 text-slate-400">Browse the All Cards Database and add cards you own to monitor them here.</p>
+                        <button onclick="switchTab('comprehensive')" class="px-6 py-2.5 rounded-lg bg-teal-500 hover:bg-teal-600 text-slate-950 font-bold transition">
+                            <i class="fas fa-search mr-2"></i> Add Your First Card
+                        </button>
+                    </div>
+                `;
+                return;
+            }
+
+            myPortfolio.forEach(cardId => {
+                const card = ALL_DB_CARDS.find(c => c.id === cardId);
+                if (!card) return;
+
+                const cardEl = document.createElement('div');
+                cardEl.className = 'glass-card rounded-2xl overflow-hidden flex flex-col justify-between';
+                const bannerStyle = `background: linear-gradient(135deg, hsl(${card.colorHsl}) 0%, rgba(30, 41, 59, 0.95) 100%);`;
+
+                cardEl.innerHTML = `
+                    <div class="p-6 space-y-4">
+                        <div class="flex justify-between items-start">
+                            <div>
+                                <span class="text-xs uppercase tracking-wider font-semibold text-teal-400">${card.issuer}</span>
+                                <h4 class="text-lg font-black text-slate-100 mt-0.5">${card.name}</h4>
+                            </div>
+                            <button onclick="togglePortfolioCard(${card.id})" class="text-slate-400 hover:text-red-400 p-1.5 rounded transition">
+                                <i class="fas fa-trash-can"></i>
+                            </button>
+                        </div>
+
+                        <!-- Card Visual Design Box -->
+                        <div class="h-28 rounded-xl p-4 flex flex-col justify-between text-slate-100 shadow-inner" style="${bannerStyle}">
+                            <div class="flex justify-between items-start">
+                                <i class="fas fa-credit-card text-2xl opacity-80"></i>
+                                <span class="text-xs font-bold px-2 py-0.5 bg-black/30 rounded-full">
+                                    $${card.annualFee} / yr
+                                </span>
+                            </div>
+                            <div class="flex justify-between items-end">
+                                <span class="text-xs tracking-widest font-mono opacity-80">•••• •••• •••• ${1000 + card.id}</span>
+                                <span class="text-xs font-black uppercase">ACTIVE</span>
+                            </div>
+                        </div>
+
+                        <!-- Card Features -->
+                        <div class="space-y-1.5">
+                            <p class="text-xs text-slate-400 font-bold uppercase tracking-wider">Perks & Features</p>
+                            <ul class="text-xs space-y-1 text-slate-300">
+                                ${card.features.map(f => `
+                                    <li class="flex items-center">
+                                        <i class="fas fa-check-circle text-teal-400 mr-2 text-[10px]"></i>
+                                        <span>${f}</span>
+                                    </li>
+                                `).join('')}
+                            </ul>
+                        </div>
+                    </div>
+                `;
+                list.appendChild(cardEl);
+            });
+        }
+
+        // Render Reward Deadlines Tab
+        function renderDeadlinesTab() {
+            const timeline = document.getElementById('deadlines-timeline');
+            const offersList = document.getElementById('merchant-offers-list');
+            
+            timeline.innerHTML = '';
+            offersList.innerHTML = '';
+
+            let hasCredits = false;
+
+            // Generate timeline based on portfolio cards
+            myPortfolio.forEach(cardId => {
+                const card = ALL_DB_CARDS.find(c => c.id === cardId);
+                if (!card) return;
+
+                const credits = CARD_ANNUAL_CREDITS[card.name];
+                if (credits && credits.length > 0) {
+                    hasCredits = true;
+                    credits.forEach(credit => {
+                        const itemEl = document.createElement('div');
+                        itemEl.className = 'p-4 rounded-xl border border-slate-800 bg-slate-900/30 hover:border-teal-500/30 transition flex justify-between items-center gap-4';
+                        
+                        itemEl.innerHTML = `
+                            <div class="flex items-center space-x-3">
+                                <div class="w-10 h-10 rounded-lg bg-teal-500/10 text-teal-400 flex items-center justify-center border border-teal-500/20">
+                                    <i class="fas fa-calendar-days text-base"></i>
+                                </div>
+                                <div>
+                                    <p class="text-sm font-bold text-slate-200">${credit.name}</p>
+                                    <p class="text-xs text-slate-400">${card.name} • Resets: <span class="text-teal-300 font-medium">${credit.reset}</span></p>
+                                </div>
+                            </div>
+                            <div class="text-right">
+                                <span class="text-lg font-black text-emerald-400">$${credit.amount}</span>
+                                <span class="block text-[10px] text-slate-400 uppercase tracking-wider font-semibold">${credit.type}</span>
+                            </div>
+                        `;
+                        timeline.appendChild(itemEl);
+                    });
+                }
+            });
+
+            if (!hasCredits) {
+                timeline.innerHTML = `
+                    <div class="py-12 text-center text-slate-500">
+                        <i class="fas fa-calendar-xmark block text-4xl mb-4"></i>
+                        <p class="text-sm">No premium statement credits available in your current portfolio.</p>
+                        <p class="text-xs text-slate-400 mt-1">Add cards like <b>Chase Sapphire Reserve</b> or <b>Amex Platinum</b> to see statement credit deadlines.</p>
+                    </div>
+                `;
+            }
+
+            // Populate simulated merchant offers
+            SIMULATED_MERCHANT_OFFERS.forEach(offer => {
+                const offerEl = document.createElement('div');
+                offerEl.className = 'p-3.5 rounded-xl bg-slate-950 border border-slate-800 flex justify-between items-center gap-3 hover:border-teal-500/30 transition';
+                
+                // Color highlighting for close deadlines
+                const deadlineColor = offer.expiresDays <= 5 ? 'text-red-400 font-bold animate-pulse' : 'text-slate-400';
+
+                offerEl.innerHTML = `
+                    <div>
+                        <div class="flex items-center space-x-2">
+                            <span class="text-xs font-bold text-teal-300 bg-teal-500/10 px-2 py-0.5 rounded">${offer.merchant}</span>
+                            <span class="text-[10px] text-slate-500 uppercase tracking-wider">${offer.category}</span>
+                        </div>
+                        <p class="text-sm text-slate-200 font-medium mt-1">${offer.deal}</p>
+                    </div>
+                    <div class="text-right">
+                        <span class="text-[10px] block text-slate-500 uppercase">Expires in</span>
+                        <span class="text-xs ${deadlineColor}">${offer.expiresDays} days</span>
+                    </div>
+                `;
+                offersList.appendChild(offerEl);
+            });
+        }
+
+        // Update stats widgets
+        function updateStats() {
+            document.getElementById('stat-card-count').innerText = myPortfolio.length;
+            
+            let totalFees = 0;
+            let totalCredits = 0;
+
+            myPortfolio.forEach(cardId => {
+                const card = ALL_DB_CARDS.find(c => c.id === cardId);
+                if (card) {
+                    totalFees += card.annualFee;
+                    const credits = CARD_ANNUAL_CREDITS[card.name];
+                    if (credits) {
+                        credits.forEach(cr => {
+                            totalCredits += cr.amount;
+                        });
+                    }
+                }
+            });
+
+            document.getElementById('stat-total-fees').innerText = `$${totalFees}`;
+            document.getElementById('stat-credits-total').innerText = `$${totalCredits}`;
+        }
+
+        // Initialize App on DOM Load
+        document.addEventListener('DOMContentLoaded', initData);
     </script>
 </body>
 </html>
-

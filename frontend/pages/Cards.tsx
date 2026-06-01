@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Search, Filter, Plus, CreditCard as CreditCardIcon, User, Wallet, Star, ExternalLink, TrendingUp, Calendar, Clock } from 'lucide-react';
+import { Search, Filter, Plus, CreditCard as CreditCardIcon, User, Wallet, Star, ExternalLink, TrendingUp, Calendar, Clock, Shield, Lock, CheckCircle, RefreshCw } from 'lucide-react';
 import backend from '~backend/client';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -22,9 +22,9 @@ export default function Cards() {
   
   // Comprehensive cards filters
   const [searchQuery, setSearchQuery] = useState('');
-  const [selectedIssuer, setSelectedIssuer] = useState<string>('');
-  const [selectedNetwork, setSelectedNetwork] = useState<string>('');
-  const [selectedCategory, setSelectedCategory] = useState<string>('');
+  const [selectedIssuer, setSelectedIssuer] = useState<string>('all');
+  const [selectedNetwork, setSelectedNetwork] = useState<string>('all');
+  const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [maxAnnualFee, setMaxAnnualFee] = useState<number[]>([500]);
   const [minCashback, setMinCashback] = useState<number[]>([0]);
   
@@ -36,6 +36,63 @@ export default function Cards() {
 
   const { user } = useAuth();
   const queryClient = useQueryClient();
+
+  // Benefit and Credit Savings Tracker State
+  const [creditSavings, setCreditSavings] = useState<Record<string, number>>(() => {
+    try {
+      const stored = localStorage.getItem('swiperight_logged_credit_savings');
+      return stored ? JSON.parse(stored) : {};
+    } catch {
+      return {};
+    }
+  });
+
+  const [subscriptionSavings, setSubscriptionSavings] = useState<Record<string, boolean>>(() => {
+    try {
+      const stored = localStorage.getItem('swiperight_logged_subscription_savings');
+      return stored ? JSON.parse(stored) : {};
+    } catch {
+      return {};
+    }
+  });
+
+  const [merchantRedeemed, setMerchantRedeemed] = useState<Record<string, boolean>>(() => {
+    try {
+      const stored = localStorage.getItem('swiperight_logged_merchant_redeemed');
+      return stored ? JSON.parse(stored) : {};
+    } catch {
+      return {};
+    }
+  });
+
+  const [merchantSavings, setMerchantSavings] = useState<Record<string, number>>(() => {
+    try {
+      const stored = localStorage.getItem('swiperight_logged_merchant_savings');
+      return stored ? JSON.parse(stored) : {};
+    } catch {
+      return {};
+    }
+  });
+
+  const [merchantPurchaseAmounts, setMerchantPurchaseAmounts] = useState<Record<string, string>>({});
+  const [showOfferPurchaseId, setShowOfferPurchaseId] = useState<number | null>(null);
+
+  // Sync to localStorage
+  useEffect(() => {
+    localStorage.setItem('swiperight_logged_credit_savings', JSON.stringify(creditSavings));
+  }, [creditSavings]);
+
+  useEffect(() => {
+    localStorage.setItem('swiperight_logged_subscription_savings', JSON.stringify(subscriptionSavings));
+  }, [subscriptionSavings]);
+
+  useEffect(() => {
+    localStorage.setItem('swiperight_logged_merchant_redeemed', JSON.stringify(merchantRedeemed));
+  }, [merchantRedeemed]);
+
+  useEffect(() => {
+    localStorage.setItem('swiperight_logged_merchant_savings', JSON.stringify(merchantSavings));
+  }, [merchantSavings]);
   const { toast } = useToast();
 
   // Comprehensive cards query
@@ -43,9 +100,9 @@ export default function Cards() {
     queryKey: ['comprehensive-cards', searchQuery, selectedIssuer, selectedNetwork, selectedCategory, maxAnnualFee[0], minCashback[0]],
     queryFn: () => backend.cards.getComprehensiveCards({
       query: searchQuery || undefined,
-      issuer: selectedIssuer || undefined,
-      network: selectedNetwork || undefined,
-      category: selectedCategory || undefined,
+      issuer: selectedIssuer === 'all' || !selectedIssuer ? undefined : selectedIssuer,
+      network: selectedNetwork === 'all' || !selectedNetwork ? undefined : selectedNetwork,
+      category: selectedCategory === 'all' || !selectedCategory ? undefined : selectedCategory,
       maxAnnualFee: maxAnnualFee[0],
       minCashback: minCashback[0],
       limit: 50
@@ -160,9 +217,9 @@ export default function Cards() {
 
   const clearFilters = () => {
     setSearchQuery('');
-    setSelectedIssuer('');
-    setSelectedNetwork('');
-    setSelectedCategory('');
+    setSelectedIssuer('all');
+    setSelectedNetwork('all');
+    setSelectedCategory('all');
     setMaxAnnualFee([500]);
     setMinCashback([0]);
   };
@@ -237,7 +294,7 @@ export default function Cards() {
 
       {/* Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="grid w-full grid-cols-3">
+        <TabsList className="grid w-full grid-cols-4">
           <TabsTrigger value="comprehensive" className="flex items-center space-x-2">
             <CreditCardIcon className="h-4 w-4" />
             <span>All Cards Database</span>
@@ -249,6 +306,10 @@ export default function Cards() {
           <TabsTrigger value="expiring" className="flex items-center space-x-2" disabled={!user}>
             <Calendar className="h-4 w-4" />
             <span>Reward Deadlines</span>
+          </TabsTrigger>
+          <TabsTrigger value="portfolio-offers" className="flex items-center space-x-2" disabled={!user}>
+            <Clock className="h-4 w-4" />
+            <span>My Expiring Offers</span>
           </TabsTrigger>
         </TabsList>
 
@@ -308,7 +369,7 @@ export default function Cards() {
                     <SelectValue placeholder="All Issuers" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">All Issuers</SelectItem>
+                    <SelectItem value="all">All Issuers</SelectItem>
                     {issuers.map(issuer => (
                       <SelectItem key={issuer} value={issuer}>{issuer}</SelectItem>
                     ))}
@@ -324,7 +385,7 @@ export default function Cards() {
                     <SelectValue placeholder="All Networks" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">All Networks</SelectItem>
+                    <SelectItem value="all">All Networks</SelectItem>
                     {networks.map(network => (
                       <SelectItem key={network} value={network}>{network}</SelectItem>
                     ))}
@@ -340,7 +401,7 @@ export default function Cards() {
                     <SelectValue placeholder="All Categories" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">All Categories</SelectItem>
+                    <SelectItem value="all">All Categories</SelectItem>
                     {categories.map(category => (
                       <SelectItem key={category} value={category}>{category}</SelectItem>
                     ))}
@@ -581,6 +642,425 @@ export default function Cards() {
             </div>
           </div>
         </TabsContent>
+
+        <TabsContent value="portfolio-offers" className="space-y-6">
+          {(() => {
+            const portfolioCardIds = portfolioCards.map(pc => pc && pc.card ? pc.card.id : 0).filter(Boolean);
+            
+            // Filter offers that belong to any card in the user's portfolio
+            const targetedOffers = merchantOffers.filter((offer: any) => 
+              offer && offer.cardId && portfolioCardIds.includes(offer.cardId)
+            );
+
+            // Calculations
+            const totalCreditSaved = Object.keys(creditSavings).reduce((sum, key) => {
+              // Ensure we only sum cards that exist in the portfolio
+              const cardId = parseInt(key.split('_')[0]);
+              if (portfolioCardIds.includes(cardId)) {
+                return sum + (creditSavings[key] || 0);
+              }
+              return sum;
+            }, 0);
+
+            let totalSubscriptionSaved = 0;
+            portfolioCardIds.forEach(cardId => {
+              const benefits = getCardBenefits(cardId);
+              benefits.forEach(b => {
+                if (b.type === 'subscription' && subscriptionSavings[b.id]) {
+                  totalSubscriptionSaved += b.maxValue;
+                }
+              });
+            });
+
+            const totalMerchantSaved = Object.keys(merchantSavings).reduce((sum, key) => {
+              const offerId = parseInt(key);
+              const offer = targetedOffers.find((o: any) => o.offerId === offerId);
+              if (offer && merchantRedeemed[offerId]) {
+                return sum + (merchantSavings[key] || 0);
+              }
+              return sum;
+            }, 0);
+
+            const grandTotalSaved = totalCreditSaved + totalSubscriptionSaved + totalMerchantSaved;
+
+            let totalPotentialValue = 0;
+            portfolioCardIds.forEach(cardId => {
+              const benefits = getCardBenefits(cardId);
+              benefits.forEach(b => {
+                totalPotentialValue += b.maxValue;
+              });
+            });
+            
+            targetedOffers.forEach((offer: any) => {
+              if (offer.cashbackAmount) {
+                totalPotentialValue += offer.cashbackAmount / 100;
+              } else if (offer.cashbackRate) {
+                totalPotentialValue += 15; // default estimate for rate offers
+              }
+            });
+
+            const progressPercent = totalPotentialValue > 0 ? Math.min(Math.round((grandTotalSaved / totalPotentialValue) * 100), 100) : 0;
+
+            const handleResetTracker = () => {
+              setCreditSavings({});
+              setSubscriptionSavings({});
+              setMerchantRedeemed({});
+              setMerchantSavings({});
+              setMerchantPurchaseAmounts({});
+              toast({
+                title: "Tracker Reset",
+                description: "All logged spendings and savings have been cleared for a fresh month.",
+              });
+            };
+
+            return (
+              <div className="space-y-6">
+                {/* Header Info */}
+                <div className="bg-gradient-to-r from-orange-500/10 via-red-500/5 to-transparent p-6 rounded-3xl border border-orange-500/15 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                  <div className="space-y-2">
+                    <div className="flex items-center space-x-2 text-orange-700">
+                      <Clock className="h-5 w-5" />
+                      <h2 className="text-lg font-bold">My Portfolio's Expiring Merchant Offers</h2>
+                    </div>
+                    <p className="text-sm text-gray-600 max-w-2xl">
+                      These are targeted custom merchant deals that are active and expiring **strictly on the credit cards in your wallet portfolio**.
+                    </p>
+                  </div>
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    onClick={handleResetTracker}
+                    className="border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700 font-extrabold rounded-xl"
+                  >
+                    <RefreshCw className="h-3.5 w-3.5 mr-1" />
+                    Reset Tracker
+                  </Button>
+                </div>
+
+                {/* Dashboard Stats */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                  {/* Glowing savings wheel */}
+                  <div className="md:col-span-1 bg-gradient-to-br from-teal-900 to-emerald-950 p-6 rounded-3xl text-white shadow-xl flex flex-col items-center justify-center text-center relative overflow-hidden">
+                    <div className="absolute inset-0 bg-gradient-to-tr from-transparent via-white/5 to-white/10 pointer-events-none" />
+                    <div className="relative w-32 h-32 flex items-center justify-center">
+                      <svg className="w-full h-full transform -rotate-90">
+                        <circle cx="64" cy="64" r="56" className="text-teal-950" strokeWidth="8" stroke="currentColor" fill="transparent" />
+                        <circle cx="64" cy="64" r="56" className="text-emerald-400" strokeWidth="8" strokeDasharray={351.8} strokeDashoffset={351.8 - (351.8 * progressPercent) / 100} strokeLinecap="round" stroke="currentColor" fill="transparent" />
+                      </svg>
+                      <div className="absolute flex flex-col items-center justify-center">
+                        <span className="text-[10px] uppercase font-bold tracking-widest text-emerald-300">Logged</span>
+                        <span className="text-2xl font-black">${grandTotalSaved.toFixed(2)}</span>
+                        <span className="text-[9px] text-teal-200">{progressPercent}% of potential</span>
+                      </div>
+                    </div>
+                    <div className="mt-4 space-y-1">
+                      <h4 className="text-xs font-black text-emerald-300 uppercase tracking-wider">Privacy-First Savings Dial</h4>
+                      <p className="text-[10px] text-teal-100/70 max-w-[200px]">Logs your rewards value manually without scanning statements.</p>
+                    </div>
+                  </div>
+
+                  {/* Savings Stats Breakdowns */}
+                  <div className="md:col-span-2 bg-white border border-slate-150 p-6 rounded-3xl shadow-sm flex flex-col justify-between space-y-4">
+                    <div className="space-y-3">
+                      <h3 className="font-extrabold text-slate-800 text-sm flex items-center space-x-1.5 border-b border-slate-100 pb-2">
+                        <Wallet className="h-4 w-4 text-teal-600" />
+                        <span>Manual Rewards Savings Breakdown</span>
+                      </h3>
+                      <div className="grid grid-cols-3 gap-4 pt-1">
+                        <div className="space-y-1">
+                          <span className="text-[10px] uppercase font-bold text-slate-400">Statement Credits</span>
+                          <p className="text-lg font-black text-slate-700">${totalCreditSaved.toFixed(2)}</p>
+                        </div>
+                        <div className="space-y-1">
+                          <span className="text-[10px] uppercase font-bold text-slate-400">Sub Perks saved</span>
+                          <p className="text-lg font-black text-slate-700">${totalSubscriptionSaved.toFixed(2)}</p>
+                        </div>
+                        <div className="space-y-1">
+                          <span className="text-[10px] uppercase font-bold text-slate-400">Synced deals used</span>
+                          <p className="text-lg font-black text-slate-700">${totalMerchantSaved.toFixed(2)}</p>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="bg-emerald-50/50 border border-emerald-100/60 p-3 rounded-2xl flex items-start space-x-2.5">
+                      <Shield className="h-4 w-4 text-emerald-600 shrink-0 mt-0.5" />
+                      <div className="space-y-0.5">
+                        <span className="text-[10px] font-black text-emerald-800 uppercase tracking-wider flex items-center space-x-1">
+                          <Lock className="h-3 w-3 mr-0.5" />
+                          <span>Privacy Shield Active</span>
+                        </span>
+                        <p className="text-[10px] text-emerald-700/80 leading-normal font-medium">
+                          SwipeRight does not read your bank statements or track transactions. This tracker operates purely on manual entries to keep your personal data 100% private.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Main Content Split: Left Wallet Credits, Right Synced Deals */}
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                  {/* Left Column: Wallet Benefits & Credits */}
+                  <div className="space-y-4">
+                    <h3 className="text-sm font-black text-slate-800 uppercase tracking-wider flex items-center space-x-1.5">
+                      <span>💳 My Wallet Credits & Perks ({portfolioCardIds.length} cards)</span>
+                    </h3>
+
+                    {portfolioCards.length > 0 ? (
+                      <div className="space-y-4">
+                        {portfolioCards.map((userCard) => {
+                          const card = userCard?.card;
+                          if (!card) return null;
+                          const benefits = getCardBenefits(card.id);
+                          if (benefits.length === 0) return null;
+
+                          return (
+                            <Card key={userCard.id} className="border border-slate-150 p-5 rounded-2xl bg-white space-y-4 hover:shadow-md transition-all">
+                              <div className="flex items-center justify-between border-b border-slate-100 pb-2">
+                                <div>
+                                  <span className="text-[9px] uppercase font-black tracking-wider text-teal-600 block">{card.issuer}</span>
+                                  <h4 className="text-xs font-black text-slate-800">{userCard.nickname || card.name}</h4>
+                                </div>
+                                <span className="text-[9px] font-black bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full border border-slate-200">
+                                  {card.network}
+                                </span>
+                              </div>
+
+                              <div className="space-y-4">
+                                {benefits.map((b) => (
+                                  <div key={b.id} className="space-y-2">
+                                    {b.type === 'statement_credit' ? (
+                                      <div className="space-y-1.5">
+                                        <div className="flex justify-between items-start">
+                                          <div className="space-y-0.5 max-w-[70%]">
+                                            <span className="text-[10px] font-black text-slate-700">{b.name}</span>
+                                            <p className="text-[9px] text-slate-500 leading-normal">{b.description}</p>
+                                          </div>
+                                          <div className="text-right">
+                                            <span className="text-xs font-black text-slate-800">${creditSavings[b.id] || 0}</span>
+                                            <span className="text-[9px] text-slate-400 block font-semibold">/ ${b.maxValue} {b.period}</span>
+                                          </div>
+                                        </div>
+                                        <div className="flex items-center space-x-3 pt-1">
+                                          <div className="flex-1">
+                                            <Slider
+                                              value={[creditSavings[b.id] || 0]}
+                                              max={b.maxValue}
+                                              step={1}
+                                              onValueChange={(val) => {
+                                                setCreditSavings(prev => ({ ...prev, [b.id]: val[0] }));
+                                              }}
+                                              className="w-full"
+                                            />
+                                          </div>
+                                          <button
+                                            onClick={() => setCreditSavings(prev => ({ ...prev, [b.id]: b.maxValue }))}
+                                            className="text-[9px] font-black text-teal-600 bg-teal-50 border border-teal-100 rounded-md px-2 py-0.5 hover:bg-teal-100 transition-colors"
+                                          >
+                                            Max
+                                          </button>
+                                        </div>
+                                      </div>
+                                    ) : (
+                                      <div className="flex items-center justify-between p-3 bg-slate-50/60 border border-slate-100 rounded-xl hover:bg-slate-50 transition-all">
+                                        <div className="space-y-0.5 max-w-[70%]">
+                                          <span className="text-[10px] font-black text-slate-700 block">{b.name}</span>
+                                          <p className="text-[9px] text-slate-500 leading-normal">{b.description}</p>
+                                        </div>
+                                        <div className="flex items-center space-x-2 shrink-0">
+                                          <Badge className="bg-teal-50 text-teal-700 border border-teal-100 text-[9px] font-bold py-px">
+                                            +${b.maxValue}/mo
+                                          </Badge>
+                                          <Switch
+                                            checked={!!subscriptionSavings[b.id]}
+                                            onCheckedChange={(checked) => {
+                                              setSubscriptionSavings(prev => ({ ...prev, [b.id]: checked }));
+                                            }}
+                                          />
+                                        </div>
+                                      </div>
+                                    )}
+                                  </div>
+                                ))}
+                              </div>
+                            </Card>
+                          );
+                        })}
+                      </div>
+                    ) : (
+                      <div className="text-center py-8 bg-slate-50 rounded-2xl border border-slate-150 p-6">
+                        <p className="text-sm text-gray-500">No cards in your portfolio. Add cards to start tracking statement credits.</p>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Right Column: Expiring Sycned Merchant Offers */}
+                  <div className="space-y-4">
+                    <h3 className="text-sm font-black text-slate-800 uppercase tracking-wider flex items-center space-x-1.5">
+                      <span>🏷️ Synced Merchant Deals ({targetedOffers.filter((o: any) => !merchantRedeemed[o.offerId]).length} active)</span>
+                    </h3>
+
+                    {isOffersLoading ? (
+                      <div className="space-y-4">
+                        {[...Array(2)].map((_, i) => (
+                          <div key={i} className="h-28 bg-gray-150 animate-pulse rounded-2xl border border-slate-100" />
+                        ))}
+                      </div>
+                    ) : targetedOffers.filter((o: any) => !merchantRedeemed[o.offerId]).length > 0 ? (
+                      <div className="grid grid-cols-1 gap-4">
+                        {targetedOffers.filter((o: any) => !merchantRedeemed[o.offerId]).map((offer: any) => {
+                          const isUrgent = offer.offerDescription.toLowerCase().includes("10%") || offer.offerDescription.toLowerCase().includes("10") || offer.offerDescription.toLowerCase().includes("$25");
+                          return (
+                            <Card key={offer.offerId} className="border border-slate-150 rounded-2xl p-5 bg-gradient-to-br from-white to-slate-50/20 hover:shadow-lg transition-all flex flex-col justify-between space-y-4 shadow-sm">
+                              <div className="space-y-1">
+                                <div className="flex items-center justify-between">
+                                  <span className="text-[10px] uppercase font-black tracking-wider text-orange-600 bg-orange-50 px-2 py-0.5 rounded border border-orange-100">{offer.cardName}</span>
+                                  <Badge className={isUrgent ? "bg-red-100 text-red-700 border border-red-200 text-[9px] font-bold" : "bg-teal-100 text-teal-700 border border-teal-200 text-[9px] font-bold"}>
+                                    {isUrgent ? "Expiring Soon!" : "Active"}
+                                  </Badge>
+                                </div>
+                                <h4 className="text-sm font-black text-slate-850 pt-1">{offer.merchantName}</h4>
+                                <p className="text-xs text-slate-650 leading-relaxed font-semibold">{offer.offerDescription}</p>
+                              </div>
+
+                              {showOfferPurchaseId === offer.offerId ? (
+                                <div className="bg-slate-50/70 border border-slate-155 rounded-xl p-3 space-y-3 animate-in fade-in slide-in-from-top-1 duration-200">
+                                  <div className="space-y-1">
+                                    <Label htmlFor={`amt-${offer.offerId}`} className="text-[10px] font-black text-slate-600">Enter Purchase Amount:</Label>
+                                    <div className="relative">
+                                      <span className="absolute left-2.5 top-1/2 transform -translate-y-1/2 text-xs font-bold text-slate-400">$</span>
+                                      <Input
+                                        id={`amt-${offer.offerId}`}
+                                        type="number"
+                                        placeholder="0.00"
+                                        value={merchantPurchaseAmounts[offer.offerId] || ''}
+                                        onChange={(e) => setMerchantPurchaseAmounts(prev => ({ ...prev, [offer.offerId]: e.target.value }))}
+                                        className="pl-6 py-1 h-8 text-xs font-bold"
+                                      />
+                                    </div>
+                                  </div>
+                                  
+                                  {(() => {
+                                    const amt = parseFloat(merchantPurchaseAmounts[offer.offerId] || '0');
+                                    let savings = 0;
+                                    if (offer.cashbackRate) {
+                                      savings = (offer.cashbackRate * amt) / 100;
+                                    } else if (offer.cashbackAmount) {
+                                      savings = offer.cashbackAmount / 100;
+                                    }
+                                    return (
+                                      <div className="flex items-center justify-between text-[10px] font-bold">
+                                        <span className="text-slate-500">Estimated Saving:</span>
+                                        <span className="text-emerald-600 font-extrabold text-xs">${savings.toFixed(2)}</span>
+                                      </div>
+                                    );
+                                  })()}
+
+                                  <div className="flex space-x-2">
+                                    <Button
+                                      size="sm"
+                                      variant="outline"
+                                      onClick={() => {
+                                        setShowOfferPurchaseId(null);
+                                        setMerchantPurchaseAmounts(prev => ({ ...prev, [offer.offerId]: '' }));
+                                      }}
+                                      className="h-7 text-[10px] flex-1 font-bold rounded-lg border-slate-200"
+                                    >
+                                      Cancel
+                                    </Button>
+                                    <Button
+                                      size="sm"
+                                      onClick={() => {
+                                        const amt = parseFloat(merchantPurchaseAmounts[offer.offerId] || '0');
+                                        let savings = 0;
+                                        if (offer.cashbackRate) {
+                                          savings = (offer.cashbackRate * amt) / 100;
+                                        } else if (offer.cashbackAmount) {
+                                          savings = offer.cashbackAmount / 100;
+                                        }
+                                        setMerchantRedeemed(prev => ({ ...prev, [offer.offerId]: true }));
+                                        setMerchantSavings(prev => ({ ...prev, [offer.offerId]: savings }));
+                                        setShowOfferPurchaseId(null);
+                                        
+                                        // Call mock API in background to save state
+                                        backend.cards.markOfferAsUsed({ userId: user?.userId || 'mock', offerId: offer.offerId });
+
+                                        toast({
+                                          title: "Savings Logged!",
+                                          description: `Logged $${savings.toFixed(2)} cash back saved at ${offer.merchantName}!`,
+                                        });
+                                      }}
+                                      className="h-7 text-[10px] flex-1 bg-teal-50 hover:bg-teal-600 text-white font-extrabold rounded-lg shadow-md border-0"
+                                    >
+                                      Log Savings
+                                    </Button>
+                                  </div>
+                                </div>
+                              ) : (
+                                <div className="flex items-center justify-between pt-2 border-t border-slate-100/60 text-[10px] font-bold">
+                                  <span className="text-red-600 font-extrabold bg-red-50/60 px-2 py-0.5 rounded-full border border-red-100">Ends: {new Date(offer.endDate).toLocaleDateString()}</span>
+                                  <button
+                                    onClick={() => setShowOfferPurchaseId(offer.offerId)}
+                                    className="text-emerald-600 bg-emerald-50 px-2.5 py-1 rounded-lg border border-emerald-100 hover:bg-emerald-100 transition-all flex items-center space-x-1"
+                                  >
+                                    <CheckCircle className="h-3 w-3 mr-0.5" />
+                                    <span>Log Savings</span>
+                                  </button>
+                                </div>
+                              )}
+                            </Card>
+                          );
+                        })}
+                      </div>
+                    ) : (
+                      <Card className="border border-dashed border-slate-200 rounded-3xl p-8 text-center bg-slate-50/50">
+                        <p className="text-sm text-gray-500 font-semibold">No active expiring merchant offers found.</p>
+                        <p className="text-xs text-slate-400 mt-1">Make sure you have added cards like <b>Chase Sapphire Preferred</b> or <b>American Express Gold Card</b> to see active merchant deals.</p>
+                      </Card>
+                    )}
+                  </div>
+                </div>
+
+                {/* Bottom Folder: Redeemed Offers */}
+                {Object.keys(merchantRedeemed).filter(k => merchantRedeemed[k]).length > 0 && (
+                  <div className="space-y-4 pt-6 border-t border-slate-150">
+                    <h4 className="text-xs uppercase font-extrabold tracking-widest text-slate-400 flex items-center space-x-1.5">
+                      <CheckCircle className="h-4 w-4 text-emerald-500" />
+                      <span>✓ Redeemed Sync Offers ({Object.keys(merchantRedeemed).filter(k => merchantRedeemed[k]).length})</span>
+                    </h4>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+                      {targetedOffers.filter((o: any) => merchantRedeemed[o.offerId]).map((offer: any) => (
+                        <Card key={offer.offerId} className="border border-slate-100 bg-slate-50/40 p-4 rounded-2xl flex items-center justify-between hover:bg-slate-50 transition-all">
+                          <div className="space-y-0.5 pr-2">
+                            <span className="text-[9px] uppercase font-black text-slate-400 block">{offer.cardName}</span>
+                            <span className="text-xs font-black text-slate-500 line-through block leading-tight">{offer.merchantName}</span>
+                            <span className="text-[10px] text-emerald-600 font-extrabold block">Saved: ${merchantSavings[offer.offerId]?.toFixed(2) || '0.00'}</span>
+                          </div>
+                          <button
+                            onClick={() => {
+                              setMerchantRedeemed(prev => {
+                                const copy = { ...prev };
+                                delete copy[offer.offerId];
+                                return copy;
+                              });
+                              setMerchantSavings(prev => {
+                                const copy = { ...prev };
+                                delete copy[offer.offerId];
+                                return copy;
+                              });
+                            }}
+                            className="text-[9px] font-black text-slate-400 hover:text-slate-600 bg-slate-100 hover:bg-slate-200 border border-slate-200 px-2 py-0.5 rounded-md transition-colors"
+                          >
+                            Undo
+                          </button>
+                        </Card>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            );
+          })()}
+        </TabsContent>
       </Tabs>
     </div>
   );
@@ -618,16 +1098,78 @@ const getAnnualCredits = (cardId: number) => {
   }
 };
 
+export interface CardBenefit {
+  id: string;
+  name: string;
+  description: string;
+  type: "statement_credit" | "subscription";
+  period: "monthly" | "yearly" | "semi-annually";
+  maxValue: number;
+  unit: "$" | "count";
+  step?: number;
+}
+
+export const getCardBenefits = (cardId: number): CardBenefit[] => {
+  switch (cardId) {
+    case 101: // Chase Sapphire Preferred
+      return [
+        { id: "101_hotel", name: "$50 Annual Hotel Credit", description: "Statement credit for hotels booked through Chase Travel.", type: "statement_credit", period: "yearly", maxValue: 50, unit: "$" },
+        { id: "101_dashpass", name: "DoorDash DashPass", description: "Complimentary DashPass membership covering delivery fees.", type: "subscription", period: "monthly", maxValue: 9.99, unit: "$" }
+      ];
+    case 107: // Chase Sapphire Reserve
+      return [
+        { id: "107_travel", name: "$300 Annual Travel Credit", description: "Automatic statement credit for general travel purchases.", type: "statement_credit", period: "yearly", maxValue: 300, unit: "$" },
+        { id: "107_dashpass", name: "DoorDash DashPass", description: "Complimentary DashPass membership covering delivery fees.", type: "subscription", period: "monthly", maxValue: 9.99, unit: "$" },
+        { id: "107_doordash_credit", name: "$5 Monthly DoorDash Credit", description: "Monthly statement credit added to your DoorDash account.", type: "statement_credit", period: "monthly", maxValue: 5, unit: "$" }
+      ];
+    case 102: // Amex Gold
+      return [
+        { id: "102_dining", name: "$120 Dining Credit ($10/mo)", description: "Statement credit spent at Grubhub, Cheesecake Factory, Resy, etc.", type: "statement_credit", period: "monthly", maxValue: 10, unit: "$" },
+        { id: "102_uber", name: "$120 Uber Cash ($10/mo)", description: "Monthly Uber Cash added to your Uber account for rides or eats.", type: "statement_credit", period: "monthly", maxValue: 10, unit: "$" },
+        { id: "102_dunkin", name: "$84 Dunkin' Credit ($7/mo)", description: "Monthly statement credit spent at Dunkin' locations.", type: "statement_credit", period: "monthly", maxValue: 7, unit: "$" },
+        { id: "102_resy", name: "$100 Resy Credit ($50 semi-annually)", description: "Semi-annual statement credit for Resy dining.", type: "statement_credit", period: "semi-annually", maxValue: 50, unit: "$" }
+      ];
+    case 110: // Amex Platinum
+      return [
+        { id: "110_hotel", name: "$200 Fine Hotels + Resorts Credit", description: "Prepaid FHR hotel statement credit booked via Amex Travel.", type: "statement_credit", period: "yearly", maxValue: 200, unit: "$" },
+        { id: "110_airline", name: "$200 Airline Fee Credit", description: "Statement credit for airline incidental fees.", type: "statement_credit", period: "yearly", maxValue: 200, unit: "$" },
+        { id: "110_uber", name: "$200 Uber Cash ($15/mo, $35 Dec)", description: "Monthly Uber Cash added for U.S. rides and Uber Eats.", type: "statement_credit", period: "monthly", maxValue: 15, unit: "$" },
+        { id: "110_digital", name: "$240 Digital Entertainment Credit ($20/mo)", description: "Statement credit for Disney+, Peacock, NYTimes, etc.", type: "statement_credit", period: "monthly", maxValue: 20, unit: "$" },
+        { id: "110_clear", name: "$189 CLEAR® Plus Credit", description: "Statement credit for annual CLEAR Plus membership.", type: "statement_credit", period: "yearly", maxValue: 189, unit: "$" },
+        { id: "110_walmart", name: "Walmart+ Membership Credit ($12.95/mo)", description: "Statement credit covering full Walmart+ membership cost.", type: "subscription", period: "monthly", maxValue: 12.95, unit: "$" },
+        { id: "110_saks", name: "$100 Saks Credit ($50 semi-annually)", description: "Semi-annual statement credit for Saks purchases.", type: "statement_credit", period: "semi-annually", maxValue: 50, unit: "$" }
+      ];
+    case 106: // Venture X
+      return [
+        { id: "106_travel", name: "$300 Annual Travel Credit", description: "Statement credit for travel booked via Capital One Travel.", type: "statement_credit", period: "yearly", maxValue: 300, unit: "$" },
+        { id: "106_anniversary", name: "10,000 Anniversary Miles ($100 value)", description: "Anniversary bonus miles awarded every year.", type: "statement_credit", period: "yearly", maxValue: 100, unit: "$" }
+      ];
+    case 104: // Amex Blue Cash Preferred
+      return [
+        { id: "104_disney", name: "Disney+ Bundle Credit ($7/mo)", description: "Monthly statement credit for Disney+ subscription bundle.", type: "statement_credit", period: "monthly", maxValue: 7, unit: "$" },
+        { id: "104_equinox", name: "Equinox Credit ($10/mo)", description: "Monthly statement credit for Equinox app/club membership.", type: "statement_credit", period: "monthly", maxValue: 10, unit: "$" }
+      ];
+    case 108: // Capital One SavorOne
+      return [
+        { id: "108_uber_one", name: "Uber One Membership Credit", description: "Monthly membership fee fully covered by statement credit.", type: "subscription", period: "monthly", maxValue: 9.99, unit: "$" }
+      ];
+    default:
+      return [];
+  }
+};
+
 function CreditCardRender({ 
   name, 
   issuer, 
   network, 
-  imageUrl 
+  annualFee,
+  bestRate
 }: { 
   name: string; 
   issuer: string; 
   network: string; 
-  imageUrl?: string; 
+  annualFee?: number;
+  bestRate?: string;
 }) {
   const [imageError, setImageError] = useState(false);
   const normalizedIssuer = issuer.toLowerCase();
@@ -704,22 +1246,7 @@ function CreditCardRender({
     }
   };
 
-  if (imageUrl && !imageError) {
-    return (
-      <div className="relative w-full aspect-[1.586/1] rounded-2xl overflow-hidden shadow-lg border border-gray-100 transition-all duration-300">
-        <img 
-          src={imageUrl} 
-          alt={name}
-          className="w-full h-full object-cover"
-          onError={() => setImageError(true)}
-        />
-        {/* Apple HIG soft glare layer */}
-        <div className="absolute inset-0 bg-gradient-to-tr from-transparent via-white/5 to-white/10 pointer-events-none" />
-      </div>
-    );
-  }
-
-  // Premium CSS fallback
+  // Premium CSS layout (always used to keep themed HSL designs and avoid slow/broken hotlink block raw images)
   return (
     <div className={`relative w-full aspect-[1.586/1] rounded-2xl p-5 flex flex-col justify-between overflow-hidden bg-gradient-to-br transition-all duration-500 shadow-xl ${getCardStyle()}`}>
       <div className="absolute inset-0 bg-gradient-to-tr from-transparent via-white/5 to-white/12 pointer-events-none" />
@@ -740,15 +1267,28 @@ function CreditCardRender({
       </div>
 
       {/* Bottom Section */}
-      <div className="flex justify-between items-end z-10">
-        <div className="space-y-0.5">
-          <span className="text-[8px] uppercase tracking-widest opacity-70 block font-semibold">Wallet Wingman</span>
-          <span className="text-[9px] font-mono tracking-widest opacity-85 block">•••• •••• •••• 2026</span>
-        </div>
-        <div className="flex items-center justify-center">
-          {renderNetworkLogo()}
-        </div>
-      </div>
+      {(() => {
+        const isLightCard = normalizedIssuer.includes('apple') || 
+                            (normalizedIssuer.includes('american express') && normalizedName.includes('platinum')) ||
+                            (normalizedIssuer.includes('amex') && normalizedName.includes('platinum'));
+        return (
+          <div className="flex justify-between items-end z-10">
+            <div className="space-y-0.5">
+              <span className={`text-[10px] uppercase tracking-wider block font-bold ${isLightCard ? 'text-slate-800 opacity-90' : 'text-white opacity-85'}`}>
+                Fee: {annualFee === 0 ? 'No Annual Fee' : `$${annualFee}/yr`}
+              </span>
+              {bestRate && (
+                <span className={`text-[10px] font-black block leading-none ${isLightCard ? 'text-slate-950' : 'text-emerald-350'}`}>
+                  Top Rate: {bestRate}
+                </span>
+              )}
+            </div>
+            <div className="flex items-center justify-center">
+              {renderNetworkLogo()}
+            </div>
+          </div>
+        );
+      })()}
 
       {/* Futuristic soft background circle mesh */}
       <div className="absolute -right-12 -bottom-12 w-28 h-28 bg-white/5 rounded-full blur-xl pointer-events-none" />
@@ -799,7 +1339,8 @@ function ComprehensiveCardComponent({
           name={card.name} 
           issuer={card.issuer} 
           network={card.network} 
-          imageUrl={card.imageUrl} 
+          annualFee={card.annualFee}
+          bestRate={bestCategory.cashbackRate > 0 ? `${bestCategory.cashbackRate}% ${bestCategory.category}` : undefined}
         />
       </div>
 
@@ -951,7 +1492,8 @@ function PortfolioCardComponent({ userCard }: { userCard: UserCard }) {
           name={card.name} 
           issuer={card.issuer} 
           network={card.network} 
-          imageUrl={card.imageUrl} 
+          annualFee={card.annualFee}
+          bestRate={bestCategory.cashbackRate > 0 ? `${bestCategory.cashbackRate}% ${bestCategory.category}` : undefined}
         />
       </div>
 

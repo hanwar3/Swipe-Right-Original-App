@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, Mail, Lock, User, Eye, EyeOff } from 'lucide-react';
+import { X, Mail, Lock, User, Eye, EyeOff, Sparkles } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -22,6 +22,7 @@ export default function AuthModal({ isOpen, onClose, initialMode = 'signin' }: A
   const [lastName, setLastName] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [authAlert, setAuthAlert] = useState<string | null>(null);
   
   const { login, register, forgotPassword } = useAuth();
   const { toast } = useToast();
@@ -32,11 +33,13 @@ export default function AuthModal({ isOpen, onClose, initialMode = 'signin' }: A
     setFirstName('');
     setLastName('');
     setShowPassword(false);
+    setAuthAlert(null);
   };
 
   const handleClose = () => {
     resetForm();
     setMode('signin');
+    setAuthAlert(null);
     onClose();
   };
 
@@ -79,18 +82,18 @@ export default function AuthModal({ isOpen, onClose, initialMode = 'signin' }: A
   };
 
   const handleGoogleSignIn = async () => {
-    // In a real implementation, integrate with Google OAuth
+    setAuthAlert("Google Sign-In is coming soon to SwipeRight! For now, please use the Email registration or sign-in form above to access your dynamic, privacy-first wallet. It is fully functional and secure!");
     toast({
       title: "Coming Soon",
-      description: "Google sign-in will be available soon!",
+      description: "Google sign-in is coming soon!",
     });
   };
 
   const handleAppleSignIn = async () => {
-    // In a real implementation, integrate with Apple OAuth
+    setAuthAlert("Apple Sign-In is coming soon to SwipeRight! For now, please use the Email registration or sign-in form above to access your dynamic, privacy-first wallet. It is fully functional and secure!");
     toast({
       title: "Coming Soon",
-      description: "Apple sign-in will be available soon!",
+      description: "Apple sign-in is coming soon!",
     });
   };
 
@@ -248,6 +251,18 @@ export default function AuthModal({ isOpen, onClose, initialMode = 'signin' }: A
                   Apple
                 </Button>
               </div>
+
+              {authAlert && (
+                <div className="bg-orange-50 border border-orange-200/60 p-3 rounded-xl space-y-1 text-orange-950 mt-2 animate-in fade-in slide-in-from-top-1 duration-200">
+                  <div className="flex items-center space-x-1 text-xs font-bold text-orange-850">
+                    <Sparkles className="h-3.5 w-3.5 text-orange-500 fill-orange-500/20" />
+                    <span>Coming Soon to Mobile!</span>
+                  </div>
+                  <p className="text-[10px] leading-normal font-semibold text-orange-700">
+                    {authAlert}
+                  </p>
+                </div>
+              )}
             </>
           )}
 
@@ -257,7 +272,7 @@ export default function AuthModal({ isOpen, onClose, initialMode = 'signin' }: A
                 Don't have an account?{' '}
                 <button
                   type="button"
-                  onClick={() => setMode('signup')}
+                  onClick={() => { setMode('signup'); setAuthAlert(null); }}
                   className="text-teal-600 hover:text-teal-700 font-medium"
                 >
                   Create one
@@ -268,7 +283,7 @@ export default function AuthModal({ isOpen, onClose, initialMode = 'signin' }: A
                 Already have an account?{' '}
                 <button
                   type="button"
-                  onClick={() => setMode('signin')}
+                  onClick={() => { setMode('signin'); setAuthAlert(null); }}
                   className="text-teal-600 hover:text-teal-700 font-medium"
                 >
                   Sign in
@@ -279,7 +294,7 @@ export default function AuthModal({ isOpen, onClose, initialMode = 'signin' }: A
                 Remember your password?{' '}
                 <button
                   type="button"
-                  onClick={() => setMode('signin')}
+                  onClick={() => { setMode('signin'); setAuthAlert(null); }}
                   className="text-teal-600 hover:text-teal-700 font-medium"
                 >
                   Sign in
