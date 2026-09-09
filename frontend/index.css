@@ -159,3 +159,45 @@ body { background: #000; }
     transition-duration: 0.01ms !important;
   }
 }
+
+/* ---------------------------------------------------------------
+   Card stack: the light each slab throws forward, plus the top sheen.
+   These need pseudo-elements, so they live here rather than in utilities.
+   --------------------------------------------------------------- */
+.stackcard::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: linear-gradient(172deg, rgba(255, 255, 255, .34), rgba(255, 255, 255, 0) 52%);
+  pointer-events: none;
+}
+.stackcard::before {
+  content: "";
+  position: absolute;
+  left: -6%;
+  right: -6%;
+  bottom: -26px;
+  height: 74px;
+  border-radius: 50%;
+  background: var(--face);
+  opacity: var(--glow, .3);
+  filter: blur(30px);
+  pointer-events: none;
+  z-index: -1;
+  transition: opacity .4s ease;
+}
+
+/* Route transitions. The screen the user leaves settles back, the one they
+   arrive at rises into place. */
+@keyframes screen-in {
+  from { opacity: 0; transform: translateY(14px) scale(.985); }
+  to   { opacity: 1; transform: none; }
+}
+.screen-enter {
+  animation: screen-in .42s cubic-bezier(.16, 1, .3, 1) both;
+}
+@media (prefers-reduced-motion: reduce) {
+  .screen-enter { animation: none; }
+  .stackcard::before { transition: none; }
+}
