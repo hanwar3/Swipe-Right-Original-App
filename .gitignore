@@ -4,3 +4,14 @@ encore.gen.cue
 /.encore
 node_modules
 /encore.gen
+
+# Local secrets — never commit (repo is public)
+secrets.local.json
+encore-local.secrets.json
+backend/secrets.local.json
+backend/encore-local.secrets.json
+*.secrets.json
+
+# build artifacts
+backend/tsconfig.tsbuildinfo
+frontend/dist/

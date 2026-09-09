@@ -51,7 +51,7 @@ export const fetchCardData = api<FetchCardDataRequest, FetchCardDataResponse>(
         return { cardData: null, found: false };
       }
 
-      const searchData = await searchResponse.json();
+      const searchData = await searchResponse.json() as any;
       
       if (!searchData.cards || searchData.cards.length === 0) {
         return { cardData: null, found: false };
@@ -71,7 +71,7 @@ export const fetchCardData = api<FetchCardDataRequest, FetchCardDataResponse>(
         return { cardData: null, found: false };
       }
 
-      const cardDetail = await detailResponse.json();
+      const cardDetail = await detailResponse.json() as any;
       
       // Transform the API response to our format
       const cardData: ExternalCardData = {

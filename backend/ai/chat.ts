@@ -1,63 +1,144 @@
 import { api } from "encore.dev/api";
 import { secret } from "encore.dev/config";
+import { runDecision, normalizeCategory, type DecideResponse } from "../cards/decide";
 
-const openAIApiKey = secret("OpenAIApiKey");
+const geminiApiKey = secret("GeminiApiKey");
+
+/**
+ * The conversational front door.
+ *
+ * The important thing here is what the model is NOT allowed to do: it never
+ * decides which card wins, never computes a rate, and never invents a benefit.
+ * runDecision() settles all of that from the database first; the model receives
+ * the finished decision and is asked only to say it like a person would.
+ *
+ * If the model is slow, rate-limited, or misconfigured, decision.spoken is
+ * already a correct sentence — so the feature degrades to "less charming"
+ * rather than "broken", which is what the old hardcoded-prompt version did.
+ */
 
 export interface ChatRequest {
   message: string;
+  /** Without this the answer cannot be personal — it falls back to general advice. */
+  userId?: string;
+  /** Purchase amount in cents. Unlocks the cashback-versus-expiring-credit math. */
+  amountCents?: number;
   context?: string;
 }
 
 export interface ChatResponse {
   response: string;
+  /** The structured decision, so the UI can render cards instead of parsing prose. */
+  decision?: DecideResponse;
+  /** True when the model was unavailable and the deterministic sentence was used. */
+  fallback: boolean;
 }
 
-// Processes user queries about credit card optimization and cashback strategies.
+const SYSTEM_RULES = `You are SwipeRight, speaking to someone standing at a checkout counter.
+
+You will be given a DECISION object that has already been computed from the user's
+actual card portfolio. It is authoritative.
+
+Hard rules:
+- Never contradict the decision. Never change a card, a rate, or a dollar figure.
+- Never mention a card that is not in the decision.
+- If the decision has no winner, say so plainly. Do not invent a recommendation.
+- Lead with the card name. The person is in a hurry.
+- One or two short sentences. No markdown, no lists, no preamble.
+- If a nudge is present and overridesWinner is true, the nudge IS the recommendation.
+- Sound like a knowledgeable friend, not a bank.`;
+
+async function phrase(decision: DecideResponse, message: string): Promise<string | null> {
+  let key: string;
+  try {
+    key = geminiApiKey();
+    if (!key) return null;
+  } catch {
+    return null; // secret not configured — caller falls back
+  }
+
+  try {
+    const res = await fetch(
+      "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent",
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "X-goog-api-key": key },
+        body: JSON.stringify({
+          contents: [
+            {
+              parts: [
+                { text: SYSTEM_RULES },
+                { text: `DECISION:\n${JSON.stringify(decision, null, 2)}` },
+                { text: `The user said: "${message}"\n\nSay the answer.` },
+              ],
+            },
+          ],
+          generationConfig: { temperature: 0.4, maxOutputTokens: 160 },
+        }),
+      }
+    );
+
+    if (!res.ok) return null;
+    const data = (await res.json()) as any;
+    const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
+    return typeof text === "string" && text.trim() ? text.trim() : null;
+  } catch {
+    return null;
+  }
+}
+
 export const chat = api<ChatRequest, ChatResponse>(
   { expose: true, method: "POST", path: "/ai/chat" },
   async (req) => {
-    const systemPrompt = `You are SwipeRight AI, an expert credit card advisor. Help users maximize their cashback and rewards by:
-
-1. Recommending the best cards for specific purchases (groceries, gas, dining, etc.)
-2. Explaining how to track rotating category benefits and annual limits
-3. Providing strategies to optimize credit card usage
-4. Answering questions about credit card features and benefits
-
-Keep responses concise, helpful, and focused on maximizing rewards. Always consider the user's spending patterns and suggest practical advice.
-
-Context about available cards: Chase Freedom Flex (5% rotating categories), Chase Sapphire Reserve (3% travel/dining), Amex Gold (4% dining/groceries), Citi Double Cash (2% everything), Discover it (5% rotating), and many others.`;
-
-    try {
-      const response = await fetch('https://api.openai.com/v1/chat/completions', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${openAIApiKey()}`
-        },
-        body: JSON.stringify({
-          model: 'gpt-4o-mini',
-          messages: [
-            { role: 'system', content: systemPrompt },
-            { role: 'user', content: req.message }
-          ],
-          max_tokens: 500,
-          temperature: 0.7
-        })
-      });
-
-      if (!response.ok) {
-        throw new Error(`OpenAI API error: ${response.status}`);
-      }
-
-      const data = await response.json();
-      const aiResponse = data.choices?.[0]?.message?.content || "I'm sorry, I couldn't process your request. Please try again.";
-
-      return { response: aiResponse };
-    } catch (error) {
-      console.error('AI chat error:', error);
-      return { 
-        response: "I'm experiencing technical difficulties. Please try asking your question again in a moment." 
+    // No user means no portfolio, so there is nothing honest to recommend.
+    if (!req.userId) {
+      return {
+        response:
+          "Sign in and add your cards, and I can tell you exactly which one to pull out. Right now I don't know what's in your wallet.",
+        fallback: true,
       };
     }
+
+    const decision = await runDecision(req.userId, req.message, req.amountCents);
+    const spoken = await phrase(decision, req.message);
+
+    return {
+      response: spoken || decision.spoken,
+      decision,
+      fallback: spoken === null,
+    };
   }
+);
+
+/**
+ * Voice/assistant entry point. Same engine, terser output, and it never waits
+ * on the model — a voice answer that arrives late is worse than a plain one
+ * that arrives now.
+ */
+export interface AssistantRequest {
+  userId: string;
+  query: string;
+  amountCents?: number;
+}
+
+export interface AssistantResponse {
+  response: string;
+  decision?: DecideResponse;
+}
+
+export const assistantRecommend = api<AssistantRequest, AssistantResponse>(
+  { expose: true, method: "GET", path: "/ai/assistant/recommend" },
+  async (req) => {
+    if (!req.userId || !req.query) {
+      return { response: "I need to know who you are and what you're buying." };
+    }
+    const decision = await runDecision(req.userId, req.query, req.amountCents);
+    return { response: decision.spoken, decision };
+  }
+);
+
+/** Exposed so the frontend can pre-resolve a spoken phrase to a category chip. */
+export const categoryOf = api<{ text: string }, { categoryKey: string }>(
+  { expose: true, method: "GET", path: "/ai/category" },
+  async (req) => ({ categoryKey: normalizeCategory(req.text) })
 );
