@@ -1,0 +1,19 @@
+{
+  "previewPort": 3000,
+  "healthPath": "/",
+  "startCommand": "docker compose -f docker-compose.base44.yml up -d",
+  "secrets": [
+    {
+      "name": "OpenAIApiKey",
+      "description": "OpenAI API key for the AI chat assistant (https://platform.openai.com/api-keys). Optional — the app boots without it; only the AI Chat feature needs it."
+    },
+    {
+      "name": "GeminiApiKey",
+      "description": "Google Gemini API key for the AI card-recommendation assistant (https://aistudio.google.com/apikey). Optional — the app boots without it; only the AI assistant feature needs it."
+    },
+    {
+      "name": "RewardsCCApiKey",
+      "description": "RewardsCC API key for fetching external credit card data (https://rewardscc.com). Optional — the app boots without it; only the external card fetch feature needs it."
+    }
+  ]
+}

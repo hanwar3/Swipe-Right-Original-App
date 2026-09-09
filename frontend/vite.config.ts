@@ -15,5 +15,15 @@ export default defineConfig({
   mode: "development",
   build: {
     minify: false,
-  }
+  },
+  server: {
+    host: '0.0.0.0',
+    port: 5173,
+    allowedHosts: true,
+    proxy: {
+      '/auth': { target: process.env.BACKEND_URL || 'http://localhost:4000', changeOrigin: true },
+      '/cards': { target: process.env.BACKEND_URL || 'http://localhost:4000', changeOrigin: true },
+      '/ai': { target: process.env.BACKEND_URL || 'http://localhost:4000', changeOrigin: true },
+    },
+  },
 })
