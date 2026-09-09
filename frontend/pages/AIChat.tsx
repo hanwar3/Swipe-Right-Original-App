@@ -337,24 +337,24 @@ export default function AIChat() {
   return (
     <div className="max-w-4xl mx-auto px-4 py-8 h-[calc(100vh-12rem)] flex flex-col space-y-6">
       {/* Header with Mode Toggle */}
-      <div className="flex flex-col sm:flex-row items-center justify-between gap-4 border-b border-slate-100 pb-4">
+      <div className="flex flex-col sm:flex-row items-center justify-between gap-4 border-b border-white/10 pb-4">
         <div className="flex items-center space-x-3 text-left">
-          <div className="p-2.5 bg-gradient-to-r from-teal-500 to-green-500 rounded-xl text-white">
+          <div className="p-2.5 bg-gradient-to-r from-fuchsia-500 to-fuchsia-600 rounded-xl text-white">
             <Sparkles className="h-5 w-5" />
           </div>
           <div>
-            <h1 className="text-xl font-extrabold text-slate-800">SwipeRight AI Advisor</h1>
-            <p className="text-slate-500 text-xs font-semibold">Your intelligent credit rewards strategist</p>
+            <h1 className="text-xl font-extrabold text-[#9B8FA6]">SwipeRight AI Advisor</h1>
+            <p className="text-[#9B8FA6] text-xs font-semibold">Your intelligent credit rewards strategist</p>
           </div>
         </div>
 
-        <div className="flex items-center space-x-2 bg-slate-100 p-1.5 rounded-2xl border border-slate-200">
+        <div className="flex items-center space-x-2 bg-white/5 p-1.5 rounded-2xl border border-white/10">
           <Button 
             onClick={() => isVoiceMode && toggleVoiceMode()} 
             className={`rounded-xl text-xs font-extrabold px-4 py-2 flex items-center space-x-1.5 border-0 shadow-none hover:bg-transparent ${
               !isVoiceMode 
-                ? 'bg-white text-teal-600 shadow-sm' 
-                : 'bg-transparent text-slate-600'
+                ? 'bg-white/5 text-fuchsia-400 shadow-sm' 
+                : 'bg-transparent text-[#9B8FA6]'
             }`}
           >
             <MessageSquare className="h-3.5 w-3.5" />
@@ -364,8 +364,8 @@ export default function AIChat() {
             onClick={() => !isVoiceMode && toggleVoiceMode()} 
             className={`rounded-xl text-xs font-extrabold px-4 py-2 flex items-center space-x-1.5 border-0 shadow-none hover:bg-transparent ${
               isVoiceMode 
-                ? 'bg-slate-900 text-emerald-400 shadow-sm' 
-                : 'bg-transparent text-slate-600'
+                ? 'bg-white/5 text-fuchsia-400 shadow-sm' 
+                : 'bg-transparent text-[#9B8FA6]'
             }`}
           >
             <Headphones className="h-3.5 w-3.5 animate-pulse" />
@@ -376,16 +376,16 @@ export default function AIChat() {
 
       {/* Main Container */}
       {isVoiceMode ? (
-        <div className="flex-1 bg-slate-950 rounded-3xl border border-slate-900 shadow-2xl relative overflow-hidden flex flex-col items-center justify-center p-8 text-center text-white">
+        <div className="flex-1 bg-white/5 rounded-3xl border border-white/10 shadow-2xl relative overflow-hidden flex flex-col items-center justify-center p-8 text-center text-white">
           {/* Glowing backdrops */}
-          <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none" />
+          <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-fuchsia-500/10 rounded-full blur-3xl pointer-events-none" />
           
-          <div className="absolute top-6 left-6 flex items-center space-x-2 bg-slate-900/60 backdrop-blur-md px-3.5 py-1.5 rounded-full border border-slate-800">
+          <div className="absolute top-6 left-6 flex items-center space-x-2 bg-white/5 backdrop-blur-md px-3.5 py-1.5 rounded-full border border-white/10">
             <span className="flex h-2 w-2 relative">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-              <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-fuchsia-400 opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-2 w-2 bg-fuchsia-500"></span>
             </span>
-            <span className="text-[10px] font-bold text-emerald-400 uppercase tracking-widest">Active Voice Wingman</span>
+            <span className="text-[10px] font-bold text-fuchsia-400 uppercase tracking-widest">Active Voice Wingman</span>
           </div>
 
           <button 
@@ -399,7 +399,7 @@ export default function AIChat() {
           {/* Eleven Labs Glowing Green Spherical Orb */}
           <div className="relative w-64 h-64 flex items-center justify-center mb-10 mt-6 select-none">
             {/* Morphing Background Gradient Shell */}
-            <div className={`absolute inset-0 rounded-full bg-gradient-to-tr from-emerald-500 via-teal-400 to-green-600 blur-xl opacity-40 scale-110 transition-all duration-700 ${
+            <div className={`absolute inset-0 rounded-full bg-gradient-to-tr from-fuchsia-500 via-fuchsia-500 to-fuchsia-600 blur-xl opacity-40 scale-110 transition-all duration-700 ${
               voiceState === 'listening' 
                 ? 'animate-orb-pulse opacity-50' 
                 : voiceState === 'thinking' 
@@ -410,7 +410,7 @@ export default function AIChat() {
             }`} />
             
             {/* Core Morphing Orb Body */}
-            <div className={`w-48 h-48 rounded-full bg-gradient-to-tr from-emerald-600 via-teal-500 to-green-400 transition-all duration-700 shadow-[0_0_50px_rgba(16,185,129,0.4)] ${
+            <div className={`w-48 h-48 rounded-full bg-gradient-to-tr from-fuchsia-500 via-fuchsia-500 to-fuchsia-600 transition-all duration-700 shadow-[0_0_50px_rgba(230,75,212,0.4)] ${
               voiceState === 'listening' 
                 ? 'animate-orb-pulse animate-orb-morph' 
                 : voiceState === 'thinking' 
@@ -426,7 +426,7 @@ export default function AIChat() {
                 {[0.4, 0.8, 1.2, 0.7, 0.3, 0.9, 0.5, 1.1, 0.6, 0.2].map((delay, index) => (
                   <div 
                     key={index} 
-                    className="w-1.5 h-6 bg-white rounded-full animate-wave-bounce" 
+                    className="w-1.5 h-6 bg-white/5 rounded-full animate-wave-bounce" 
                     style={{ animationDelay: `${delay}s`, transformOrigin: 'center' }}
                   />
                 ))}
@@ -442,7 +442,7 @@ export default function AIChat() {
               {voiceState === 'idle' && "Tap Orb to Start Assistant"}
             </h3>
             
-            <p className="text-slate-400 text-sm font-medium leading-relaxed min-h-[3rem] px-4 italic">
+            <p className="text-[#9B8FA6] text-sm font-medium leading-relaxed min-h-[3rem] px-4 italic">
               {voiceState === 'listening' && (voiceTranscript || '"Where should I swipe my card for grocery shopping?"')}
               {voiceState === 'thinking' && "Finding matching cashback offers in database..."}
               {voiceState === 'speaking' && voiceResponse}
@@ -455,7 +455,7 @@ export default function AIChat() {
                 className={`font-extrabold rounded-2xl px-6 py-5 border-0 shadow-lg flex items-center space-x-2 cursor-pointer transition-all duration-300 ${
                   voiceState === 'listening' 
                     ? 'bg-red-500 hover:bg-red-600 text-white' 
-                    : 'bg-emerald-500 hover:bg-emerald-600 text-white animate-pulse'
+                    : 'bg-fuchsia-500 hover:bg-fuchsia-600 text-white animate-pulse'
                 }`}
               >
                 {voiceState === 'listening' ? (
@@ -483,18 +483,18 @@ export default function AIChat() {
             
             {chatMutation.isPending && (
               <div className="flex items-start space-x-3">
-                <div className="p-2.5 bg-teal-100 rounded-full">
-                  <Bot className="h-5 w-5 text-teal-600" />
+                <div className="p-2.5 bg-fuchsia-500/12 rounded-full">
+                  <Bot className="h-5 w-5 text-fuchsia-400" />
                 </div>
-                <Card className="flex-1 border-0 bg-gray-50 rounded-2xl">
+                <Card className="flex-1 border-0 bg-white/5 rounded-2xl">
                   <CardContent className="p-4">
                     <div className="flex items-center space-x-2">
                       <div className="flex space-x-1">
-                        <div className="w-2 h-2 bg-teal-500 rounded-full animate-bounce"></div>
-                        <div className="w-2 h-2 bg-teal-500 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
-                        <div className="w-2 h-2 bg-teal-500 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
+                        <div className="w-2 h-2 bg-fuchsia-500 rounded-full animate-bounce"></div>
+                        <div className="w-2 h-2 bg-fuchsia-500 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
+                        <div className="w-2 h-2 bg-fuchsia-500 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
                       </div>
-                      <span className="text-xs text-slate-500 font-bold uppercase tracking-wider">AI Advisor is computing...</span>
+                      <span className="text-xs text-[#9B8FA6] font-bold uppercase tracking-wider">AI Advisor is computing...</span>
                     </div>
                   </CardContent>
                 </Card>
@@ -507,7 +507,7 @@ export default function AIChat() {
           {/* Suggested Questions */}
           {messages.length === 1 && (
             <div className="space-y-2">
-              <p className="text-xs text-slate-500 font-bold uppercase tracking-wider">Try asking:</p>
+              <p className="text-xs text-[#9B8FA6] font-bold uppercase tracking-wider">Try asking:</p>
               <div className="flex flex-wrap gap-2">
                 {suggestedQuestions.map((question, index) => (
                   <Button
@@ -515,7 +515,7 @@ export default function AIChat() {
                     variant="outline"
                     size="sm"
                     onClick={() => handleSuggestedQuestion(question)}
-                    className="text-left hover:bg-teal-50 hover:border-teal-300 font-semibold rounded-xl text-xs py-2"
+                    className="text-left hover:bg-fuchsia-500/12 hover:border-fuchsia-500 font-semibold rounded-xl text-xs py-2"
                   >
                     {question}
                   </Button>
@@ -525,13 +525,13 @@ export default function AIChat() {
           )}
 
           {/* Input Box */}
-          <div className="flex items-center space-x-2 bg-white border border-slate-200 p-2 rounded-2xl shadow-sm focus-within:ring-2 focus-within:ring-teal-500/20 focus-within:border-teal-500 transition-all">
+          <div className="flex items-center space-x-2 bg-white/5 border border-white/10 p-2 rounded-2xl shadow-sm focus-within:ring-2 focus-within:ring-fuchsia-500/20 focus-within:border-fuchsia-500 transition-all">
             <Button 
               onClick={isDictating ? stopDictation : startDictation} 
               className={`p-2.5 rounded-xl border-0 shadow-none cursor-pointer flex items-center justify-center ${
                 isDictating 
                   ? 'bg-red-500 text-white hover:bg-red-600' 
-                  : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                  : 'bg-white/5 text-[#9B8FA6] hover:bg-white/5'
               }`}
               title="Dictate message"
             >
@@ -551,8 +551,8 @@ export default function AIChat() {
               onClick={() => setVoiceSynthesized(prev => !prev)} 
               className={`p-2.5 rounded-xl border-0 shadow-none cursor-pointer flex items-center justify-center ${
                 voiceSynthesized 
-                  ? 'bg-teal-50 text-teal-600 hover:bg-teal-100' 
-                  : 'bg-slate-50 text-slate-400 hover:bg-slate-100'
+                  ? 'bg-fuchsia-500/12 text-fuchsia-400 hover:bg-fuchsia-500/12' 
+                  : 'bg-white/5 text-[#9B8FA6] hover:bg-white/5'
               }`}
               title="Speech Synthesis Switch"
             >
@@ -562,7 +562,7 @@ export default function AIChat() {
             <Button 
               onClick={handleSendMessage}
               disabled={!inputMessage.trim() || chatMutation.isPending}
-              className="bg-teal-500 hover:bg-teal-600 text-white font-bold p-3 rounded-xl border-0"
+              className="bg-fuchsia-500 hover:bg-fuchsia-600 text-white font-bold p-3 rounded-xl border-0"
             >
               <Send className="h-4 w-4" />
             </Button>
@@ -596,23 +596,23 @@ function MessageBubble({
     <div className={`flex items-start space-x-3 ${message.isUser ? 'flex-row-reverse space-x-reverse' : ''} relative group`}>
       <div className={`p-2.5 rounded-full shadow-sm ${
         message.isUser 
-          ? 'bg-teal-500 text-white' 
-          : 'bg-teal-100 text-teal-600'
+          ? 'bg-fuchsia-500 text-white' 
+          : 'bg-fuchsia-500/12 text-fuchsia-400'
       }`}>
         {message.isUser ? <User className="h-5 w-5" /> : <Bot className="h-5 w-5" />}
       </div>
       
       <Card className={`flex-1 max-w-[80%] border-0 relative ${
         message.isUser 
-          ? 'bg-teal-500 text-white shadow-md rounded-2xl rounded-tr-none' 
-          : 'bg-slate-50 shadow-sm rounded-2xl rounded-tl-none border border-slate-100'
+          ? 'bg-fuchsia-500 text-white shadow-md rounded-2xl rounded-tr-none' 
+          : 'bg-white/5 shadow-sm rounded-2xl rounded-tl-none border border-white/10'
       }`}>
         <CardContent className="p-4 pr-10">
           <p className="text-sm leading-relaxed whitespace-pre-wrap">
             {message.content}
           </p>
           <p className={`text-[10px] mt-2 font-bold uppercase ${
-            message.isUser ? 'text-teal-100' : 'text-slate-400'
+            message.isUser ? 'text-fuchsia-200' : 'text-[#9B8FA6]'
           }`}>
             {message.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
           </p>
@@ -622,8 +622,8 @@ function MessageBubble({
               onClick={handleSpeakClick} 
               className={`absolute bottom-3 right-3 transition-all p-1.5 rounded-lg border cursor-pointer ${
                 isSpeaking 
-                  ? 'bg-emerald-500 text-white border-emerald-500 shadow-md animate-pulse' 
-                  : 'bg-white hover:bg-slate-100 text-slate-400 hover:text-teal-600 border-slate-100 shadow-sm'
+                  ? 'bg-fuchsia-500 text-white border-fuchsia-500 shadow-md animate-pulse' 
+                  : 'bg-white/5 hover:bg-white/5 text-[#9B8FA6] hover:text-fuchsia-400 border-white/10 shadow-sm'
               }`}
               title={isSpeaking ? "Stop Speaking" : "Speak Aloud"}
             >

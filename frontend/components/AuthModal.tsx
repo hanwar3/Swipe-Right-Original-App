@@ -112,7 +112,7 @@ export default function AuthModal({ isOpen, onClose, initialMode = 'signin' }: A
               <div className="space-y-2">
                 <Label htmlFor="firstName">First Name</Label>
                 <div className="relative">
-                  <User className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+                  <User className="absolute left-3 top-1/2 transform -translate-y-1/2 text-[#6E637A] h-4 w-4" />
                   <Input
                     id="firstName"
                     type="text"
@@ -126,7 +126,7 @@ export default function AuthModal({ isOpen, onClose, initialMode = 'signin' }: A
               <div className="space-y-2">
                 <Label htmlFor="lastName">Last Name</Label>
                 <div className="relative">
-                  <User className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+                  <User className="absolute left-3 top-1/2 transform -translate-y-1/2 text-[#6E637A] h-4 w-4" />
                   <Input
                     id="lastName"
                     type="text"
@@ -143,7 +143,7 @@ export default function AuthModal({ isOpen, onClose, initialMode = 'signin' }: A
           <div className="space-y-2">
             <Label htmlFor="email">Email</Label>
             <div className="relative">
-              <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+              <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 text-[#6E637A] h-4 w-4" />
               <Input
                 id="email"
                 type="email"
@@ -160,7 +160,7 @@ export default function AuthModal({ isOpen, onClose, initialMode = 'signin' }: A
             <div className="space-y-2">
               <Label htmlFor="password">Password</Label>
               <div className="relative">
-                <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+                <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-[#6E637A] h-4 w-4" />
                 <Input
                   id="password"
                   type={showPassword ? 'text' : 'password'}
@@ -173,7 +173,7 @@ export default function AuthModal({ isOpen, onClose, initialMode = 'signin' }: A
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                  className="absolute right-3 top-1/2 transform -translate-y-1/2 text-[#6E637A] hover:text-[#9B8FA6]"
                 >
                   {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                 </button>
@@ -183,7 +183,7 @@ export default function AuthModal({ isOpen, onClose, initialMode = 'signin' }: A
 
           <Button
             type="submit"
-            className="w-full bg-teal-500 hover:bg-teal-600"
+            className="w-full bg-fuchsia-500 hover:bg-fuchsia-600"
             disabled={isLoading}
           >
             {isLoading ? 'Loading...' : mode === 'signin' ? 'Sign In' : mode === 'signup' ? 'Create Account' : 'Send Reset Link'}
@@ -194,7 +194,7 @@ export default function AuthModal({ isOpen, onClose, initialMode = 'signin' }: A
               <button
                 type="button"
                 onClick={() => setMode('forgot')}
-                className="text-sm text-teal-600 hover:text-teal-700"
+                className="text-sm text-fuchsia-400 hover:text-fuchsia-400"
               >
                 Forgot Password?
               </button>
@@ -208,7 +208,7 @@ export default function AuthModal({ isOpen, onClose, initialMode = 'signin' }: A
                   <Separator className="w-full" />
                 </div>
                 <div className="relative flex justify-center text-xs uppercase">
-                  <span className="bg-white px-2 text-gray-500">or continue with</span>
+                  <span className="bg-white/5 px-2 text-[#6E637A]">or continue with</span>
                 </div>
               </div>
 
@@ -268,34 +268,34 @@ export default function AuthModal({ isOpen, onClose, initialMode = 'signin' }: A
 
           <div className="text-center text-sm">
             {mode === 'signin' ? (
-              <span className="text-gray-600">
+              <span className="text-[#9B8FA6]">
                 Don't have an account?{' '}
                 <button
                   type="button"
                   onClick={() => { setMode('signup'); setAuthAlert(null); }}
-                  className="text-teal-600 hover:text-teal-700 font-medium"
+                  className="text-fuchsia-400 hover:text-fuchsia-400 font-medium"
                 >
                   Create one
                 </button>
               </span>
             ) : mode === 'signup' ? (
-              <span className="text-gray-600">
+              <span className="text-[#9B8FA6]">
                 Already have an account?{' '}
                 <button
                   type="button"
                   onClick={() => { setMode('signin'); setAuthAlert(null); }}
-                  className="text-teal-600 hover:text-teal-700 font-medium"
+                  className="text-fuchsia-400 hover:text-fuchsia-400 font-medium"
                 >
                   Sign in
                 </button>
               </span>
             ) : (
-              <span className="text-gray-600">
+              <span className="text-[#9B8FA6]">
                 Remember your password?{' '}
                 <button
                   type="button"
                   onClick={() => { setMode('signin'); setAuthAlert(null); }}
-                  className="text-teal-600 hover:text-teal-700 font-medium"
+                  className="text-fuchsia-400 hover:text-fuchsia-400 font-medium"
                 >
                   Sign in
                 </button>

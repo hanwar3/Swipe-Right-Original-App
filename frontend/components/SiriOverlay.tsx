@@ -272,10 +272,10 @@ export default function SiriOverlay({ isOpen, onClose }: SiriOverlayProps) {
     const name = issuer.toLowerCase();
     if (name.includes('chase')) return 'from-blue-600 to-indigo-900 text-white';
     if (name.includes('american express') || name.includes('amex')) return 'from-amber-400 via-amber-500 to-yellow-600 text-amber-950';
-    if (name.includes('citi')) return 'from-cyan-500 to-blue-700 text-white';
-    if (name.includes('capital one')) return 'from-slate-800 to-slate-950 text-white';
+    if (name.includes('citi')) return 'from-fuchsia-500 to-blue-700 text-white';
+    if (name.includes('capital one')) return 'from-white/5 to-transparent text-white';
     if (name.includes('discover')) return 'from-orange-500 to-red-600 text-white';
-    return 'from-teal-600 to-emerald-800 text-white';
+    return 'from-fuchsia-500 to-fuchsia-600 text-white';
   };
 
   return (
@@ -284,12 +284,12 @@ export default function SiriOverlay({ isOpen, onClose }: SiriOverlayProps) {
       {/* Siri Top controls */}
       <div className="w-full max-w-2xl flex items-center justify-between mt-2">
         <div className="flex items-center space-x-2">
-          <div className="w-8 h-8 rounded-full bg-gradient-to-r from-teal-500 to-green-500 flex items-center justify-center animate-pulse">
+          <div className="w-8 h-8 rounded-full bg-gradient-to-r from-fuchsia-500 to-fuchsia-600 flex items-center justify-center animate-pulse">
             <Sparkles className="h-4 w-4 text-white animate-spin-slow" />
           </div>
           <div>
             <h2 className="text-white font-bold text-sm">SwipeRight Voice Bot</h2>
-            <p className="text-xs text-teal-400">Integrated Siri & Android Assistant</p>
+            <p className="text-xs text-fuchsia-400">Integrated Siri & Android Assistant</p>
           </div>
         </div>
 
@@ -298,7 +298,7 @@ export default function SiriOverlay({ isOpen, onClose }: SiriOverlayProps) {
             variant="ghost"
             size="icon"
             onClick={() => setIsMuted(!isMuted)}
-            className="text-gray-400 hover:text-white rounded-full hover:bg-white/10"
+            className="text-[#6E637A] hover:text-white rounded-full hover:bg-white/10"
             title={isMuted ? "Unmute Bot Speech" : "Mute Bot Speech"}
           >
             {isMuted ? <VolumeX className="h-5 w-5" /> : <Volume2 className="h-5 w-5" />}
@@ -308,7 +308,7 @@ export default function SiriOverlay({ isOpen, onClose }: SiriOverlayProps) {
             variant="ghost"
             size="icon"
             onClick={onClose}
-            className="text-gray-400 hover:text-white rounded-full hover:bg-white/10"
+            className="text-[#6E637A] hover:text-white rounded-full hover:bg-white/10"
           >
             <X className="h-5 w-5" />
           </Button>
@@ -321,7 +321,7 @@ export default function SiriOverlay({ isOpen, onClose }: SiriOverlayProps) {
         {/* User spoken input bubble */}
         {transcript && (
           <div className="w-full text-center space-y-1 px-4">
-            <p className="text-gray-400 text-xs font-semibold uppercase tracking-widest">You said</p>
+            <p className="text-[#6E637A] text-xs font-semibold uppercase tracking-widest">You said</p>
             <h3 className="text-xl md:text-2xl font-medium text-white max-w-lg mx-auto leading-relaxed">
               "{transcript}"
             </h3>
@@ -332,11 +332,11 @@ export default function SiriOverlay({ isOpen, onClose }: SiriOverlayProps) {
         {status === 'processing' && (
           <div className="flex flex-col items-center space-y-2">
             <div className="flex space-x-1.5">
-              <span className="w-2.5 h-2.5 bg-teal-400 rounded-full animate-bounce delay-100"></span>
-              <span className="w-2.5 h-2.5 bg-green-400 rounded-full animate-bounce delay-200"></span>
-              <span className="w-2.5 h-2.5 bg-cyan-400 rounded-full animate-bounce delay-300"></span>
+              <span className="w-2.5 h-2.5 bg-fuchsia-400 rounded-full animate-bounce delay-100"></span>
+              <span className="w-2.5 h-2.5 bg-fuchsia-400 rounded-full animate-bounce delay-200"></span>
+              <span className="w-2.5 h-2.5 bg-fuchsia-400 rounded-full animate-bounce delay-300"></span>
             </div>
-            <p className="text-xs text-teal-400 font-medium">Analyzing cashback portfolios...</p>
+            <p className="text-xs text-fuchsia-400 font-medium">Analyzing cashback portfolios...</p>
           </div>
         )}
 
@@ -345,7 +345,7 @@ export default function SiriOverlay({ isOpen, onClose }: SiriOverlayProps) {
           <div className="w-full space-y-4 animate-in slide-in-from-bottom-6 duration-300">
             {/* Visual shiny credit card representation */}
             {recommendedCard && (
-              <div className="relative group max-w-sm mx-auto aspect-[1.586/1] w-full rounded-2xl p-6 flex flex-col justify-between overflow-hidden shadow-[0_0_50px_rgba(20,184,166,0.3)] border border-white/20">
+              <div className="relative group max-w-sm mx-auto aspect-[1.586/1] w-full rounded-2xl p-6 flex flex-col justify-between overflow-hidden shadow-[0_0_50px_rgba(230,75,212,0.3)] border border-white/20">
                 
                 {/* Glossy glass highlight overlay */}
                 <div className="absolute inset-0 bg-gradient-to-tr from-transparent via-white/5 to-white/15 pointer-events-none" />
@@ -392,11 +392,11 @@ export default function SiriOverlay({ isOpen, onClose }: SiriOverlayProps) {
             {/* AI message display */}
             <Card className="border-0 bg-white/10 backdrop-blur-md max-w-md mx-auto text-white shadow-2xl">
               <CardContent className="p-5 space-y-2">
-                <div className="flex items-center space-x-2 text-xs font-semibold text-teal-400">
+                <div className="flex items-center space-x-2 text-xs font-semibold text-fuchsia-400">
                   <Sparkles className="h-3.5 w-3.5" />
                   <span>SwipeRight Assistant</span>
                 </div>
-                <p className="text-sm md:text-base leading-relaxed text-gray-200">
+                <p className="text-sm md:text-base leading-relaxed text-[#DDD0E6]">
                   {aiResponse}
                 </p>
               </CardContent>
@@ -462,13 +462,13 @@ export default function SiriOverlay({ isOpen, onClose }: SiriOverlayProps) {
         {/* Suggestion Chips */}
         {status === 'idle' && !transcript && (
           <div className="w-full text-center space-y-3">
-            <p className="text-gray-400 text-xs font-semibold tracking-wider uppercase">Try saying or tapping</p>
+            <p className="text-[#6E637A] text-xs font-semibold tracking-wider uppercase">Try saying or tapping</p>
             <div className="flex flex-wrap justify-center gap-2 max-w-md mx-auto">
               {quickSuggestions.map((sug, i) => (
                 <button
                   key={i}
                   onClick={() => handleProcessQuery(sug.query)}
-                  className="px-3.5 py-1.5 text-xs text-gray-300 bg-white/5 hover:bg-white/15 hover:text-white rounded-full border border-white/10 transition-all duration-300 shadow-md transform hover:-translate-y-0.5 active:scale-95"
+                  className="px-3.5 py-1.5 text-xs text-[#9B8FA6] bg-white/5 hover:bg-white/15 hover:text-white rounded-full border border-white/10 transition-all duration-300 shadow-md transform hover:-translate-y-0.5 active:scale-95"
                 >
                   {sug.label}
                 </button>
@@ -486,8 +486,8 @@ export default function SiriOverlay({ isOpen, onClose }: SiriOverlayProps) {
               status === 'listening'
                 ? 'bg-gradient-to-r from-red-500 to-pink-600 scale-110 shadow-[0_0_40px_rgba(239,68,68,0.5)]'
                 : status === 'speaking'
-                ? 'bg-gradient-to-r from-cyan-500 to-blue-600 shadow-[0_0_40px_rgba(6,182,212,0.5)]'
-                : 'bg-gradient-to-r from-teal-500 to-green-500 hover:scale-105 shadow-[0_0_30px_rgba(20,184,166,0.3)]'
+                ? 'bg-gradient-to-r from-fuchsia-500 to-blue-600 shadow-[0_0_40px_rgba(6,182,212,0.5)]'
+                : 'bg-gradient-to-r from-fuchsia-500 to-fuchsia-600 hover:scale-105 shadow-[0_0_30px_rgba(230,75,212,0.3)]'
             }`}
           >
             {status === 'listening' ? (
@@ -500,7 +500,7 @@ export default function SiriOverlay({ isOpen, onClose }: SiriOverlayProps) {
             )}
           </button>
 
-          <p className="text-sm font-semibold text-gray-300">
+          <p className="text-sm font-semibold text-[#9B8FA6]">
             {status === 'listening'
               ? 'Listening...'
               : status === 'processing'
@@ -513,7 +513,7 @@ export default function SiriOverlay({ isOpen, onClose }: SiriOverlayProps) {
 
         {/* Manual Keyboard Input Fallback */}
         <div className="w-full bg-white/5 p-3 rounded-2xl border border-white/10 flex items-center space-x-2">
-          <Terminal className="h-4 w-4 text-teal-400 flex-shrink-0" />
+          <Terminal className="h-4 w-4 text-fuchsia-400 flex-shrink-0" />
           <Input
             type="text"
             placeholder="Or type spending category (e.g. gas, target)..."
@@ -525,7 +525,7 @@ export default function SiriOverlay({ isOpen, onClose }: SiriOverlayProps) {
           <Button
             size="sm"
             onClick={handleManualSubmit}
-            className="bg-teal-500 hover:bg-teal-600 text-white text-xs h-8 px-4 rounded-xl"
+            className="bg-fuchsia-500 hover:bg-fuchsia-600 text-white text-xs h-8 px-4 rounded-xl"
           >
             Ask Bot
           </Button>

@@ -225,17 +225,17 @@ export default function Cards() {
   };
 
   return (
-    <div className="max-w-6xl mx-auto px-4 py-8 space-y-6">
+    <div className="w-full min-w-0 max-w-6xl mx-auto px-4 py-6 space-y-6 overflow-x-hidden">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="space-y-2">
-          <h1 className="text-3xl font-bold text-gray-900">Credit Cards</h1>
-          <p className="text-gray-600">Explore our comprehensive database and manage your portfolio</p>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="space-y-1.5 min-w-0">
+          <h1 className="text-3xl font-bold text-[#F3EBF8]">Credit Cards</h1>
+          <p className="text-[#9B8FA6]">Explore our comprehensive database and manage your portfolio</p>
         </div>
         
         <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
           <DialogTrigger asChild>
-            <Button className="bg-teal-500 hover:bg-teal-600">
+            <Button className="bg-fuchsia-500 hover:bg-fuchsia-600">
               <Plus className="h-4 w-4 mr-2" />
               Add Card
             </Button>
@@ -282,7 +282,7 @@ export default function Cards() {
                 <Button 
                   onClick={handleAddCard}
                   disabled={addCardMutation.isPending}
-                  className="bg-teal-500 hover:bg-teal-600"
+                  className="bg-fuchsia-500 hover:bg-fuchsia-600"
                 >
                   {addCardMutation.isPending ? 'Adding...' : 'Add Card'}
                 </Button>
@@ -294,22 +294,24 @@ export default function Cards() {
 
       {/* Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="grid w-full grid-cols-4">
-          <TabsTrigger value="comprehensive" className="flex items-center space-x-2">
-            <CreditCardIcon className="h-4 w-4" />
-            <span>All Cards Database</span>
+        {/* Four equal grid columns crushed these labels into each other on a
+            phone. Scroll the row instead, and keep the labels short. */}
+        <TabsList className="flex w-full min-w-0 max-w-full justify-start gap-1 overflow-x-auto overflow-y-hidden">
+          <TabsTrigger value="comprehensive" className="flex shrink-0 items-center gap-1.5">
+            <CreditCardIcon className="h-4 w-4 shrink-0" />
+            <span>All cards</span>
           </TabsTrigger>
-          <TabsTrigger value="portfolio" className="flex items-center space-x-2" disabled={!user}>
-            <Wallet className="h-4 w-4" />
-            <span>My Cards Portfolio</span>
+          <TabsTrigger value="portfolio" className="flex shrink-0 items-center gap-1.5" disabled={!user}>
+            <Wallet className="h-4 w-4 shrink-0" />
+            <span>My wallet</span>
           </TabsTrigger>
-          <TabsTrigger value="expiring" className="flex items-center space-x-2" disabled={!user}>
-            <Calendar className="h-4 w-4" />
-            <span>Reward Deadlines</span>
+          <TabsTrigger value="expiring" className="flex shrink-0 items-center gap-1.5" disabled={!user}>
+            <Calendar className="h-4 w-4 shrink-0" />
+            <span>Deadlines</span>
           </TabsTrigger>
-          <TabsTrigger value="portfolio-offers" className="flex items-center space-x-2" disabled={!user}>
-            <Clock className="h-4 w-4" />
-            <span>My Expiring Offers</span>
+          <TabsTrigger value="portfolio-offers" className="flex shrink-0 items-center gap-1.5" disabled={!user}>
+            <Clock className="h-4 w-4 shrink-0" />
+            <span>Offers</span>
           </TabsTrigger>
         </TabsList>
 
@@ -319,7 +321,7 @@ export default function Cards() {
             <div className="space-y-4">
               <div className="flex items-center space-x-2">
                 <Star className="h-5 w-5 text-yellow-500" />
-                <h2 className="text-xl font-semibold text-gray-900">Popular Cards</h2>
+                <h2 className="text-xl font-semibold text-[#F3EBF8]">Popular Cards</h2>
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {popularCards.filter(card => card && card.id).slice(0, 6).map((card) => (
@@ -338,9 +340,9 @@ export default function Cards() {
           )}
 
           {/* Filters */}
-          <div className="space-y-4 bg-gray-50 p-4 rounded-lg">
+          <div className="space-y-4 bg-white/5 p-4 rounded-lg">
             <div className="flex items-center justify-between">
-              <h3 className="font-medium text-gray-900">Filters</h3>
+              <h3 className="font-medium text-[#F3EBF8]">Filters</h3>
               <Button variant="ghost" size="sm" onClick={clearFilters}>
                 Clear All
               </Button>
@@ -351,7 +353,7 @@ export default function Cards() {
               <div className="space-y-2">
                 <Label>Search</Label>
                 <div className="relative">
-                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-[#6E637A] h-4 w-4" />
                   <Input
                     placeholder="Card name or issuer..."
                     value={searchQuery}
@@ -443,9 +445,9 @@ export default function Cards() {
               {[...Array(9)].map((_, i) => (
                 <Card key={i} className="animate-pulse">
                   <CardContent className="p-6">
-                    <div className="h-32 bg-gray-200 rounded mb-4"></div>
-                    <div className="h-4 bg-gray-200 rounded mb-2"></div>
-                    <div className="h-4 bg-gray-200 rounded w-2/3"></div>
+                    <div className="h-32 bg-white/10 rounded mb-4"></div>
+                    <div className="h-4 bg-white/10 rounded mb-2"></div>
+                    <div className="h-4 bg-white/10 rounded w-2/3"></div>
                   </CardContent>
                 </Card>
               ))}
@@ -453,7 +455,7 @@ export default function Cards() {
           ) : comprehensiveCards.length > 0 ? (
             <div className="space-y-4">
               <div className="flex items-center justify-between">
-                <h3 className="text-lg font-semibold text-gray-900">
+                <h3 className="text-lg font-semibold text-[#F3EBF8]">
                   All Cards ({comprehensiveData?.totalCount || 0})
                 </h3>
               </div>
@@ -472,9 +474,9 @@ export default function Cards() {
             </div>
           ) : (
             <div className="text-center py-12">
-              <Filter className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-              <h3 className="text-lg font-medium text-gray-900 mb-2">No cards found</h3>
-              <p className="text-gray-600">Try adjusting your filters</p>
+              <Filter className="h-12 w-12 text-[#6E637A] mx-auto mb-4" />
+              <h3 className="text-lg font-medium text-[#F3EBF8] mb-2">No cards found</h3>
+              <p className="text-[#9B8FA6]">Try adjusting your filters</p>
             </div>
           )}
         </TabsContent>
@@ -486,9 +488,9 @@ export default function Cards() {
                 {[...Array(6)].map((_, i) => (
                   <Card key={i} className="animate-pulse">
                     <CardContent className="p-6">
-                      <div className="h-32 bg-gray-200 rounded mb-4"></div>
-                      <div className="h-4 bg-gray-200 rounded mb-2"></div>
-                      <div className="h-4 bg-gray-200 rounded w-2/3"></div>
+                      <div className="h-32 bg-white/10 rounded mb-4"></div>
+                      <div className="h-4 bg-white/10 rounded mb-2"></div>
+                      <div className="h-4 bg-white/10 rounded w-2/3"></div>
                     </CardContent>
                   </Card>
                 ))}
@@ -496,7 +498,7 @@ export default function Cards() {
             ) : portfolioCards.length > 0 ? (
               <div className="space-y-4">
                 <div className="flex items-center justify-between">
-                  <h3 className="text-lg font-semibold text-gray-900">
+                  <h3 className="text-lg font-semibold text-[#F3EBF8]">
                     My Cards ({portfolioCards.length})
                   </h3>
                 </div>
@@ -508,30 +510,30 @@ export default function Cards() {
               </div>
             ) : (
               <div className="text-center py-12">
-                <Wallet className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                <h3 className="text-lg font-medium text-gray-900 mb-2">No cards in portfolio</h3>
-                <p className="text-gray-600 mb-4">Add cards from the "All Cards Database" tab to start building your portfolio</p>
-                <Button onClick={() => setActiveTab('comprehensive')} className="bg-teal-500 hover:bg-teal-600">
+                <Wallet className="h-12 w-12 text-[#6E637A] mx-auto mb-4" />
+                <h3 className="text-lg font-medium text-[#F3EBF8] mb-2">No cards in portfolio</h3>
+                <p className="text-[#9B8FA6] mb-4">Add cards from the "All Cards Database" tab to start building your portfolio</p>
+                <Button onClick={() => setActiveTab('comprehensive')} className="bg-fuchsia-500 hover:bg-fuchsia-600">
                   Browse All Cards
                 </Button>
               </div>
             )
           ) : (
             <div className="text-center py-12">
-              <User className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-              <h3 className="text-lg font-medium text-gray-900 mb-2">Sign in to view your portfolio</h3>
-              <p className="text-gray-600">Create an account to track your credit cards and get personalized recommendations</p>
+              <User className="h-12 w-12 text-[#6E637A] mx-auto mb-4" />
+              <h3 className="text-lg font-medium text-[#F3EBF8] mb-2">Sign in to view your portfolio</h3>
+              <p className="text-[#9B8FA6]">Create an account to track your credit cards and get personalized recommendations</p>
             </div>
           )}
         </TabsContent>
 
         <TabsContent value="expiring" className="space-y-6">
-          <div className="bg-gradient-to-r from-teal-500/10 via-emerald-500/5 to-transparent p-6 rounded-3xl border border-teal-500/15 space-y-2">
-            <div className="flex items-center space-x-2 text-teal-700">
+          <div className="bg-gradient-to-r from-fuchsia-500/10 via-fuchsia-500/5 to-transparent p-6 rounded-3xl border border-fuchsia-500/15 space-y-2">
+            <div className="flex items-center space-x-2 text-fuchsia-400">
               <Calendar className="h-5 w-5" />
               <h2 className="text-lg font-bold">Reward Deadlines & Expiring Benefits</h2>
             </div>
-            <p className="text-sm text-gray-600 max-w-2xl">
+            <p className="text-sm text-[#9B8FA6] max-w-2xl">
               Never let valuable credits expire. This panel aggregates static annual resetting benefits for cards in your wallet and dynamic merchant offers from your synced accounts.
             </p>
           </div>
@@ -540,8 +542,8 @@ export default function Cards() {
             {/* Left Column: Annual Card Credits */}
             <div className="space-y-4">
               <div className="flex items-center space-x-2">
-                <Wallet className="h-5 w-5 text-gray-700" />
-                <h3 className="text-md font-bold text-gray-900">Annual Statement Credits</h3>
+                <Wallet className="h-5 w-5 text-[#DDD0E6]" />
+                <h3 className="text-md font-bold text-[#F3EBF8]">Annual Statement Credits</h3>
               </div>
 
               <div className="space-y-3">
@@ -557,15 +559,15 @@ export default function Cards() {
                       hasCredits = true;
                       
                       return (
-                        <Card key={userCard.id} className="border border-slate-100/80 rounded-2xl p-4 bg-white hover:shadow-md transition-all">
+                        <Card key={userCard.id} className="border border-white/10 rounded-2xl p-4 bg-white/5 hover:shadow-md transition-all">
                           <div className="flex items-start justify-between">
                             <div className="space-y-1">
-                              <span className="text-[10px] uppercase font-bold tracking-wider text-teal-600 block">{card.name}</span>
+                              <span className="text-[10px] uppercase font-bold tracking-wider text-fuchsia-400 block">{card.name}</span>
                               {credits.map((cr, idx) => (
-                                <div key={idx} className="space-y-1 mt-2 pt-2 border-t border-slate-50 first:border-t-0 first:mt-0 first:pt-0">
-                                  <h4 className="text-sm font-extrabold text-slate-800">{cr.name}</h4>
-                                  <p className="text-xs text-slate-500 leading-normal">{cr.description}</p>
-                                  <div className="flex items-center space-x-1 text-[10px] text-teal-600 font-bold bg-teal-50 px-2 py-0.5 rounded-md w-fit mt-1">
+                                <div key={idx} className="space-y-1 mt-2 pt-2 border-t border-white/10 first:border-t-0 first:mt-0 first:pt-0">
+                                  <h4 className="text-sm font-extrabold text-[#9B8FA6]">{cr.name}</h4>
+                                  <p className="text-xs text-[#9B8FA6] leading-normal">{cr.description}</p>
+                                  <div className="flex items-center space-x-1 text-[10px] text-fuchsia-400 font-bold bg-fuchsia-500/12 px-2 py-0.5 rounded-md w-fit mt-1">
                                     <Clock className="h-3 w-3" />
                                     <span>Resets: {cr.resets}</span>
                                   </div>
@@ -578,14 +580,14 @@ export default function Cards() {
                     });
                     
                     return hasCredits ? rendered : (
-                      <div className="text-center py-8 bg-slate-50 rounded-2xl border border-slate-100">
-                        <p className="text-sm text-gray-500">Your portfolio cards do not have annual resetting credits recorded.</p>
+                      <div className="text-center py-8 bg-white/5 rounded-2xl border border-white/10">
+                        <p className="text-sm text-[#6E637A]">Your portfolio cards do not have annual resetting credits recorded.</p>
                       </div>
                     );
                   })()
                 ) : (
-                  <div className="text-center py-8 bg-slate-50 rounded-2xl border border-slate-100">
-                    <p className="text-sm text-gray-500">Add cards to your portfolio to view their annual credits.</p>
+                  <div className="text-center py-8 bg-white/5 rounded-2xl border border-white/10">
+                    <p className="text-sm text-[#6E637A]">Add cards to your portfolio to view their annual credits.</p>
                   </div>
                 )}
               </div>
@@ -594,15 +596,15 @@ export default function Cards() {
             {/* Right Column: Synced Merchant Offers */}
             <div className="space-y-4">
               <div className="flex items-center space-x-2">
-                <Clock className="h-5 w-5 text-gray-700" />
-                <h3 className="text-md font-bold text-gray-900">Expiring Merchant Offers</h3>
+                <Clock className="h-5 w-5 text-[#DDD0E6]" />
+                <h3 className="text-md font-bold text-[#F3EBF8]">Expiring Merchant Offers</h3>
               </div>
 
               <div className="space-y-3">
                 {isOffersLoading ? (
                   <div className="space-y-3">
                     {[...Array(3)].map((_, i) => (
-                      <div key={i} className="h-24 bg-gray-100 animate-pulse rounded-2xl border border-gray-150" />
+                      <div key={i} className="h-24 bg-white/[0.07] animate-pulse rounded-2xl border border-gray-150" />
                     ))}
                   </div>
                 ) : merchantOffers.length > 0 ? (
@@ -612,20 +614,20 @@ export default function Cards() {
                     }).map((offer: any) => {
                       const isUrgent = offer.offerDescription.toLowerCase().includes("10%") || offer.offerDescription.toLowerCase().includes("10");
                       return (
-                        <Card key={offer.offerId} className="border border-slate-100/80 rounded-2xl p-4 bg-white hover:shadow-md transition-all">
+                        <Card key={offer.offerId} className="border border-white/10 rounded-2xl p-4 bg-white/5 hover:shadow-md transition-all">
                           <div className="flex items-start justify-between">
                             <div className="space-y-1 flex-1">
                               <div className="flex items-center justify-between">
-                                <span className="text-sm font-extrabold text-slate-800">{offer.merchantName}</span>
-                                <Badge className={isUrgent ? "bg-orange-100 text-orange-700 text-[10px] font-bold" : "bg-teal-100 text-teal-700 text-[10px] font-bold"}>
+                                <span className="text-sm font-extrabold text-[#9B8FA6]">{offer.merchantName}</span>
+                                <Badge className={isUrgent ? "bg-orange-100 text-orange-700 text-[10px] font-bold" : "bg-fuchsia-500/12 text-fuchsia-400 text-[10px] font-bold"}>
                                   {isUrgent ? "Expiring Soon!" : "Active"}
                                 </Badge>
                               </div>
-                              <p className="text-xs text-slate-600 leading-normal">{offer.offerDescription}</p>
+                              <p className="text-xs text-[#9B8FA6] leading-normal">{offer.offerDescription}</p>
                               
-                              <div className="flex items-center justify-between pt-2 mt-2 border-t border-slate-50">
-                                <span className="text-[10px] text-slate-400 font-semibold">Ends: {new Date(offer.endDate).toLocaleDateString()}</span>
-                                <span className="text-[10px] text-emerald-600 font-bold bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-100">Simulated Sync</span>
+                              <div className="flex items-center justify-between pt-2 mt-2 border-t border-white/10">
+                                <span className="text-[10px] text-[#9B8FA6] font-semibold">Ends: {new Date(offer.endDate).toLocaleDateString()}</span>
+                                <span className="text-[10px] text-fuchsia-400 font-bold bg-fuchsia-500/12 px-2 py-0.5 rounded-full border border-fuchsia-500/25">Simulated Sync</span>
                               </div>
                             </div>
                           </div>
@@ -634,8 +636,8 @@ export default function Cards() {
                     })}
                   </div>
                 ) : (
-                  <div className="text-center py-8 bg-slate-50 rounded-2xl border border-slate-100">
-                    <p className="text-sm text-gray-500">No active merchant offers synced. Sync your cards to pull targeted bank deals.</p>
+                  <div className="text-center py-8 bg-white/5 rounded-2xl border border-white/10">
+                    <p className="text-sm text-[#6E637A]">No active merchant offers synced. Sync your cards to pull targeted bank deals.</p>
                   </div>
                 )}
               </div>
@@ -722,7 +724,7 @@ export default function Cards() {
                       <Clock className="h-5 w-5" />
                       <h2 className="text-lg font-bold">My Portfolio's Expiring Merchant Offers</h2>
                     </div>
-                    <p className="text-sm text-gray-600 max-w-2xl">
+                    <p className="text-sm text-[#9B8FA6] max-w-2xl">
                       These are targeted custom merchant deals that are active and expiring **strictly on the credit cards in your wallet portfolio**.
                     </p>
                   </div>
@@ -740,56 +742,56 @@ export default function Cards() {
                 {/* Dashboard Stats */}
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                   {/* Glowing savings wheel */}
-                  <div className="md:col-span-1 bg-gradient-to-br from-teal-900 to-emerald-950 p-6 rounded-3xl text-white shadow-xl flex flex-col items-center justify-center text-center relative overflow-hidden">
+                  <div className="md:col-span-1 bg-gradient-to-br from-fuchsia-500 to-fuchsia-600 p-6 rounded-3xl text-white shadow-xl flex flex-col items-center justify-center text-center relative overflow-hidden">
                     <div className="absolute inset-0 bg-gradient-to-tr from-transparent via-white/5 to-white/10 pointer-events-none" />
                     <div className="relative w-32 h-32 flex items-center justify-center">
                       <svg className="w-full h-full transform -rotate-90">
-                        <circle cx="64" cy="64" r="56" className="text-teal-950" strokeWidth="8" stroke="currentColor" fill="transparent" />
-                        <circle cx="64" cy="64" r="56" className="text-emerald-400" strokeWidth="8" strokeDasharray={351.8} strokeDashoffset={351.8 - (351.8 * progressPercent) / 100} strokeLinecap="round" stroke="currentColor" fill="transparent" />
+                        <circle cx="64" cy="64" r="56" className="text-fuchsia-400" strokeWidth="8" stroke="currentColor" fill="transparent" />
+                        <circle cx="64" cy="64" r="56" className="text-fuchsia-400" strokeWidth="8" strokeDasharray={351.8} strokeDashoffset={351.8 - (351.8 * progressPercent) / 100} strokeLinecap="round" stroke="currentColor" fill="transparent" />
                       </svg>
                       <div className="absolute flex flex-col items-center justify-center">
-                        <span className="text-[10px] uppercase font-bold tracking-widest text-emerald-300">Logged</span>
+                        <span className="text-[10px] uppercase font-bold tracking-widest text-fuchsia-400">Logged</span>
                         <span className="text-2xl font-black">${grandTotalSaved.toFixed(2)}</span>
-                        <span className="text-[9px] text-teal-200">{progressPercent}% of potential</span>
+                        <span className="text-[9px] text-fuchsia-200">{progressPercent}% of potential</span>
                       </div>
                     </div>
                     <div className="mt-4 space-y-1">
-                      <h4 className="text-xs font-black text-emerald-300 uppercase tracking-wider">Privacy-First Savings Dial</h4>
-                      <p className="text-[10px] text-teal-100/70 max-w-[200px]">Logs your rewards value manually without scanning statements.</p>
+                      <h4 className="text-xs font-black text-fuchsia-400 uppercase tracking-wider">Privacy-First Savings Dial</h4>
+                      <p className="text-[10px] text-fuchsia-200/70 max-w-[200px]">Logs your rewards value manually without scanning statements.</p>
                     </div>
                   </div>
 
                   {/* Savings Stats Breakdowns */}
-                  <div className="md:col-span-2 bg-white border border-slate-150 p-6 rounded-3xl shadow-sm flex flex-col justify-between space-y-4">
+                  <div className="md:col-span-2 bg-white/5 border border-white/10 p-6 rounded-3xl shadow-sm flex flex-col justify-between space-y-4">
                     <div className="space-y-3">
-                      <h3 className="font-extrabold text-slate-800 text-sm flex items-center space-x-1.5 border-b border-slate-100 pb-2">
-                        <Wallet className="h-4 w-4 text-teal-600" />
+                      <h3 className="font-extrabold text-[#9B8FA6] text-sm flex items-center space-x-1.5 border-b border-white/10 pb-2">
+                        <Wallet className="h-4 w-4 text-fuchsia-400" />
                         <span>Manual Rewards Savings Breakdown</span>
                       </h3>
                       <div className="grid grid-cols-3 gap-4 pt-1">
                         <div className="space-y-1">
-                          <span className="text-[10px] uppercase font-bold text-slate-400">Statement Credits</span>
-                          <p className="text-lg font-black text-slate-700">${totalCreditSaved.toFixed(2)}</p>
+                          <span className="text-[10px] uppercase font-bold text-[#9B8FA6]">Statement Credits</span>
+                          <p className="text-lg font-black text-[#9B8FA6]">${totalCreditSaved.toFixed(2)}</p>
                         </div>
                         <div className="space-y-1">
-                          <span className="text-[10px] uppercase font-bold text-slate-400">Sub Perks saved</span>
-                          <p className="text-lg font-black text-slate-700">${totalSubscriptionSaved.toFixed(2)}</p>
+                          <span className="text-[10px] uppercase font-bold text-[#9B8FA6]">Sub Perks saved</span>
+                          <p className="text-lg font-black text-[#9B8FA6]">${totalSubscriptionSaved.toFixed(2)}</p>
                         </div>
                         <div className="space-y-1">
-                          <span className="text-[10px] uppercase font-bold text-slate-400">Synced deals used</span>
-                          <p className="text-lg font-black text-slate-700">${totalMerchantSaved.toFixed(2)}</p>
+                          <span className="text-[10px] uppercase font-bold text-[#9B8FA6]">Synced deals used</span>
+                          <p className="text-lg font-black text-[#9B8FA6]">${totalMerchantSaved.toFixed(2)}</p>
                         </div>
                       </div>
                     </div>
 
-                    <div className="bg-emerald-50/50 border border-emerald-100/60 p-3 rounded-2xl flex items-start space-x-2.5">
-                      <Shield className="h-4 w-4 text-emerald-600 shrink-0 mt-0.5" />
+                    <div className="bg-fuchsia-500/10 border border-fuchsia-500/25 p-3 rounded-2xl flex items-start space-x-2.5">
+                      <Shield className="h-4 w-4 text-fuchsia-400 shrink-0 mt-0.5" />
                       <div className="space-y-0.5">
-                        <span className="text-[10px] font-black text-emerald-800 uppercase tracking-wider flex items-center space-x-1">
+                        <span className="text-[10px] font-black text-fuchsia-400 uppercase tracking-wider flex items-center space-x-1">
                           <Lock className="h-3 w-3 mr-0.5" />
                           <span>Privacy Shield Active</span>
                         </span>
-                        <p className="text-[10px] text-emerald-700/80 leading-normal font-medium">
+                        <p className="text-[10px] text-fuchsia-400/80 leading-normal font-medium">
                           SwipeRight does not read your bank statements or track transactions. This tracker operates purely on manual entries to keep your personal data 100% private.
                         </p>
                       </div>
@@ -801,7 +803,7 @@ export default function Cards() {
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                   {/* Left Column: Wallet Benefits & Credits */}
                   <div className="space-y-4">
-                    <h3 className="text-sm font-black text-slate-800 uppercase tracking-wider flex items-center space-x-1.5">
+                    <h3 className="text-sm font-black text-[#9B8FA6] uppercase tracking-wider flex items-center space-x-1.5">
                       <span>💳 My Wallet Credits & Perks ({portfolioCardIds.length} cards)</span>
                     </h3>
 
@@ -814,13 +816,13 @@ export default function Cards() {
                           if (benefits.length === 0) return null;
 
                           return (
-                            <Card key={userCard.id} className="border border-slate-150 p-5 rounded-2xl bg-white space-y-4 hover:shadow-md transition-all">
-                              <div className="flex items-center justify-between border-b border-slate-100 pb-2">
+                            <Card key={userCard.id} className="border border-white/10 p-5 rounded-2xl bg-white/5 space-y-4 hover:shadow-md transition-all">
+                              <div className="flex items-center justify-between border-b border-white/10 pb-2">
                                 <div>
-                                  <span className="text-[9px] uppercase font-black tracking-wider text-teal-600 block">{card.issuer}</span>
-                                  <h4 className="text-xs font-black text-slate-800">{userCard.nickname || card.name}</h4>
+                                  <span className="text-[9px] uppercase font-black tracking-wider text-fuchsia-400 block">{card.issuer}</span>
+                                  <h4 className="text-xs font-black text-[#9B8FA6]">{userCard.nickname || card.name}</h4>
                                 </div>
-                                <span className="text-[9px] font-black bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full border border-slate-200">
+                                <span className="text-[9px] font-black bg-white/5 text-[#9B8FA6] px-2 py-0.5 rounded-full border border-white/10">
                                   {card.network}
                                 </span>
                               </div>
@@ -832,12 +834,12 @@ export default function Cards() {
                                       <div className="space-y-1.5">
                                         <div className="flex justify-between items-start">
                                           <div className="space-y-0.5 max-w-[70%]">
-                                            <span className="text-[10px] font-black text-slate-700">{b.name}</span>
-                                            <p className="text-[9px] text-slate-500 leading-normal">{b.description}</p>
+                                            <span className="text-[10px] font-black text-[#9B8FA6]">{b.name}</span>
+                                            <p className="text-[9px] text-[#9B8FA6] leading-normal">{b.description}</p>
                                           </div>
                                           <div className="text-right">
-                                            <span className="text-xs font-black text-slate-800">${creditSavings[b.id] || 0}</span>
-                                            <span className="text-[9px] text-slate-400 block font-semibold">/ ${b.maxValue} {b.period}</span>
+                                            <span className="text-xs font-black text-[#9B8FA6]">${creditSavings[b.id] || 0}</span>
+                                            <span className="text-[9px] text-[#9B8FA6] block font-semibold">/ ${b.maxValue} {b.period}</span>
                                           </div>
                                         </div>
                                         <div className="flex items-center space-x-3 pt-1">
@@ -854,20 +856,20 @@ export default function Cards() {
                                           </div>
                                           <button
                                             onClick={() => setCreditSavings(prev => ({ ...prev, [b.id]: b.maxValue }))}
-                                            className="text-[9px] font-black text-teal-600 bg-teal-50 border border-teal-100 rounded-md px-2 py-0.5 hover:bg-teal-100 transition-colors"
+                                            className="text-[9px] font-black text-fuchsia-400 bg-fuchsia-500/12 border border-fuchsia-500/25 rounded-md px-2 py-0.5 hover:bg-fuchsia-500/12 transition-colors"
                                           >
                                             Max
                                           </button>
                                         </div>
                                       </div>
                                     ) : (
-                                      <div className="flex items-center justify-between p-3 bg-slate-50/60 border border-slate-100 rounded-xl hover:bg-slate-50 transition-all">
+                                      <div className="flex items-center justify-between p-3 bg-white/5 border border-white/10 rounded-xl hover:bg-white/5 transition-all">
                                         <div className="space-y-0.5 max-w-[70%]">
-                                          <span className="text-[10px] font-black text-slate-700 block">{b.name}</span>
-                                          <p className="text-[9px] text-slate-500 leading-normal">{b.description}</p>
+                                          <span className="text-[10px] font-black text-[#9B8FA6] block">{b.name}</span>
+                                          <p className="text-[9px] text-[#9B8FA6] leading-normal">{b.description}</p>
                                         </div>
                                         <div className="flex items-center space-x-2 shrink-0">
-                                          <Badge className="bg-teal-50 text-teal-700 border border-teal-100 text-[9px] font-bold py-px">
+                                          <Badge className="bg-fuchsia-500/12 text-fuchsia-400 border border-fuchsia-500/25 text-[9px] font-bold py-px">
                                             +${b.maxValue}/mo
                                           </Badge>
                                           <Switch
@@ -887,22 +889,22 @@ export default function Cards() {
                         })}
                       </div>
                     ) : (
-                      <div className="text-center py-8 bg-slate-50 rounded-2xl border border-slate-150 p-6">
-                        <p className="text-sm text-gray-500">No cards in your portfolio. Add cards to start tracking statement credits.</p>
+                      <div className="text-center py-8 bg-white/5 rounded-2xl border border-white/10 p-6">
+                        <p className="text-sm text-[#6E637A]">No cards in your portfolio. Add cards to start tracking statement credits.</p>
                       </div>
                     )}
                   </div>
 
                   {/* Right Column: Expiring Sycned Merchant Offers */}
                   <div className="space-y-4">
-                    <h3 className="text-sm font-black text-slate-800 uppercase tracking-wider flex items-center space-x-1.5">
+                    <h3 className="text-sm font-black text-[#9B8FA6] uppercase tracking-wider flex items-center space-x-1.5">
                       <span>🏷️ Synced Merchant Deals ({targetedOffers.filter((o: any) => !merchantRedeemed[o.offerId]).length} active)</span>
                     </h3>
 
                     {isOffersLoading ? (
                       <div className="space-y-4">
                         {[...Array(2)].map((_, i) => (
-                          <div key={i} className="h-28 bg-gray-150 animate-pulse rounded-2xl border border-slate-100" />
+                          <div key={i} className="h-28 bg-white/[0.07] animate-pulse rounded-2xl border border-white/10" />
                         ))}
                       </div>
                     ) : targetedOffers.filter((o: any) => !merchantRedeemed[o.offerId]).length > 0 ? (
@@ -910,24 +912,24 @@ export default function Cards() {
                         {targetedOffers.filter((o: any) => !merchantRedeemed[o.offerId]).map((offer: any) => {
                           const isUrgent = offer.offerDescription.toLowerCase().includes("10%") || offer.offerDescription.toLowerCase().includes("10") || offer.offerDescription.toLowerCase().includes("$25");
                           return (
-                            <Card key={offer.offerId} className="border border-slate-150 rounded-2xl p-5 bg-gradient-to-br from-white to-slate-50/20 hover:shadow-lg transition-all flex flex-col justify-between space-y-4 shadow-sm">
+                            <Card key={offer.offerId} className="border border-white/10 rounded-2xl p-5 bg-gradient-to-br from-white to-transparent hover:shadow-lg transition-all flex flex-col justify-between space-y-4 shadow-sm">
                               <div className="space-y-1">
                                 <div className="flex items-center justify-between">
                                   <span className="text-[10px] uppercase font-black tracking-wider text-orange-600 bg-orange-50 px-2 py-0.5 rounded border border-orange-100">{offer.cardName}</span>
-                                  <Badge className={isUrgent ? "bg-red-100 text-red-700 border border-red-200 text-[9px] font-bold" : "bg-teal-100 text-teal-700 border border-teal-200 text-[9px] font-bold"}>
+                                  <Badge className={isUrgent ? "bg-red-100 text-red-700 border border-red-200 text-[9px] font-bold" : "bg-fuchsia-500/12 text-fuchsia-400 border border-fuchsia-500/25 text-[9px] font-bold"}>
                                     {isUrgent ? "Expiring Soon!" : "Active"}
                                   </Badge>
                                 </div>
-                                <h4 className="text-sm font-black text-slate-850 pt-1">{offer.merchantName}</h4>
-                                <p className="text-xs text-slate-650 leading-relaxed font-semibold">{offer.offerDescription}</p>
+                                <h4 className="text-sm font-black text-[#9B8FA6] pt-1">{offer.merchantName}</h4>
+                                <p className="text-xs text-[#9B8FA6] leading-relaxed font-semibold">{offer.offerDescription}</p>
                               </div>
 
                               {showOfferPurchaseId === offer.offerId ? (
-                                <div className="bg-slate-50/70 border border-slate-155 rounded-xl p-3 space-y-3 animate-in fade-in slide-in-from-top-1 duration-200">
+                                <div className="bg-white/5 border border-white/10 rounded-xl p-3 space-y-3 animate-in fade-in slide-in-from-top-1 duration-200">
                                   <div className="space-y-1">
-                                    <Label htmlFor={`amt-${offer.offerId}`} className="text-[10px] font-black text-slate-600">Enter Purchase Amount:</Label>
+                                    <Label htmlFor={`amt-${offer.offerId}`} className="text-[10px] font-black text-[#9B8FA6]">Enter Purchase Amount:</Label>
                                     <div className="relative">
-                                      <span className="absolute left-2.5 top-1/2 transform -translate-y-1/2 text-xs font-bold text-slate-400">$</span>
+                                      <span className="absolute left-2.5 top-1/2 transform -translate-y-1/2 text-xs font-bold text-[#9B8FA6]">$</span>
                                       <Input
                                         id={`amt-${offer.offerId}`}
                                         type="number"
@@ -949,8 +951,8 @@ export default function Cards() {
                                     }
                                     return (
                                       <div className="flex items-center justify-between text-[10px] font-bold">
-                                        <span className="text-slate-500">Estimated Saving:</span>
-                                        <span className="text-emerald-600 font-extrabold text-xs">${savings.toFixed(2)}</span>
+                                        <span className="text-[#9B8FA6]">Estimated Saving:</span>
+                                        <span className="text-fuchsia-400 font-extrabold text-xs">${savings.toFixed(2)}</span>
                                       </div>
                                     );
                                   })()}
@@ -963,7 +965,7 @@ export default function Cards() {
                                         setShowOfferPurchaseId(null);
                                         setMerchantPurchaseAmounts(prev => ({ ...prev, [offer.offerId]: '' }));
                                       }}
-                                      className="h-7 text-[10px] flex-1 font-bold rounded-lg border-slate-200"
+                                      className="h-7 text-[10px] flex-1 font-bold rounded-lg border-white/10"
                                     >
                                       Cancel
                                     </Button>
@@ -989,18 +991,18 @@ export default function Cards() {
                                           description: `Logged $${savings.toFixed(2)} cash back saved at ${offer.merchantName}!`,
                                         });
                                       }}
-                                      className="h-7 text-[10px] flex-1 bg-teal-50 hover:bg-teal-600 text-white font-extrabold rounded-lg shadow-md border-0"
+                                      className="h-7 text-[10px] flex-1 bg-fuchsia-500/12 hover:bg-fuchsia-600 text-white font-extrabold rounded-lg shadow-md border-0"
                                     >
                                       Log Savings
                                     </Button>
                                   </div>
                                 </div>
                               ) : (
-                                <div className="flex items-center justify-between pt-2 border-t border-slate-100/60 text-[10px] font-bold">
+                                <div className="flex items-center justify-between pt-2 border-t border-white/10 text-[10px] font-bold">
                                   <span className="text-red-600 font-extrabold bg-red-50/60 px-2 py-0.5 rounded-full border border-red-100">Ends: {new Date(offer.endDate).toLocaleDateString()}</span>
                                   <button
                                     onClick={() => setShowOfferPurchaseId(offer.offerId)}
-                                    className="text-emerald-600 bg-emerald-50 px-2.5 py-1 rounded-lg border border-emerald-100 hover:bg-emerald-100 transition-all flex items-center space-x-1"
+                                    className="text-fuchsia-400 bg-fuchsia-500/12 px-2.5 py-1 rounded-lg border border-fuchsia-500/25 hover:bg-fuchsia-500/12 transition-all flex items-center space-x-1"
                                   >
                                     <CheckCircle className="h-3 w-3 mr-0.5" />
                                     <span>Log Savings</span>
@@ -1012,9 +1014,9 @@ export default function Cards() {
                         })}
                       </div>
                     ) : (
-                      <Card className="border border-dashed border-slate-200 rounded-3xl p-8 text-center bg-slate-50/50">
-                        <p className="text-sm text-gray-500 font-semibold">No active expiring merchant offers found.</p>
-                        <p className="text-xs text-slate-400 mt-1">Make sure you have added cards like <b>Chase Sapphire Preferred</b> or <b>American Express Gold Card</b> to see active merchant deals.</p>
+                      <Card className="border border-dashed border-white/10 rounded-3xl p-8 text-center bg-white/5">
+                        <p className="text-sm text-[#6E637A] font-semibold">No active expiring merchant offers found.</p>
+                        <p className="text-xs text-[#9B8FA6] mt-1">Make sure you have added cards like <b>Chase Sapphire Preferred</b> or <b>American Express Gold Card</b> to see active merchant deals.</p>
                       </Card>
                     )}
                   </div>
@@ -1022,18 +1024,18 @@ export default function Cards() {
 
                 {/* Bottom Folder: Redeemed Offers */}
                 {Object.keys(merchantRedeemed).filter(k => merchantRedeemed[k]).length > 0 && (
-                  <div className="space-y-4 pt-6 border-t border-slate-150">
-                    <h4 className="text-xs uppercase font-extrabold tracking-widest text-slate-400 flex items-center space-x-1.5">
-                      <CheckCircle className="h-4 w-4 text-emerald-500" />
+                  <div className="space-y-4 pt-6 border-t border-white/10">
+                    <h4 className="text-xs uppercase font-extrabold tracking-widest text-[#9B8FA6] flex items-center space-x-1.5">
+                      <CheckCircle className="h-4 w-4 text-fuchsia-400" />
                       <span>✓ Redeemed Sync Offers ({Object.keys(merchantRedeemed).filter(k => merchantRedeemed[k]).length})</span>
                     </h4>
                     <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
                       {targetedOffers.filter((o: any) => merchantRedeemed[o.offerId]).map((offer: any) => (
-                        <Card key={offer.offerId} className="border border-slate-100 bg-slate-50/40 p-4 rounded-2xl flex items-center justify-between hover:bg-slate-50 transition-all">
+                        <Card key={offer.offerId} className="border border-white/10 bg-white/5 p-4 rounded-2xl flex items-center justify-between hover:bg-white/5 transition-all">
                           <div className="space-y-0.5 pr-2">
-                            <span className="text-[9px] uppercase font-black text-slate-400 block">{offer.cardName}</span>
-                            <span className="text-xs font-black text-slate-500 line-through block leading-tight">{offer.merchantName}</span>
-                            <span className="text-[10px] text-emerald-600 font-extrabold block">Saved: ${merchantSavings[offer.offerId]?.toFixed(2) || '0.00'}</span>
+                            <span className="text-[9px] uppercase font-black text-[#9B8FA6] block">{offer.cardName}</span>
+                            <span className="text-xs font-black text-[#9B8FA6] line-through block leading-tight">{offer.merchantName}</span>
+                            <span className="text-[10px] text-fuchsia-400 font-extrabold block">Saved: ${merchantSavings[offer.offerId]?.toFixed(2) || '0.00'}</span>
                           </div>
                           <button
                             onClick={() => {
@@ -1048,7 +1050,7 @@ export default function Cards() {
                                 return copy;
                               });
                             }}
-                            className="text-[9px] font-black text-slate-400 hover:text-slate-600 bg-slate-100 hover:bg-slate-200 border border-slate-200 px-2 py-0.5 rounded-md transition-colors"
+                            className="text-[9px] font-black text-[#9B8FA6] hover:text-[#9B8FA6] bg-white/5 hover:bg-white/5 border border-white/10 px-2 py-0.5 rounded-md transition-colors"
                           >
                             Undo
                           </button>
@@ -1180,7 +1182,7 @@ function CreditCardRender({
   const getCardStyle = () => {
     if (normalizedIssuer.includes('chase')) {
       if (normalizedName.includes('reserve')) {
-        return 'from-slate-900 via-indigo-950 to-slate-900 text-slate-100 border border-slate-800 shadow-[0_12px_30px_rgba(15,23,42,0.4)]';
+        return 'from-white/5 via-indigo-950 to-transparent text-[#9B8FA6] border border-white/10 shadow-[0_12px_30px_rgba(15,23,42,0.4)]';
       }
       if (normalizedName.includes('preferred')) {
         return 'from-indigo-900 via-blue-900 to-indigo-950 text-white border border-indigo-900/60 shadow-[0_12px_30px_rgba(30,58,138,0.4)]';
@@ -1189,35 +1191,35 @@ function CreditCardRender({
     }
     if (normalizedIssuer.includes('american express') || normalizedIssuer.includes('amex')) {
       if (normalizedName.includes('platinum')) {
-        return 'from-slate-350 via-zinc-150 to-slate-400 text-zinc-800 border border-slate-300 shadow-[0_12px_30px_rgba(100,116,139,0.25)]';
+        return 'from-white/5 via-zinc-150 to-transparent text-zinc-800 border border-white/10 shadow-[0_12px_30px_rgba(100,116,139,0.25)]';
       }
       if (normalizedName.includes('gold')) {
         return 'from-amber-200 via-amber-400 to-yellow-600 text-amber-950 border border-amber-300 shadow-[0_12px_30px_rgba(217,119,6,0.35)]';
       }
       if (normalizedName.includes('blue cash')) {
-        return 'from-sky-850 via-blue-900 to-slate-950 text-white border border-blue-950 shadow-[0_12px_30px_rgba(3,105,161,0.3)]';
+        return 'from-sky-850 via-blue-900 to-transparent text-white border border-blue-950 shadow-[0_12px_30px_rgba(3,105,161,0.3)]';
       }
       return 'from-amber-500 via-yellow-500 to-yellow-600 text-amber-950 shadow-[0_12px_30px_rgba(245,158,11,0.3)]';
     }
     if (normalizedIssuer.includes('capital one')) {
       if (normalizedName.includes('venture')) {
-        return 'from-slate-800 via-slate-900 to-slate-950 text-slate-100 border border-slate-800/80 shadow-[0_12px_30px_rgba(15,23,42,0.4)]';
+        return 'from-white/5 via-white/5 to-transparent text-[#9B8FA6] border border-white/10 shadow-[0_12px_30px_rgba(15,23,42,0.4)]';
       }
       if (normalizedName.includes('savor')) {
         return 'from-amber-900 via-yellow-950 to-amber-950 text-amber-100 border border-amber-900/60 shadow-[0_12px_30px_rgba(120,53,4,0.3)]';
       }
-      return 'from-slate-700 via-slate-850 to-slate-900 text-white border border-slate-800';
+      return 'from-white/5 via-white/5 to-transparent text-white border border-white/10';
     }
     if (normalizedIssuer.includes('citi')) {
-      return 'from-cyan-500 via-blue-600 to-blue-800 text-white border border-blue-600/40 shadow-[0_12px_30px_rgba(6,182,212,0.3)]';
+      return 'from-fuchsia-500 via-blue-600 to-blue-800 text-white border border-blue-600/40 shadow-[0_12px_30px_rgba(6,182,212,0.3)]';
     }
     if (normalizedIssuer.includes('discover')) {
       return 'from-orange-500 via-red-500 to-pink-600 text-white shadow-[0_12px_30px_rgba(249,115,22,0.3)]';
     }
     if (normalizedIssuer.includes('apple')) {
-      return 'from-zinc-50 via-zinc-100 to-zinc-250 text-slate-800 border border-zinc-200 shadow-[0_12px_30px_rgba(0,0,0,0.06)]';
+      return 'from-zinc-50 via-zinc-100 to-zinc-250 text-[#9B8FA6] border border-zinc-200 shadow-[0_12px_30px_rgba(0,0,0,0.06)]';
     }
-    return 'from-teal-600 via-emerald-600 to-emerald-800 text-white shadow-[0_12px_30px_rgba(13,148,136,0.3)]';
+    return 'from-fuchsia-500 via-fuchsia-500 to-fuchsia-600 text-white shadow-[0_12px_30px_rgba(13,148,136,0.3)]';
   };
 
   const renderNetworkLogo = () => {
@@ -1235,7 +1237,7 @@ function CreditCardRender({
       case 'american express':
       case 'amex':
         return (
-          <div className="border border-white/40 px-1.5 py-0.5 rounded bg-cyan-600/10 flex items-center justify-center">
+          <div className="border border-white/40 px-1.5 py-0.5 rounded bg-fuchsia-500/10 flex items-center justify-center">
             <span className="text-[7.5px] font-black uppercase tracking-widest text-white">AMEX</span>
           </div>
         );
@@ -1274,11 +1276,11 @@ function CreditCardRender({
         return (
           <div className="flex justify-between items-end z-10">
             <div className="space-y-0.5">
-              <span className={`text-[10px] uppercase tracking-wider block font-bold ${isLightCard ? 'text-slate-800 opacity-90' : 'text-white opacity-85'}`}>
+              <span className={`text-[10px] uppercase tracking-wider block font-bold ${isLightCard ? 'text-[#9B8FA6] opacity-90' : 'text-white opacity-85'}`}>
                 Fee: {annualFee === 0 ? 'No Annual Fee' : `$${annualFee}/yr`}
               </span>
               {bestRate && (
-                <span className={`text-[10px] font-black block leading-none ${isLightCard ? 'text-slate-950' : 'text-emerald-350'}`}>
+                <span className={`text-[10px] font-black block leading-none ${isLightCard ? 'text-[#9B8FA6]' : 'text-fuchsia-400'}`}>
                   Top Rate: {bestRate}
                 </span>
               )}
@@ -1324,14 +1326,14 @@ function ComprehensiveCardComponent({
     switch (network.toLowerCase()) {
       case 'visa': return 'bg-blue-100 text-blue-700 border-blue-200';
       case 'mastercard': return 'bg-red-100 text-red-700 border-red-200';
-      case 'american express': return 'bg-teal-100 text-teal-700 border-teal-200';
+      case 'american express': return 'bg-fuchsia-500/12 text-fuchsia-400 border-fuchsia-500/25';
       case 'discover': return 'bg-orange-100 text-orange-700 border-orange-200';
-      default: return 'bg-gray-100 text-gray-700 border-gray-200';
+      default: return 'bg-white/[0.07] text-[#DDD0E6] border-white/10';
     }
   };
 
   return (
-    <Card className={`group hover:shadow-2xl transition-all duration-500 border border-slate-100/80 rounded-3xl overflow-hidden flex flex-col justify-between ${isPopular ? 'ring-2 ring-yellow-250 bg-gradient-to-br from-yellow-50/70 via-orange-50/20 to-white' : 'bg-white'}`}>
+    <Card className={`group hover:shadow-2xl transition-all duration-500 border border-white/10 rounded-3xl overflow-hidden flex flex-col justify-between ${isPopular ? 'ring-2 ring-yellow-250 bg-gradient-to-br from-yellow-50/70 via-orange-50/20 to-transparent' : 'bg-white/5'}`}>
       
       {/* Top Banner Renders */}
       <div className="p-4 pb-0">
@@ -1348,13 +1350,13 @@ function ComprehensiveCardComponent({
         <div className="flex items-start justify-between">
           <div className="space-y-1">
             <div className="flex items-center space-x-2">
-              <h3 className="font-extrabold text-slate-800 group-hover:text-teal-600 transition-colors text-base tracking-tight leading-tight">
+              <h3 className="font-extrabold text-[#9B8FA6] group-hover:text-fuchsia-400 transition-colors text-base tracking-tight leading-tight">
                 {card.name}
               </h3>
               {isPopular && <Star className="h-4 w-4 text-yellow-500 fill-yellow-500" />}
             </div>
             <div className="flex items-center space-x-2">
-              <p className="text-xs text-slate-500 font-semibold">{card.issuer}</p>
+              <p className="text-xs text-[#9B8FA6] font-semibold">{card.issuer}</p>
               <Badge variant="outline" className={`text-[10px] font-bold py-px px-2 border rounded-full ${getNetworkColor(card.network)}`}>
                 {card.network}
               </Badge>
@@ -1363,26 +1365,26 @@ function ComprehensiveCardComponent({
           <div className="text-right">
             <div className="flex items-center space-x-0.5 justify-end">
               <Star className="h-3.5 w-3.5 text-yellow-500 fill-yellow-500" />
-              <span className="text-xs font-bold text-slate-800">{card.rating}</span>
+              <span className="text-xs font-bold text-[#9B8FA6]">{card.rating}</span>
             </div>
-            <p className="text-[10px] text-slate-400 font-medium">{card.reviewCount} reviews</p>
+            <p className="text-[10px] text-[#9B8FA6] font-medium">{card.reviewCount} reviews</p>
           </div>
         </div>
       </CardHeader>
       
       <CardContent className="pt-0 px-5 pb-5 space-y-4 flex-1 flex flex-col justify-between">
         <div className="space-y-3">
-          <div className="flex items-center justify-between text-xs font-medium border-b border-slate-100 pb-2">
-            <span className="text-slate-500">Annual Fee</span>
-            <span className="font-extrabold text-slate-800">
+          <div className="flex items-center justify-between text-xs font-medium border-b border-white/10 pb-2">
+            <span className="text-[#9B8FA6]">Annual Fee</span>
+            <span className="font-extrabold text-[#9B8FA6]">
               {card.annualFee === 0 ? 'No Fee' : `$${card.annualFee}`}
             </span>
           </div>
 
           <div className="space-y-1.5">
             <div className="flex items-center justify-between">
-              <span className="text-xs text-slate-500 font-medium">Top Reward</span>
-              <Badge variant="secondary" className="bg-teal-50 border border-teal-100 text-teal-700 text-xs font-black py-0.5 rounded-lg">
+              <span className="text-xs text-[#9B8FA6] font-medium">Top Reward</span>
+              <Badge variant="secondary" className="bg-fuchsia-500/12 border border-fuchsia-500/25 text-fuchsia-400 text-xs font-black py-0.5 rounded-lg">
                 {bestCategory.cashbackRate}% {bestCategory.category}
               </Badge>
             </div>
@@ -1396,23 +1398,23 @@ function ComprehensiveCardComponent({
           </div>
 
           {card.welcomeBonus && (
-            <div className="text-[11px] text-emerald-800 bg-emerald-50/70 border border-emerald-100/60 p-2.5 rounded-xl font-medium leading-normal">
-              <strong className="text-emerald-950 font-bold">Welcome Bonus:</strong> {card.welcomeBonus}
+            <div className="text-[11px] text-fuchsia-400 bg-fuchsia-500/10 border border-fuchsia-500/25 p-2.5 rounded-xl font-medium leading-normal">
+              <strong className="text-fuchsia-400 font-bold">Welcome Bonus:</strong> {card.welcomeBonus}
             </div>
           )}
 
           <div className="space-y-1.5">
-            <span className="text-xs font-bold text-slate-700">Categorized Perks:</span>
+            <span className="text-xs font-bold text-[#9B8FA6]">Categorized Perks:</span>
             <div className="flex flex-wrap gap-1">
               {card.categories && card.categories.length > 0 ? (
                 <>
                   {card.categories.slice(0, 3).map((category, index) => (
-                    <Badge key={index} variant="outline" className="text-[10px] font-bold py-0.5 px-2 border border-slate-200 text-slate-600 rounded-md">
+                    <Badge key={index} variant="outline" className="text-[10px] font-bold py-0.5 px-2 border border-white/10 text-[#9B8FA6] rounded-md">
                       {category.cashbackRate}% {category.category}
                     </Badge>
                   ))}
                   {card.categories.length > 3 && (
-                    <Badge variant="outline" className="text-[10px] font-bold py-0.5 px-1.5 border border-slate-200 text-slate-400 rounded-md">
+                    <Badge variant="outline" className="text-[10px] font-bold py-0.5 px-1.5 border border-white/10 text-[#9B8FA6] rounded-md">
                       +{card.categories.length - 3} more
                     </Badge>
                   )}
@@ -1426,11 +1428,11 @@ function ComprehensiveCardComponent({
           </div>
         </div>
 
-        <div className="flex space-x-2 pt-3 border-t border-slate-100">
+        <div className="flex space-x-2 pt-3 border-t border-white/10">
           {showAddButton && (
             <div className="flex-1">
               {isInPortfolio ? (
-                <Badge className="bg-green-50 border border-green-200 text-green-700 font-extrabold w-full py-1.5 justify-center rounded-xl text-xs">
+                <Badge className="bg-fuchsia-500/12 border border-fuchsia-500/25 text-fuchsia-400 font-extrabold w-full py-1.5 justify-center rounded-xl text-xs">
                   In Portfolio
                 </Badge>
               ) : (
@@ -1438,7 +1440,7 @@ function ComprehensiveCardComponent({
                   onClick={onAddToPortfolio}
                   disabled={isAddingToPortfolio}
                   size="sm"
-                  className="w-full bg-teal-500 hover:bg-teal-600 text-white font-extrabold rounded-xl py-1.5 text-xs shadow-md transition-all active:scale-[0.98]"
+                  className="w-full bg-fuchsia-500 hover:bg-fuchsia-600 text-white font-extrabold rounded-xl py-1.5 text-xs shadow-md transition-all active:scale-[0.98]"
                 >
                   {isAddingToPortfolio ? 'Adding...' : 'Add to Portfolio'}
                 </Button>
@@ -1449,7 +1451,7 @@ function ComprehensiveCardComponent({
             <Button 
               variant="outline" 
               size="sm" 
-              className="text-xs font-extrabold border-slate-200 hover:bg-slate-50 text-slate-700 rounded-xl"
+              className="text-xs font-extrabold border-white/10 hover:bg-white/5 text-[#9B8FA6] rounded-xl"
               onClick={() => window.open(card.applyUrl, '_blank')}
             >
               <ExternalLink className="h-3.5 w-3.5 mr-1" />
@@ -1477,14 +1479,14 @@ function PortfolioCardComponent({ userCard }: { userCard: UserCard }) {
     switch (network.toLowerCase()) {
       case 'visa': return 'bg-blue-100 text-blue-700 border-blue-200';
       case 'mastercard': return 'bg-red-100 text-red-700 border-red-200';
-      case 'american express': return 'bg-teal-100 text-teal-700 border-teal-200';
+      case 'american express': return 'bg-fuchsia-500/12 text-fuchsia-400 border-fuchsia-500/25';
       case 'discover': return 'bg-orange-100 text-orange-700 border-orange-200';
-      default: return 'bg-gray-100 text-gray-700 border-gray-200';
+      default: return 'bg-white/[0.07] text-[#DDD0E6] border-white/10';
     }
   };
 
   return (
-    <Card className="group hover:shadow-2xl transition-all duration-500 border border-slate-100/80 rounded-3xl overflow-hidden bg-gradient-to-br from-slate-50/60 via-teal-50/10 to-white flex flex-col justify-between">
+    <Card className="group hover:shadow-2xl transition-all duration-500 border border-white/10 rounded-3xl overflow-hidden bg-gradient-to-br from-white/5 via-fuchsia-500/10 to-transparent flex flex-col justify-between">
       
       {/* Top Banner aspect-ratio renders */}
       <div className="p-4 pb-0">
@@ -1500,14 +1502,14 @@ function PortfolioCardComponent({ userCard }: { userCard: UserCard }) {
       <CardHeader className="pt-4 pb-2 px-5">
         <div className="flex items-center space-x-3">
           <div className="flex-1">
-            <h3 className="font-extrabold text-slate-800 text-base tracking-tight leading-tight">
+            <h3 className="font-extrabold text-[#9B8FA6] text-base tracking-tight leading-tight">
               {userCard.nickname || card.name}
             </h3>
             {userCard.nickname && (
-              <p className="text-[10px] text-slate-400 font-medium leading-none mt-1">{card.name}</p>
+              <p className="text-[10px] text-[#9B8FA6] font-medium leading-none mt-1">{card.name}</p>
             )}
             <div className="flex items-center space-x-2 mt-1">
-              <p className="text-xs text-slate-500 font-semibold leading-none">{card.issuer}</p>
+              <p className="text-xs text-[#9B8FA6] font-semibold leading-none">{card.issuer}</p>
               <Badge variant="outline" className={`text-[9px] font-black py-0.5 px-2 border rounded-full ${getNetworkColor(card.network)}`}>
                 {card.network}
               </Badge>
@@ -1518,31 +1520,31 @@ function PortfolioCardComponent({ userCard }: { userCard: UserCard }) {
       
       <CardContent className="pt-0 px-5 pb-5 space-y-4">
         {userCard.creditLimit && (
-          <div className="flex items-center justify-between text-xs font-semibold border-b border-slate-100/60 pb-2">
-            <span className="text-slate-500">Credit Limit</span>
-            <span className="font-extrabold text-slate-800">${userCard.creditLimit.toLocaleString()}</span>
+          <div className="flex items-center justify-between text-xs font-semibold border-b border-white/10 pb-2">
+            <span className="text-[#9B8FA6]">Credit Limit</span>
+            <span className="font-extrabold text-[#9B8FA6]">${userCard.creditLimit.toLocaleString()}</span>
           </div>
         )}
 
-        <div className="flex items-center justify-between text-xs font-semibold border-b border-slate-100/60 pb-2">
-          <span className="text-slate-500 font-semibold">Best Portfolio Rate</span>
-          <Badge variant="secondary" className="bg-teal-50 border border-teal-150 text-teal-700 font-black rounded-lg">
+        <div className="flex items-center justify-between text-xs font-semibold border-b border-white/10 pb-2">
+          <span className="text-[#9B8FA6] font-semibold">Best Portfolio Rate</span>
+          <Badge variant="secondary" className="bg-fuchsia-500/12 border border-fuchsia-500/25 text-fuchsia-400 font-black rounded-lg">
             {bestCategory.cashbackRate}% {bestCategory.category}
           </Badge>
         </div>
 
         <div className="space-y-1.5">
-          <span className="text-xs font-bold text-slate-700">Category Cashback Rates:</span>
+          <span className="text-xs font-bold text-[#9B8FA6]">Category Cashback Rates:</span>
           <div className="flex flex-wrap gap-1">
             {card.categories && card.categories.length > 0 ? (
               <>
                 {card.categories.slice(0, 3).map((category, index) => (
-                  <Badge key={index} variant="outline" className="text-[10px] font-bold py-0.5 px-2 border border-slate-200 text-slate-600 rounded-md">
+                  <Badge key={index} variant="outline" className="text-[10px] font-bold py-0.5 px-2 border border-white/10 text-[#9B8FA6] rounded-md">
                     {category.cashbackRate}% {category.category}
                   </Badge>
                 ))}
                 {card.categories.length > 3 && (
-                  <Badge variant="outline" className="text-[10px] font-bold py-0.5 px-1.5 border border-slate-200 text-slate-400 rounded-md">
+                  <Badge variant="outline" className="text-[10px] font-bold py-0.5 px-1.5 border border-white/10 text-[#9B8FA6] rounded-md">
                     +{card.categories.length - 3} more
                   </Badge>
                 )}
@@ -1555,9 +1557,9 @@ function PortfolioCardComponent({ userCard }: { userCard: UserCard }) {
           </div>
         </div>
 
-        <div className="text-[10px] text-slate-400 font-semibold pt-1 border-t border-slate-100/60 flex items-center justify-between">
+        <div className="text-[10px] text-[#9B8FA6] font-semibold pt-1 border-t border-white/10 flex items-center justify-between">
           <span>Added {new Date(userCard.addedAt).toLocaleDateString()}</span>
-          <span className="text-emerald-600 font-bold bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-100">Wallet Synced</span>
+          <span className="text-fuchsia-400 font-bold bg-fuchsia-500/12 px-2 py-0.5 rounded-full border border-fuchsia-500/25">Wallet Synced</span>
         </div>
       </CardContent>
     </Card>

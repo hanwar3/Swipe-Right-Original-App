@@ -169,19 +169,19 @@ export default function Recommendations() {
     <div className="max-w-4xl mx-auto px-4 py-8 space-y-8">
       {/* Header */}
       <div className="text-center space-y-4">
-        <div className="inline-flex items-center space-x-2 bg-gradient-to-r from-teal-500 to-green-500 text-white px-4 py-2 rounded-full text-sm font-medium">
+        <div className="inline-flex items-center space-x-2 bg-gradient-to-r from-fuchsia-500 to-fuchsia-600 text-white px-4 py-2 rounded-full text-sm font-medium">
           <Target className="h-4 w-4" />
           <span>Smart Recommendations</span>
         </div>
         
-        <h1 className="text-3xl font-bold text-gray-900">
+        <h1 className="text-3xl font-bold text-[#F3EBF8]">
           Find Your Perfect
-          <span className="block bg-gradient-to-r from-teal-600 to-green-600 bg-clip-text text-transparent">
+          <span className="block bg-gradient-to-r from-fuchsia-500 to-fuchsia-600 bg-clip-text text-transparent">
             Cashback Card
           </span>
         </h1>
         
-        <p className="text-gray-600 max-w-2xl mx-auto">
+        <p className="text-[#9B8FA6] max-w-2xl mx-auto">
           Tell us what you're buying and we'll recommend the best credit cards to maximize your rewards.
         </p>
       </div>
@@ -190,19 +190,19 @@ export default function Recommendations() {
       <div className="space-y-4">
         <div className="flex space-x-2">
           <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-[#6E637A] h-4 w-4" />
             <Input
               placeholder="What are you buying? (e.g., groceries, gas, dining)"
               value={category}
               onChange={(e) => setCategory(e.target.value)}
               onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
-              className="pl-10 border-gray-200 focus:border-teal-500 focus:ring-teal-500"
+              className="pl-10 border-white/10 focus:border-fuchsia-500 focus:ring-fuchsia-500"
             />
           </div>
           <Button 
             onClick={handleSearch}
             disabled={!category.trim()}
-            className="bg-teal-500 hover:bg-teal-600"
+            className="bg-fuchsia-500 hover:bg-fuchsia-600"
           >
             Find Cards
           </Button>
@@ -210,7 +210,7 @@ export default function Recommendations() {
 
         {/* Popular Categories */}
         <div className="space-y-2">
-          <p className="text-sm text-gray-600">Popular categories:</p>
+          <p className="text-sm text-[#9B8FA6]">Popular categories:</p>
           <div className="flex flex-wrap gap-2">
             {popularCategories.map((cat) => (
               <Button
@@ -218,7 +218,7 @@ export default function Recommendations() {
                 variant="outline"
                 size="sm"
                 onClick={() => handleCategoryClick(cat)}
-                className="hover:bg-teal-50 hover:border-teal-300"
+                className="hover:bg-fuchsia-500/12 hover:border-fuchsia-500"
               >
                 {cat}
               </Button>
@@ -229,22 +229,22 @@ export default function Recommendations() {
 
       {/* Browser Extension Sync Simulator Widget */}
       {user && (
-        <Card className="border border-slate-100 shadow-[0_8px_30px_rgb(0,0,0,0.04)] rounded-3xl overflow-hidden bg-white">
-          <CardHeader className="pb-3 border-b border-slate-50">
+        <Card className="border border-white/10 shadow-[0_8px_30px_rgb(0,0,0,0.04)] rounded-3xl overflow-hidden bg-white/5">
+          <CardHeader className="pb-3 border-b border-white/10">
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
               <div className="flex items-center space-x-3">
-                <div className="p-2 bg-teal-50 text-teal-600 rounded-xl">
+                <div className="p-2 bg-fuchsia-500/12 text-fuchsia-400 rounded-xl">
                   <Chrome className="h-5 w-5" />
                 </div>
                 <div>
-                  <CardTitle className="text-base font-bold text-slate-800">Browser Extension Connector</CardTitle>
+                  <CardTitle className="text-base font-bold text-[#9B8FA6]">Browser Extension Connector</CardTitle>
                   <CardDescription className="text-xs">Synchronize Chase, Amex, and Capital One active merchant deals securely</CardDescription>
                 </div>
               </div>
               <Button 
                 onClick={() => syncMutation.mutate()} 
                 disabled={syncMutation.isPending || portfolioCards.length === 0}
-                className="bg-teal-500 hover:bg-teal-600 text-white font-bold rounded-xl text-xs px-4 py-2 self-start sm:self-auto shadow-md border-0"
+                className="bg-fuchsia-500 hover:bg-fuchsia-600 text-white font-bold rounded-xl text-xs px-4 py-2 self-start sm:self-auto shadow-md border-0"
               >
                 {syncMutation.isPending ? (
                   <>
@@ -263,20 +263,20 @@ export default function Recommendations() {
           <CardContent className="pt-4 space-y-4">
             {/* Quick Status */}
             <div className="flex flex-wrap items-center gap-4 text-xs font-semibold">
-              <div className="flex items-center space-x-1.5 text-slate-600">
-                <CheckCircle className="h-4 w-4 text-emerald-500" />
-                <span>Parser Status: <span className="text-emerald-600 font-bold">Connected & Safe</span></span>
+              <div className="flex items-center space-x-1.5 text-[#9B8FA6]">
+                <CheckCircle className="h-4 w-4 text-fuchsia-400" />
+                <span>Parser Status: <span className="text-fuchsia-400 font-bold">Connected & Safe</span></span>
               </div>
-              <div className="flex items-center space-x-1.5 text-slate-600">
+              <div className="flex items-center space-x-1.5 text-[#9B8FA6]">
                 <Gift className="h-4 w-4 text-orange-500" />
                 <span>Active synced offers: <span className="text-orange-600 font-bold">{syncMutation.isSuccess ? '5 Hot Deals Synced' : '0 Synced'}</span></span>
               </div>
             </div>
 
             {/* Architecture / Security Breakdown Accordion */}
-            <div className="bg-slate-50 border border-slate-100 p-3.5 rounded-2xl space-y-3 text-left">
-              <div className="flex items-center space-x-1.5 text-slate-800 font-bold text-xs">
-                <Shield className="h-4 w-4 text-teal-600" />
+            <div className="bg-white/5 border border-white/10 p-3.5 rounded-2xl space-y-3 text-left">
+              <div className="flex items-center space-x-1.5 text-[#9B8FA6] font-bold text-xs">
+                <Shield className="h-4 w-4 text-fuchsia-400" />
                 <span>SwipeRight Security & Architectural Strategy</span>
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-[11px] leading-relaxed">
@@ -289,12 +289,12 @@ export default function Recommendations() {
                     Scraping bank mobile apps using on-device accessibility tools or screen-recording violates Apple App Store security policies and Bank Terms of Service. It risks leaking credentials, account numbers, and triggers firewalls (ThreatMetrix/Arkose Labs).
                   </p>
                 </div>
-                <div className="space-y-1.5 bg-emerald-50/50 border border-emerald-100 p-3 rounded-xl">
-                  <div className="flex items-center space-x-1 text-emerald-800 font-bold">
+                <div className="space-y-1.5 bg-fuchsia-500/10 border border-fuchsia-500/25 p-3 rounded-xl">
+                  <div className="flex items-center space-x-1 text-fuchsia-400 font-bold">
                     <Zap className="h-3.5 w-3.5" />
                     <span>SwipeRight Parser Sync (OPTIMAL)</span>
                   </div>
-                  <p className="text-emerald-700 font-medium text-[11px]">
+                  <p className="text-fuchsia-400 font-medium text-[11px]">
                     Our Chrome extension operates client-side inside your logged-in session. It parses plain HTML tables on your Chase/Amex deals tab, triggers bank activations, and pushes clean merchant offer metadata without touching credentials or account numbers.
                   </p>
                 </div>
@@ -308,8 +308,8 @@ export default function Recommendations() {
       {isLoading && (
         <div className="space-y-4">
           <div className="text-center">
-            <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-teal-500"></div>
-            <p className="mt-2 text-gray-600">Finding the best cards for you...</p>
+            <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-fuchsia-500"></div>
+            <p className="mt-2 text-[#9B8FA6]">Finding the best cards for you...</p>
           </div>
         </div>
       )}
@@ -318,10 +318,10 @@ export default function Recommendations() {
       {searchTriggered && !isLoading && allRecommendations.length > 0 && (
         <div className="space-y-6">
           <div className="text-center">
-            <h2 className="text-xl font-semibold text-gray-900 mb-2">
+            <h2 className="text-xl font-semibold text-[#F3EBF8] mb-2">
               Best Cards for {recommendationsData?.category}
             </h2>
-            <p className="text-gray-600">Ranked by cashback rate and value</p>
+            <p className="text-[#9B8FA6]">Ranked by cashback rate and value</p>
           </div>
 
           {/* Decision Panel */}
@@ -334,47 +334,47 @@ export default function Recommendations() {
               const rateDiff = parseFloat(((topChoiceOverall.effectiveRate || 0) - (topChoicePortfolio.effectiveRate || 0)).toFixed(2));
               
               return (
-                <Card className="border border-slate-100 shadow-[0_12px_40px_rgba(0,0,0,0.05)] rounded-3xl overflow-hidden bg-gradient-to-b from-slate-50 to-white text-left">
-                  <CardHeader className="pb-3 bg-slate-50/60 border-b border-slate-100">
+                <Card className="border border-white/10 shadow-[0_12px_40px_rgba(0,0,0,0.05)] rounded-3xl overflow-hidden bg-gradient-to-b from-white/5 to-transparent text-left">
+                  <CardHeader className="pb-3 bg-white/5 border-b border-white/10">
                     <div className="flex items-center space-x-2">
-                      <Award className="h-5 w-5 text-teal-600" />
-                      <CardTitle className="text-base font-extrabold text-slate-800">SwipeRight Decision Verdict</CardTitle>
+                      <Award className="h-5 w-5 text-fuchsia-400" />
+                      <CardTitle className="text-base font-extrabold text-[#9B8FA6]">SwipeRight Decision Verdict</CardTitle>
                     </div>
                   </CardHeader>
                   <CardContent className="pt-6 space-y-6">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                       {/* Left: Portfolio Choice */}
-                      <div className="p-4 bg-gradient-to-br from-blue-500/10 via-indigo-500/5 to-white border border-blue-150 rounded-2xl flex flex-col justify-between space-y-4">
+                      <div className="p-4 bg-gradient-to-br from-blue-500/10 via-indigo-500/5 to-transparent border border-blue-150 rounded-2xl flex flex-col justify-between space-y-4">
                         <div className="space-y-1">
                           <span className="text-[10px] font-bold text-blue-600 uppercase tracking-widest bg-blue-50 px-2 py-0.5 rounded-full border border-blue-100">Pocket Swipe</span>
-                          <h4 className="font-extrabold text-slate-800 text-sm mt-2">{topChoicePortfolio.portfolioNickname || topChoicePortfolio.card.name}</h4>
-                          <span className="text-xs text-slate-500 font-semibold">{topChoicePortfolio.card.issuer} • {topChoicePortfolio.card.network}</span>
+                          <h4 className="font-extrabold text-[#9B8FA6] text-sm mt-2">{topChoicePortfolio.portfolioNickname || topChoicePortfolio.card.name}</h4>
+                          <span className="text-xs text-[#9B8FA6] font-semibold">{topChoicePortfolio.card.issuer} • {topChoicePortfolio.card.network}</span>
                         </div>
                         
                         <div className="space-y-1">
                           <div className="text-3xl font-black text-indigo-600">{topChoicePortfolio.effectiveRate || topChoicePortfolio.relevantCategory.cashbackRate}%</div>
                           <span className="text-[10px] font-bold text-indigo-500 block uppercase">{topChoicePortfolio.offerAppliedText ? "Merchant Promo Applied" : "Base Category Rate"}</span>
                           {topChoicePortfolio.offerAppliedText && (
-                            <p className="text-[11px] text-emerald-700 bg-emerald-50 border border-emerald-100 p-2.5 rounded-xl font-bold leading-tight mt-1.5">{topChoicePortfolio.offerAppliedText}</p>
+                            <p className="text-[11px] text-fuchsia-400 bg-fuchsia-500/12 border border-fuchsia-500/25 p-2.5 rounded-xl font-bold leading-tight mt-1.5">{topChoicePortfolio.offerAppliedText}</p>
                           )}
                         </div>
                       </div>
 
                       {/* Right: Overall Choice */}
-                      <div className="p-4 bg-gradient-to-br from-teal-500/10 via-emerald-500/5 to-white border border-teal-150 rounded-2xl flex flex-col justify-between space-y-4">
+                      <div className="p-4 bg-gradient-to-br from-fuchsia-500/10 via-fuchsia-500/5 to-transparent border border-fuchsia-500/25 rounded-2xl flex flex-col justify-between space-y-4">
                         <div className="space-y-1">
-                          <span className="text-[10px] font-bold text-teal-600 uppercase tracking-widest bg-teal-50 px-2 py-0.5 rounded-full border border-teal-100">Best in World</span>
-                          <h4 className="font-extrabold text-slate-800 text-sm mt-2">{topChoiceOverall.card.name}</h4>
-                          <span className="text-xs text-slate-500 font-semibold">{topChoiceOverall.card.issuer} • {topChoiceOverall.card.network}</span>
+                          <span className="text-[10px] font-bold text-fuchsia-400 uppercase tracking-widest bg-fuchsia-500/12 px-2 py-0.5 rounded-full border border-fuchsia-500/25">Best in World</span>
+                          <h4 className="font-extrabold text-[#9B8FA6] text-sm mt-2">{topChoiceOverall.card.name}</h4>
+                          <span className="text-xs text-[#9B8FA6] font-semibold">{topChoiceOverall.card.issuer} • {topChoiceOverall.card.network}</span>
                         </div>
                         
                         <div className="space-y-1">
-                          <div className="text-3xl font-black text-teal-600">{topChoiceOverall.effectiveRate || topChoiceOverall.relevantCategory.cashbackRate}%</div>
-                          <span className="text-[10px] font-bold text-teal-500 block uppercase">Max Reward Rate</span>
+                          <div className="text-3xl font-black text-fuchsia-400">{topChoiceOverall.effectiveRate || topChoiceOverall.relevantCategory.cashbackRate}%</div>
+                          <span className="text-[10px] font-bold text-fuchsia-400 block uppercase">Max Reward Rate</span>
                           {isAligned ? (
-                            <p className="text-[11px] text-teal-700 bg-teal-50 border border-teal-100 p-2.5 rounded-xl font-bold leading-tight mt-1.5">You own the best card in the world!</p>
+                            <p className="text-[11px] text-fuchsia-400 bg-fuchsia-500/12 border border-fuchsia-500/25 p-2.5 rounded-xl font-bold leading-tight mt-1.5">You own the best card in the world!</p>
                           ) : (
-                            <p className="text-[11px] text-slate-600 bg-slate-50 border border-slate-150 p-2.5 rounded-xl font-bold leading-tight mt-1.5">Available in database</p>
+                            <p className="text-[11px] text-[#9B8FA6] bg-white/5 border border-white/10 p-2.5 rounded-xl font-bold leading-tight mt-1.5">Available in database</p>
                           )}
                         </div>
                       </div>
@@ -382,11 +382,11 @@ export default function Recommendations() {
 
                     {/* Wingman's Verdict Alert Box */}
                     {isAligned ? (
-                      <div className="bg-emerald-50 border border-emerald-250 p-4 rounded-2xl flex items-start space-x-3 shadow-inner">
-                        <CheckCircle className="h-5 w-5 text-emerald-600 mt-0.5 flex-shrink-0" />
+                      <div className="bg-fuchsia-500/12 border border-fuchsia-500 p-4 rounded-2xl flex items-start space-x-3 shadow-inner">
+                        <CheckCircle className="h-5 w-5 text-fuchsia-400 mt-0.5 flex-shrink-0" />
                         <div>
-                          <strong className="text-emerald-950 font-black text-sm block font-extrabold">Wallet Alignment: 100%</strong>
-                          <p className="text-emerald-800 text-xs font-semibold leading-relaxed mt-0.5">
+                          <strong className="text-fuchsia-400 font-black text-sm block font-extrabold">Wallet Alignment: 100%</strong>
+                          <p className="text-fuchsia-400 text-xs font-semibold leading-relaxed mt-0.5">
                             You're a master optimizer! You already have the absolute best card in the world for this purchase in your wallet. Swipe your <strong>{topChoicePortfolio.portfolioNickname || topChoicePortfolio.card.name}</strong> to capture the full <strong>{topChoicePortfolio.effectiveRate}%</strong> cashback!
                           </p>
                         </div>
@@ -431,13 +431,13 @@ export default function Recommendations() {
               </CardHeader>
               <CardContent className="space-y-3">
                 {merchantOffers.slice(0, 3).map((offer) => (
-                  <div key={offer.id} className="flex items-center justify-between p-3 bg-white rounded-lg">
+                  <div key={offer.id} className="flex items-center justify-between p-3 bg-white/5 rounded-lg">
                     <div className="flex-1">
                       <div className="flex items-center space-x-2">
-                        <span className="font-medium text-gray-900">{offer.merchantName}</span>
+                        <span className="font-medium text-[#F3EBF8]">{offer.merchantName}</span>
                         <Badge className="bg-orange-100 text-orange-700">{offer.cardName}</Badge>
                       </div>
-                      <p className="text-sm text-gray-600 mt-1">{offer.offerDescription}</p>
+                      <p className="text-sm text-[#9B8FA6] mt-1">{offer.offerDescription}</p>
                       {offer.endDate && (
                         <p className="text-xs text-orange-600 mt-1">
                           Valid until {new Date(offer.endDate).toLocaleDateString()}
@@ -446,7 +446,7 @@ export default function Recommendations() {
                     </div>
                     <div className="text-right">
                       {offer.isActivated ? (
-                        <Badge className="bg-green-100 text-green-700">Activated</Badge>
+                        <Badge className="bg-fuchsia-500/12 text-fuchsia-400">Activated</Badge>
                       ) : (
                         <Badge variant="outline">Not Activated</Badge>
                       )}
@@ -454,7 +454,7 @@ export default function Recommendations() {
                   </div>
                 ))}
                 {merchantOffers.length > 3 && (
-                  <p className="text-sm text-gray-600 text-center">
+                  <p className="text-sm text-[#9B8FA6] text-center">
                     +{merchantOffers.length - 3} more offers available
                   </p>
                 )}
@@ -486,10 +486,10 @@ export default function Recommendations() {
               {portfolioRecommendations.length > 0 ? (
                 <>
                   <div className="text-center mb-4">
-                    <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                    <h3 className="text-lg font-semibold text-[#F3EBF8] mb-2">
                       Best Cards from Your Portfolio
                     </h3>
-                    <p className="text-gray-600">These are the cards you already have that work best for {category}</p>
+                    <p className="text-[#9B8FA6]">These are the cards you already have that work best for {category}</p>
                   </div>
                   {portfolioRecommendations.map((recommendation, index) => (
                     <RecommendationCard 
@@ -503,7 +503,7 @@ export default function Recommendations() {
                 </>
               ) : (
                 <div className="text-center py-8">
-                  <p className="text-gray-600">No cards in your portfolio match this category.</p>
+                  <p className="text-[#9B8FA6]">No cards in your portfolio match this category.</p>
                 </div>
               )}
             </TabsContent>
@@ -513,9 +513,9 @@ export default function Recommendations() {
 
       {searchTriggered && !isLoading && allRecommendations.length === 0 && category && (
         <div className="text-center py-12">
-          <Target className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-          <h3 className="text-lg font-medium text-gray-900 mb-2">No specific recommendations found</h3>
-          <p className="text-gray-600 mb-4">
+          <Target className="h-12 w-12 text-[#6E637A] mx-auto mb-4" />
+          <h3 className="text-lg font-medium text-[#F3EBF8] mb-2">No specific recommendations found</h3>
+          <p className="text-[#9B8FA6] mb-4">
             Try searching for a different category or browse all cards to find the best option.
           </p>
           <Button variant="outline" onClick={() => setCategory('')}>
@@ -533,31 +533,31 @@ function MiniCreditCardRender({ name, issuer }: { name: string; issuer: string }
 
   const getCardStyle = () => {
     if (normalizedIssuer.includes('chase')) {
-      if (normalizedName.includes('reserve')) return 'from-slate-900 via-indigo-950 to-slate-900 text-white';
+      if (normalizedName.includes('reserve')) return 'from-white/5 via-indigo-950 to-transparent text-white';
       if (normalizedName.includes('preferred')) return 'from-indigo-900 to-blue-900 text-white';
       return 'from-blue-600 to-indigo-800 text-white';
     }
     if (normalizedIssuer.includes('american express') || normalizedIssuer.includes('amex')) {
-      if (normalizedName.includes('platinum')) return 'from-slate-350 via-zinc-150 to-slate-400 text-slate-800';
+      if (normalizedName.includes('platinum')) return 'from-white/5 via-zinc-150 to-transparent text-[#9B8FA6]';
       if (normalizedName.includes('gold')) return 'from-amber-200 via-amber-450 to-yellow-600 text-amber-950';
       if (normalizedName.includes('blue cash')) return 'from-sky-850 to-blue-950 text-white';
       return 'from-amber-400 to-yellow-600 text-amber-950';
     }
     if (normalizedIssuer.includes('capital one')) {
-      if (normalizedName.includes('venture')) return 'from-slate-800 to-slate-950 text-white';
+      if (normalizedName.includes('venture')) return 'from-white/5 to-transparent text-white';
       if (normalizedName.includes('savor')) return 'from-amber-900 to-amber-950 text-amber-100';
-      return 'from-slate-700 to-slate-900 text-white';
+      return 'from-white/5 to-transparent text-white';
     }
     if (normalizedIssuer.includes('citi')) {
-      return 'from-cyan-500 via-blue-600 to-blue-800 text-white';
+      return 'from-fuchsia-500 via-blue-600 to-blue-800 text-white';
     }
     if (normalizedIssuer.includes('discover')) {
       return 'from-orange-500 to-red-500 text-white';
     }
     if (normalizedIssuer.includes('apple')) {
-      return 'from-zinc-50 via-zinc-100 to-zinc-200 text-slate-800 border border-zinc-200';
+      return 'from-zinc-50 via-zinc-100 to-zinc-200 text-[#9B8FA6] border border-zinc-200';
     }
-    return 'from-teal-600 to-emerald-800 text-white';
+    return 'from-fuchsia-500 to-fuchsia-600 text-white';
   };
 
   return (
@@ -589,29 +589,29 @@ function RecommendationCard({
     switch (network.toLowerCase()) {
       case 'visa': return 'bg-blue-100 text-blue-700';
       case 'mastercard': return 'bg-red-100 text-red-700';
-      case 'american express': return 'bg-green-100 text-green-700';
+      case 'american express': return 'bg-fuchsia-500/12 text-fuchsia-400';
       case 'discover': return 'bg-orange-100 text-orange-700';
-      default: return 'bg-gray-100 text-gray-700';
+      default: return 'bg-white/[0.07] text-[#DDD0E6]';
     }
   };
 
   return (
     <Card className={`transition-all duration-300 border-0 ${
       isTopChoice && !isPortfolioCard
-        ? 'bg-gradient-to-r from-teal-50 to-green-50 ring-2 ring-teal-200' 
+        ? 'bg-gradient-to-r from-black to-black ring-2 ring-fuchsia-500/25' 
         : isPortfolioCard
         ? 'bg-gradient-to-r from-blue-50 to-indigo-50 ring-2 ring-blue-200'
-        : 'bg-white hover:shadow-md'
+        : 'bg-white/5 hover:shadow-md'
     }`}>
       <CardContent className="p-6">
         <div className="flex items-start space-x-4">
           {/* Rank Badge */}
           <div className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold ${
             isTopChoice && !isPortfolioCard
-              ? 'bg-gradient-to-r from-teal-500 to-green-500 text-white' 
+              ? 'bg-gradient-to-r from-fuchsia-500 to-fuchsia-600 text-white' 
               : isPortfolioCard
               ? 'bg-gradient-to-r from-blue-500 to-indigo-500 text-white'
-              : 'bg-gray-100 text-gray-600'
+              : 'bg-white/[0.07] text-[#9B8FA6]'
           }`}>
             {rank}
           </div>
@@ -623,10 +623,10 @@ function RecommendationCard({
           <div className="flex-1 space-y-3">
             <div className="flex items-start justify-between">
               <div>
-                <h3 className="font-semibold text-gray-900 flex items-center space-x-2">
+                <h3 className="font-semibold text-[#F3EBF8] flex items-center space-x-2">
                   <span>{portfolioNickname || card.name}</span>
                   {isTopChoice && !isPortfolioCard && (
-                    <Badge className="bg-gradient-to-r from-teal-500 to-green-500 text-white">
+                    <Badge className="bg-gradient-to-r from-fuchsia-500 to-fuchsia-600 text-white">
                       <Star className="h-3 w-3 mr-1" />
                       Best Choice
                     </Badge>
@@ -637,38 +637,38 @@ function RecommendationCard({
                     </Badge>
                   )}
                   {isInPortfolio && !isPortfolioCard && (
-                    <Badge className="bg-green-100 text-green-700">
+                    <Badge className="bg-fuchsia-500/12 text-fuchsia-400">
                       In Portfolio
                     </Badge>
                   )}
                 </h3>
                 {portfolioNickname && (
-                  <p className="text-xs text-gray-500">{card.name}</p>
+                  <p className="text-xs text-[#6E637A]">{card.name}</p>
                 )}
                 <div className="flex items-center space-x-2 mt-1">
-                  <p className="text-sm text-gray-600">{card.issuer}</p>
+                  <p className="text-sm text-[#9B8FA6]">{card.issuer}</p>
                   <Badge className={`text-xs ${getNetworkColor(card.network)}`}>
                     {card.network}
                   </Badge>
                 </div>
                 {offerAppliedText && (
-                  <div className="mt-2 text-xs font-bold text-emerald-700 bg-emerald-50 border border-emerald-100 rounded-lg px-2.5 py-1.5 inline-block animate-pulse">
+                  <div className="mt-2 text-xs font-bold text-fuchsia-400 bg-fuchsia-500/12 border border-fuchsia-500/25 rounded-lg px-2.5 py-1.5 inline-block animate-pulse">
                     {offerAppliedText}
                   </div>
                 )}
               </div>
               
               <div className="text-right">
-                <div className="text-2xl font-bold text-teal-600">
+                <div className="text-2xl font-bold text-fuchsia-400">
                   {effectiveRate || relevantCategory.cashbackRate}%
                 </div>
-                <div className="text-xs text-gray-500">cashback</div>
+                <div className="text-xs text-[#6E637A]">cashback</div>
               </div>
             </div>
 
             <div className="flex items-center justify-between text-sm">
-              <span className="text-gray-600">Category: {relevantCategory.category}</span>
-              <span className="text-gray-600">
+              <span className="text-[#9B8FA6]">Category: {relevantCategory.category}</span>
+              <span className="text-[#9B8FA6]">
                 Annual Fee: {card.annualFee === 0 ? 'No Fee' : `$${card.annualFee}`}
               </span>
             </div>
@@ -687,7 +687,7 @@ function RecommendationCard({
               <div className="space-y-2">
                 <div className="flex items-center space-x-2">
                   <Gift className="h-4 w-4 text-orange-500" />
-                  <span className="text-sm font-medium text-gray-700">Special Offers</span>
+                  <span className="text-sm font-medium text-[#DDD0E6]">Special Offers</span>
                 </div>
                 <div className="space-y-1">
                   {relevantOffers.slice(0, 2).map((offer) => (
@@ -695,7 +695,7 @@ function RecommendationCard({
                       <div className="flex items-center justify-between">
                         <span className="font-medium text-orange-900">{offer.merchantName}</span>
                         {offer.isActivated ? (
-                          <Badge className="bg-green-100 text-green-700 text-xs">Activated</Badge>
+                          <Badge className="bg-fuchsia-500/12 text-fuchsia-400 text-xs">Activated</Badge>
                         ) : (
                           <Badge variant="outline" className="text-xs">Not Activated</Badge>
                         )}
@@ -704,7 +704,7 @@ function RecommendationCard({
                     </div>
                   ))}
                   {relevantOffers.length > 2 && (
-                    <p className="text-xs text-gray-600">+{relevantOffers.length - 2} more offers</p>
+                    <p className="text-xs text-[#9B8FA6]">+{relevantOffers.length - 2} more offers</p>
                   )}
                 </div>
               </div>

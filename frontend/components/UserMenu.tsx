@@ -25,7 +25,7 @@ export default function UserMenu() {
         <Button variant="ghost" className="relative h-8 w-8 rounded-full">
           <Avatar className="h-8 w-8">
             <AvatarImage src={user.profilePictureUrl} alt={user.email} />
-            <AvatarFallback className="bg-teal-500 text-white text-xs">
+            <AvatarFallback className="bg-fuchsia-500 text-white text-xs">
               {initials}
             </AvatarFallback>
           </Avatar>
