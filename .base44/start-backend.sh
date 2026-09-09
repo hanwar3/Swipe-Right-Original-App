@@ -12,4 +12,4 @@ for name in OpenAIApiKey GeminiApiKey RewardsCCApiKey; do
   fi
 done
 
-exec encore run
+exec encore run --listen=0.0.0.0:4000 --browser=never

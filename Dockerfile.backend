@@ -4,7 +4,7 @@ FROM node:22-slim
 
 # System dependencies
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    curl git ca-certificates xz-utils \
+    curl git ca-certificates xz-utils unzip \
     && rm -rf /var/lib/apt/lists/*
 
 # Docker CLI (for Encore to provision PostgreSQL containers via the mounted socket)
