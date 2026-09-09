@@ -1,5 +1,6 @@
 import type { DecideResponse } from '~backend/cards/decide';
 import type { ChatResponse } from '~backend/ai/chat';
+import type { CardProfileResponse } from '~backend/cards/profile';
 
 /**
  * Thin typed access to the decision engine.
@@ -40,6 +41,14 @@ export async function ask(userId: string, message: string, amountCents?: number)
   if (!res.ok) throw new Error(`/ai/chat responded ${res.status}`);
   return (await res.json()) as ChatResponse;
 }
+
+/** Everything about one card: rates, caps left, benefits used, live offers. */
+export function cardProfile(userId: string, cardId: number) {
+  return getJSON<CardProfileResponse>('/cards/profile', { userId, cardId });
+}
+
+export type { CardProfileResponse };
+export type CardProfile = CardProfileResponse;
 
 export function formatMoney(cents: number): string {
   return '$' + (cents / 100).toFixed(cents % 100 === 0 ? 0 : 2);

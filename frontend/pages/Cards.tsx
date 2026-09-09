@@ -13,7 +13,9 @@ import { Switch } from '@/components/ui/switch';
 import { Slider } from '@/components/ui/slider';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/components/ui/use-toast';
+import { useSearchParams } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import CardProfileView from '../components/CardProfile';
 import type { ComprehensiveCard } from '~backend/cards/comprehensive';
 import type { UserCard } from '~backend/cards/portfolio';
 
@@ -35,6 +37,9 @@ export default function Cards() {
   const [useExternalApi, setUseExternalApi] = useState(true);
 
   const { user } = useAuth();
+  // The deck on the Ask screen opens a card here, as a view inside this tab.
+  const [searchParams, setSearchParams] = useSearchParams();
+  const focusedCardId = Number(searchParams.get('card')) || null;
   const queryClient = useQueryClient();
 
   // Benefit and Credit Savings Tracker State
@@ -223,6 +228,16 @@ export default function Cards() {
     setMaxAnnualFee([500]);
     setMinCashback([0]);
   };
+
+  if (focusedCardId && user) {
+    return (
+      <CardProfileView
+        userId={user.userId}
+        cardId={focusedCardId}
+        onBack={() => setSearchParams({})}
+      />
+    );
+  }
 
   return (
     <div className="w-full min-w-0 max-w-6xl mx-auto px-4 py-6 space-y-6 overflow-x-hidden">
