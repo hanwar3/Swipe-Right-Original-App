@@ -4,7 +4,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Toaster } from '@/components/ui/toaster';
 import { AuthProvider } from './contexts/AuthContext';
 import Layout from './components/Layout';
-import Home from './pages/Home';
+import Counter from './pages/Counter';
 import Cards from './pages/Cards';
 import Recommendations from './pages/Recommendations';
 import AIChat from './pages/AIChat';
@@ -16,18 +16,18 @@ export default function App() {
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
         <Router>
-          <div className="min-h-screen bg-gradient-to-br from-teal-50 to-green-50">
-            <Layout>
-              <Routes>
-                <Route path="/" element={<Home />} />
-                <Route path="/cards" element={<Cards />} />
-                <Route path="/recommendations" element={<Recommendations />} />
-                <Route path="/ai-chat" element={<AIChat />} />
-                <Route path="*" element={<Navigate to="/" replace />} />
-              </Routes>
-            </Layout>
-            <Toaster />
-          </div>
+          <Layout>
+            <Routes>
+              {/* The counter screen is the app. Everything else supports it. */}
+              <Route path="/" element={<Counter />} />
+              <Route path="/cards" element={<Cards />} />
+              <Route path="/recommendations" element={<Recommendations />} />
+              {/* Kept reachable by link; no longer a tab — Ask replaced it. */}
+              <Route path="/ai-chat" element={<AIChat />} />
+              <Route path="*" element={<Navigate to="/" replace />} />
+            </Routes>
+          </Layout>
+          <Toaster />
         </Router>
       </AuthProvider>
     </QueryClientProvider>

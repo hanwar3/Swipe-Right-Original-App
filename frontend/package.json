@@ -41,5 +41,11 @@
   },
   "optionalDependencies": {
     "rollup": "^4.44.1"
+  },
+  "scripts": {
+    "dev": "vite --port 5173 --strictPort",
+    "build": "vite build --outDir=dist",
+    "preview": "vite preview",
+    "typecheck": "tsc --noEmit -p tsconfig.json"
   }
 }

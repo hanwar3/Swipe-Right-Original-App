@@ -86,7 +86,8 @@ export interface ClientOptions {
 /**
  * Import the endpoint handlers to derive the types for the client.
  */
-import { assistantRecommend as api_ai_assistant_assistantRecommend } from "~backend/ai/assistant";
+// assistantRecommend moved into ai/chat.ts so it runs on the decision engine.
+import { assistantRecommend as api_ai_assistant_assistantRecommend } from "~backend/ai/chat";
 import { chat as api_ai_chat_chat } from "~backend/ai/chat";
 
 export namespace ai {

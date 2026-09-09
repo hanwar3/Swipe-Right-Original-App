@@ -1,6 +1,7 @@
 @import "tailwindcss";
 
 @import "tw-animate-css";
+@import url("https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&display=swap");
 
 @custom-variant dark (&:is(.dark *));
 
@@ -126,5 +127,33 @@
   }
   body {
     @apply bg-background text-foreground;
+  }
+}
+
+/* ---------------------------------------------------------------
+   SwipeRight — Swarm direction
+   Pure black ground, magenta accent, one serif voice for spoken answers.
+   --------------------------------------------------------------- */
+
+@keyframes blink {
+  50% { opacity: 0; }
+}
+
+/* The one serif moment: what the assistant says out loud. */
+.font-serif,
+.voice-line {
+  font-family: "Instrument Serif", Georgia, "Times New Roman", serif;
+  letter-spacing: -0.005em;
+}
+
+/* The app is dark-first; keep the browser chrome in step. */
+html { color-scheme: dark; }
+body { background: #000; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
   }
 }
