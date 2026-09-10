@@ -110,6 +110,74 @@ export const rotateInbox = api<{ userId: string }, { address: string }>(
   }
 );
 
+export interface CardIdentityRequest {
+  userId: string;
+  cardId: number;
+  /** Last four digits, the strongest attribution signal in issuer mail. */
+  lastFour?: string;
+  /** The mailbox this card is registered to, for people whose cards differ. */
+  cardEmail?: string;
+  /** Mint a dedicated forwarding address for this card. */
+  wantOwnAddress?: boolean;
+}
+
+export interface CardIdentityResponse {
+  lastFour?: string;
+  cardEmail?: string;
+  /** Present once the card has its own address. */
+  address?: string;
+}
+
+/**
+ * Teach the app how to recognise one card in forwarded mail.
+ *
+ * Any of the three helps, and they compound: last four is read straight out of
+ * most issuer offer mail, the registered mailbox survives forwarding in the
+ * headers, and a dedicated address removes the guessing altogether.
+ */
+export const setCardIdentity = api<CardIdentityRequest, CardIdentityResponse>(
+  { expose: true, method: "POST", path: "/offers/card-identity" },
+  async (req) => {
+    const digits = req.lastFour?.replace(/\D/g, "").slice(-4);
+    const lastFour = digits && digits.length === 4 ? digits : undefined;
+    const cardEmail = req.cardEmail?.trim().toLowerCase() || undefined;
+
+    const owner = await cardsDB.queryRow<{ token: string }>`
+      SELECT token FROM offer_inboxes WHERE user_id = ${req.userId}
+    `;
+
+    let cardToken: string | undefined;
+    if (req.wantOwnAddress) {
+      const existing = await cardsDB.queryRow<{ inbox_token: string | null }>`
+        SELECT inbox_token FROM user_portfolios
+        WHERE user_id = ${req.userId} AND card_id = ${req.cardId}
+      `;
+      cardToken = existing?.inbox_token ?? newToken().slice(0, 10);
+    }
+
+    const row = await cardsDB.queryRow<{
+      last_four: string | null; card_email: string | null; inbox_token: string | null;
+    }>`
+      UPDATE user_portfolios
+      SET last_four   = COALESCE(${lastFour ?? null}, last_four),
+          card_email  = COALESCE(${cardEmail ?? null}, card_email),
+          inbox_token = COALESCE(${cardToken ?? null}, inbox_token),
+          updated_at  = NOW()
+      WHERE user_id = ${req.userId} AND card_id = ${req.cardId}
+      RETURNING last_four, card_email, inbox_token
+    `;
+
+    return {
+      lastFour: row?.last_four ?? undefined,
+      cardEmail: row?.card_email ?? undefined,
+      address:
+        row?.inbox_token && owner
+          ? `offers+${owner.token}.${row.inbox_token}@${INBOX_DOMAIN}`
+          : undefined,
+    };
+  }
+);
+
 /**
  * Retention. Raw excerpts are only kept when a parser failed, so they can be
  * improved against the mail that beat them, and they are deleted on schedule.

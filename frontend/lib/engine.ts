@@ -50,6 +50,85 @@ export function cardProfile(userId: string, cardId: number) {
 export type { CardProfileResponse };
 export type CardProfile = CardProfileResponse;
 
+// ---------------------------------------------------------------------------
+// Offers by forwarded email
+// ---------------------------------------------------------------------------
+
+export interface OfferInbox {
+  address: string;
+  receivedCount: number;
+  lastReceivedAt?: string;
+  recent: {
+    id: number;
+    issuer?: string;
+    subject?: string;
+    offersFound: number;
+    offersWritten: number;
+    status: string;
+    createdAt: string;
+  }[];
+}
+
+export interface PendingOffer {
+  id: number;
+  merchantName: string;
+  offerDescription: string;
+  issuer?: string;
+  lastFour?: string;
+  endDate?: string;
+}
+
+/** The user's forwarding address, created on first ask. */
+export function offerInbox(userId: string) {
+  return getJSON<OfferInbox>('/offers/inbox', { userId });
+}
+
+/** Offers we held because we could not tell which card they belong to. */
+export function pendingOffers(userId: string) {
+  return getJSON<{ offers: PendingOffer[] }>('/offers/pending', { userId });
+}
+
+async function postJSON<T>(path: string, body: unknown): Promise<T> {
+  const res = await fetch(`${BASE}${path}`, {
+    method: 'POST',
+    credentials: 'include',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) throw new Error(`${path} responded ${res.status}`);
+  return (await res.json()) as T;
+}
+
+/** Place a held offer on a card. Teaches the card's last four for next time. */
+export function attributeOffer(userId: string, offerId: number, cardId: number) {
+  return postJSON<{ ok: boolean }>('/offers/attribute', { userId, offerId, cardId });
+}
+
+export interface CardIdentity {
+  lastFour?: string;
+  cardEmail?: string;
+  address?: string;
+}
+
+/**
+ * Teach the app to recognise one card in forwarded mail. Last four is read
+ * straight out of most issuer offer mail; the registered mailbox survives
+ * forwarding in the headers; a dedicated address removes the guessing entirely.
+ */
+export function setCardIdentity(input: {
+  userId: string;
+  cardId: number;
+  lastFour?: string;
+  cardEmail?: string;
+  wantOwnAddress?: boolean;
+}) {
+  return postJSON<CardIdentity>('/offers/card-identity', input);
+}
+
+export function rotateOfferInbox(userId: string) {
+  return postJSON<{ address: string }>('/offers/inbox/rotate', { userId });
+}
+
 export function formatMoney(cents: number): string {
   return '$' + (cents / 100).toFixed(cents % 100 === 0 ? 0 : 2);
 }

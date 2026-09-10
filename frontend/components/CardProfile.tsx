@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
-import { ArrowLeft, Clock, Tag, TrendingUp } from 'lucide-react';
+import { ArrowLeft, Clock, Mail, Tag, TrendingUp } from 'lucide-react';
 import { issuerFace } from './CardStack';
-import { cardProfile, formatMoney, type CardProfile as Profile } from '../lib/engine';
+import { cardProfile, setCardIdentity, formatMoney, type CardProfile as Profile } from '../lib/engine';
 
 interface CardProfileProps {
   userId: string;
@@ -17,6 +17,28 @@ interface CardProfileProps {
 export default function CardProfileView({ userId, cardId, onBack }: CardProfileProps) {
   const [data, setData] = useState<Profile | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [lastFour, setLastFour] = useState('');
+  const [cardEmail, setCardEmail] = useState('');
+  const [ownAddress, setOwnAddress] = useState<string | null>(null);
+  const [savedHint, setSavedHint] = useState(false);
+
+  async function saveIdentity(wantOwnAddress = false) {
+    try {
+      const r = await setCardIdentity({
+        userId,
+        cardId,
+        lastFour: lastFour || undefined,
+        cardEmail: cardEmail || undefined,
+        wantOwnAddress,
+      });
+      if (r.address) setOwnAddress(r.address);
+      setData((d) => (d ? { ...d, lastFour: r.lastFour, cardEmail: r.cardEmail } : d));
+      setSavedHint(true);
+      setTimeout(() => setSavedHint(false), 1800);
+    } catch {
+      setError('Could not save that.');
+    }
+  }
 
   useEffect(() => {
     let live = true;
@@ -203,6 +225,79 @@ export default function CardProfileView({ userId, cardId, onBack }: CardProfileP
                 ))}
               </div>
             )}
+          </section>
+
+          {/* how forwarded mail finds this card */}
+          <section className="mt-6">
+            <h3 className="mb-1.5 flex items-center gap-1.5 text-[11px] font-extrabold uppercase tracking-[0.12em] text-[#6E637A]">
+              <Mail className="h-3 w-3" />
+              Offer matching
+            </h3>
+            <p className="mb-3 text-[12.5px] leading-relaxed text-[#9B8FA6]">
+              When you forward offer emails, this is how we tell which card they belong to.
+              Any one of these helps; together they make it exact.
+            </p>
+
+            <div className="flex flex-col gap-2.5 rounded-2xl border border-white/10 bg-white/[0.04] p-4">
+              <label className="flex flex-col gap-1.5">
+                <span className="text-[12px] font-semibold text-[#DDD0E6]">Last four digits</span>
+                <input
+                  value={lastFour}
+                  onChange={(e) => setLastFour(e.target.value.replace(/\D/g, '').slice(0, 4))}
+                  onBlur={() => lastFour.length === 4 && saveIdentity()}
+                  placeholder={data.lastFour ?? '1234'}
+                  inputMode="numeric"
+                  className="rounded-lg border border-white/10 bg-black/40 px-3 py-2.5 font-mono text-[13.5px] text-[#F3EBF8]
+                             placeholder:text-[#4A4453] outline-none focus:border-[#E64BD4]/60"
+                />
+                <span className="text-[11.5px] text-[#6E637A]">
+                  Most issuer offer mail prints this. It is the strongest signal we have.
+                </span>
+              </label>
+
+              <label className="mt-1 flex flex-col gap-1.5">
+                <span className="text-[12px] font-semibold text-[#DDD0E6]">
+                  Email this card is registered to
+                </span>
+                <input
+                  value={cardEmail}
+                  onChange={(e) => setCardEmail(e.target.value)}
+                  onBlur={() => cardEmail.includes('@') && saveIdentity()}
+                  placeholder={data.cardEmail ?? 'you@example.com'}
+                  inputMode="email"
+                  className="rounded-lg border border-white/10 bg-black/40 px-3 py-2.5 text-[13.5px] text-[#F3EBF8]
+                             placeholder:text-[#4A4453] outline-none focus:border-[#E64BD4]/60"
+                />
+                <span className="text-[11.5px] text-[#6E637A]">
+                  Only needed if this card is on a different mailbox from your others.
+                </span>
+              </label>
+
+              {ownAddress ? (
+                <div className="mt-1 rounded-lg border border-[#E64BD4]/25 bg-[#E64BD4]/[0.07] p-3">
+                  <p className="mb-1.5 text-[11.5px] font-semibold text-[#F58EE4]">
+                    Forward this card's mail here
+                  </p>
+                  <code className="block truncate font-mono text-[12px] text-[#F3EBF8]">
+                    {ownAddress}
+                  </code>
+                </div>
+              ) : (
+                <button
+                  onClick={() => saveIdentity(true)}
+                  className="mt-1 self-start rounded-full border border-white/10 bg-white/[0.05] px-3.5 py-2
+                             text-[12.5px] font-semibold text-[#DDD0E6] transition-colors
+                             hover:border-[#E64BD4]/50 hover:bg-[#E64BD4]/12
+                             focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#E64BD4]"
+                >
+                  Give this card its own address
+                </button>
+              )}
+
+              {savedHint && (
+                <p className="text-[11.5px] font-semibold text-[#4FCE8C]">Saved</p>
+              )}
+            </div>
           </section>
         </>
       )}

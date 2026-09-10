@@ -17,6 +17,7 @@ import { useSearchParams } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import CardProfileView from '../components/CardProfile';
 import WalletCards from '../components/WalletCards';
+import OfferInboxView from '../components/OfferInbox';
 import type { ComprehensiveCard } from '~backend/cards/comprehensive';
 import type { UserCard } from '~backend/cards/portfolio';
 
@@ -645,6 +646,12 @@ export default function Cards() {
         </TabsContent>
 
         <TabsContent value="portfolio-offers" className="space-y-6">
+          {user && (
+            <>
+              <OfferInboxView userId={user.userId} cards={portfolioCards} />
+              <div className="border-t border-white/[0.07]" />
+            </>
+          )}
           {(() => {
             const portfolioCardIds = portfolioCards.map(pc => pc && pc.card ? pc.card.id : 0).filter(Boolean);
             

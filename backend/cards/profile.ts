@@ -66,6 +66,9 @@ export interface CardProfileResponse {
   unusedBenefitCents: number;
   /** Soonest benefit or offer expiry, in days. Undefined when nothing expires. */
   soonestExpiryDays?: number;
+  /** Attribution hints, so forwarded offer mail can find this card. */
+  lastFour?: string;
+  cardEmail?: string;
 }
 
 function periodEnd(period: string, now: Date): Date {
@@ -87,10 +90,11 @@ export const profile = api<ProfileParams, CardProfileResponse>(
     const card = await cardsDB.queryRow<{
       id: number; name: string; issuer: string; network: string | null;
       type: string | null; annual_fee: number; nickname: string | null;
+      last_four: string | null; card_email: string | null;
       in_portfolio: boolean;
     }>`
       SELECT c.id, c.name, c.issuer, c.network, c.type, c.annual_fee,
-             up.nickname,
+             up.nickname, up.last_four, up.card_email,
              (up.id IS NOT NULL) AS in_portfolio
       FROM cards c
       LEFT JOIN user_portfolios up
@@ -223,6 +227,8 @@ export const profile = api<ProfileParams, CardProfileResponse>(
       offers,
       unusedBenefitCents,
       soonestExpiryDays: expiries.length ? Math.min(...expiries) : undefined,
+      lastFour: card.last_four ?? undefined,
+      cardEmail: card.card_email ?? undefined,
     };
   }
 );
