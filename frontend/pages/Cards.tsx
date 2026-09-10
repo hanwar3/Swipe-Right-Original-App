@@ -16,6 +16,7 @@ import { useToast } from '@/components/ui/use-toast';
 import { useSearchParams } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import CardProfileView from '../components/CardProfile';
+import WalletCards from '../components/WalletCards';
 import type { ComprehensiveCard } from '~backend/cards/comprehensive';
 import type { UserCard } from '~backend/cards/portfolio';
 
@@ -498,46 +499,29 @@ export default function Cards() {
 
         <TabsContent value="portfolio" className="space-y-4">
           {user ? (
-            isPortfolioLoading ? (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {[...Array(6)].map((_, i) => (
-                  <Card key={i} className="animate-pulse">
-                    <CardContent className="p-6">
-                      <div className="h-32 bg-white/10 rounded mb-4"></div>
-                      <div className="h-4 bg-white/10 rounded mb-2"></div>
-                      <div className="h-4 bg-white/10 rounded w-2/3"></div>
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
-            ) : portfolioCards.length > 0 ? (
-              <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <h3 className="text-lg font-semibold text-[#F3EBF8]">
-                    My Cards ({portfolioCards.length})
-                  </h3>
-                </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {portfolioCards.map((userCard) => (
-                    <PortfolioCardComponent key={userCard.id} userCard={userCard} />
-                  ))}
-                </div>
-              </div>
-            ) : (
-              <div className="text-center py-12">
-                <Wallet className="h-12 w-12 text-[#6E637A] mx-auto mb-4" />
-                <h3 className="text-lg font-medium text-[#F3EBF8] mb-2">No cards in portfolio</h3>
-                <p className="text-[#9B8FA6] mb-4">Add cards from the "All Cards Database" tab to start building your portfolio</p>
-                <Button onClick={() => setActiveTab('comprehensive')} className="bg-fuchsia-500 hover:bg-fuchsia-600">
-                  Browse All Cards
-                </Button>
-              </div>
-            )
+            <>
+              {portfolioCards.length > 0 && (
+                <h3 className="text-[15px] font-bold tracking-tight text-[#F3EBF8]">
+                  {portfolioCards.length} card{portfolioCards.length === 1 ? '' : 's'} in your wallet
+                </h3>
+              )}
+              <WalletCards
+                cards={portfolioCards}
+                loading={isPortfolioLoading}
+                onOpen={(cardId) => setSearchParams({ card: String(cardId) })}
+                onBrowse={() => setActiveTab('comprehensive')}
+              />
+            </>
           ) : (
-            <div className="text-center py-12">
-              <User className="h-12 w-12 text-[#6E637A] mx-auto mb-4" />
-              <h3 className="text-lg font-medium text-[#F3EBF8] mb-2">Sign in to view your portfolio</h3>
-              <p className="text-[#9B8FA6]">Create an account to track your credit cards and get personalized recommendations</p>
+            <div className="rounded-2xl border border-dashed border-[#E64BD4]/25 px-6 py-12 text-center">
+              <User className="mx-auto mb-3 h-9 w-9 text-[#4A4453]" />
+              <h3 className="text-[16px] font-bold tracking-tight text-[#F3EBF8]">
+                Sign in to see your wallet
+              </h3>
+              <p className="mx-auto mt-1.5 max-w-[38ch] text-[13.5px] leading-relaxed text-[#9B8FA6]">
+                Your cards, their benefits, and what is about to expire all live here
+                once you have an account.
+              </p>
             </div>
           )}
         </TabsContent>
