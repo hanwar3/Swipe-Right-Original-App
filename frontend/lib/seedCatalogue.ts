@@ -30,8 +30,8 @@ export const SEED_CATALOGUE: Card[] = [
   },
   {
     id: -102, name: 'Chase Sapphire Reserve', issuer: 'Chase', network: 'Visa',
-    type: 'credit', imageUrl: '', annualFee: 55000,
-    categories: [cat('Flights', 5), cat('Hotels', 10), cat('Dining', 3), cat('All Purchases', 1)],
+    type: 'credit', imageUrl: '', annualFee: 79500,
+    categories: [cat('Travel', 8), cat('Flights', 4), cat('Hotels', 4), cat('Dining', 3), cat('All Purchases', 1)],
   },
   {
     id: -103, name: 'Chase Freedom Unlimited', issuer: 'Chase', network: 'Visa',

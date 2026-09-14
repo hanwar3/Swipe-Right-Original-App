@@ -1,1573 +1,298 @@
-import React, { useState, useEffect } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Search, Filter, Plus, CreditCard as CreditCardIcon, User, Wallet, Star, ExternalLink, TrendingUp, Calendar, Clock, Shield, Lock, CheckCircle, RefreshCw } from 'lucide-react';
+import React, { useEffect, useMemo, useState } from 'react';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { Navigate, useNavigate, useSearchParams } from 'react-router-dom';
+import { Check, Plus, Search, X } from 'lucide-react';
 import backend from '~backend/client';
-import { Card, CardContent, CardHeader } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Label } from '@/components/ui/label';
-import { Switch } from '@/components/ui/switch';
-import { Slider } from '@/components/ui/slider';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import CardFace from '../components/CardFace';
+import { useCatalogue, useWallet } from '../lib/wallet';
 import { useToast } from '@/components/ui/use-toast';
-import { useSearchParams } from 'react-router-dom';
-import { useAuth } from '../contexts/AuthContext';
-import CardProfileView from '../components/CardProfile';
-import WalletCards from '../components/WalletCards';
-import OfferInboxView from '../components/OfferInbox';
-import type { ComprehensiveCard } from '~backend/cards/comprehensive';
-import type { UserCard } from '~backend/cards/portfolio';
+
+/**
+ * Wallet: every card, and the place you choose which ones are yours.
+ *
+ * Browsing and building the portfolio happen here. What your cards are doing
+ * for you (credits used, deadlines, offers) lives in Insights, which reads the
+ * portfolio this page writes.
+ */
+
+type Scope = 'all' | 'mine';
 
 export default function Cards() {
-  const [activeTab, setActiveTab] = useState('comprehensive');
-  
-  // Comprehensive cards filters
-  const [searchQuery, setSearchQuery] = useState('');
-  const [selectedIssuer, setSelectedIssuer] = useState<string>('all');
-  const [selectedNetwork, setSelectedNetwork] = useState<string>('all');
-  const [selectedCategory, setSelectedCategory] = useState<string>('all');
-  const [maxAnnualFee, setMaxAnnualFee] = useState<number[]>([500]);
-  const [minCashback, setMinCashback] = useState<number[]>([0]);
-  
-  // Add card dialog
-  const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
-  const [newCardName, setNewCardName] = useState('');
-  const [newCardIssuer, setNewCardIssuer] = useState('');
-  const [useExternalApi, setUseExternalApi] = useState(true);
-
-  const { user } = useAuth();
-  // The deck on the Ask screen opens a card here, as a view inside this tab.
-  const [searchParams, setSearchParams] = useSearchParams();
-  const focusedCardId = Number(searchParams.get('card')) || null;
+  const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  // Benefit and Credit Savings Tracker State
-  const [creditSavings, setCreditSavings] = useState<Record<string, number>>(() => {
-    try {
-      const stored = localStorage.getItem('swiperight_logged_credit_savings');
-      return stored ? JSON.parse(stored) : {};
-    } catch {
-      return {};
-    }
-  });
+  const { cards: catalogue, offline, isLoading } = useCatalogue();
+  const wallet = useWallet();
 
-  const [subscriptionSavings, setSubscriptionSavings] = useState<Record<string, boolean>>(() => {
-    try {
-      const stored = localStorage.getItem('swiperight_logged_subscription_savings');
-      return stored ? JSON.parse(stored) : {};
-    } catch {
-      return {};
-    }
-  });
+  const [query, setQuery] = useState('');
+  const [issuer, setIssuer] = useState<string | null>(null);
+  const [scope, setScope] = useState<Scope>('all');
+  const [confirmRemove, setConfirmRemove] = useState<number | null>(null);
 
-  const [merchantRedeemed, setMerchantRedeemed] = useState<Record<string, boolean>>(() => {
-    try {
-      const stored = localStorage.getItem('swiperight_logged_merchant_redeemed');
-      return stored ? JSON.parse(stored) : {};
-    } catch {
-      return {};
-    }
-  });
+  const [newName, setNewName] = useState('');
+  const [newIssuer, setNewIssuer] = useState('');
+  const [useLookup, setUseLookup] = useState(true);
 
-  const [merchantSavings, setMerchantSavings] = useState<Record<string, number>>(() => {
-    try {
-      const stored = localStorage.getItem('swiperight_logged_merchant_savings');
-      return stored ? JSON.parse(stored) : {};
-    } catch {
-      return {};
-    }
-  });
+  // Card detail used to live here; it belongs to Insights now. Old links still work.
+  const legacyCard = searchParams.get('card');
 
-  const [merchantPurchaseAmounts, setMerchantPurchaseAmounts] = useState<Record<string, string>>({});
-  const [showOfferPurchaseId, setShowOfferPurchaseId] = useState<number | null>(null);
-
-  // Sync to localStorage
+  // A "Remove?" prompt that nobody answers should not stay armed.
   useEffect(() => {
-    localStorage.setItem('swiperight_logged_credit_savings', JSON.stringify(creditSavings));
-  }, [creditSavings]);
+    if (confirmRemove === null) return;
+    const t = setTimeout(() => setConfirmRemove(null), 3500);
+    return () => clearTimeout(t);
+  }, [confirmRemove]);
 
-  useEffect(() => {
-    localStorage.setItem('swiperight_logged_subscription_savings', JSON.stringify(subscriptionSavings));
-  }, [subscriptionSavings]);
+  // Issuer filters come from the catalogue itself, never from a fixed list.
+  const issuers = useMemo(
+    () => Array.from(new Set(catalogue.map((c) => c.issuer))).sort(),
+    [catalogue]
+  );
 
-  useEffect(() => {
-    localStorage.setItem('swiperight_logged_merchant_redeemed', JSON.stringify(merchantRedeemed));
-  }, [merchantRedeemed]);
+  // Cards added to the device wallet stay listed even if the catalogue changes.
+  const pool = useMemo(() => {
+    const byId = new Map(catalogue.map((c) => [c.id, c]));
+    wallet.cards.forEach((c) => { if (!byId.has(c.id)) byId.set(c.id, c); });
+    return Array.from(byId.values());
+  }, [catalogue, wallet.cards]);
 
-  useEffect(() => {
-    localStorage.setItem('swiperight_logged_merchant_savings', JSON.stringify(merchantSavings));
-  }, [merchantSavings]);
-  const { toast } = useToast();
-
-  // Comprehensive cards query
-  const { data: comprehensiveData, isLoading: isComprehensiveLoading } = useQuery({
-    queryKey: ['comprehensive-cards', searchQuery, selectedIssuer, selectedNetwork, selectedCategory, maxAnnualFee[0], minCashback[0]],
-    queryFn: () => backend.cards.getComprehensiveCards({
-      query: searchQuery || undefined,
-      issuer: selectedIssuer === 'all' || !selectedIssuer ? undefined : selectedIssuer,
-      network: selectedNetwork === 'all' || !selectedNetwork ? undefined : selectedNetwork,
-      category: selectedCategory === 'all' || !selectedCategory ? undefined : selectedCategory,
-      maxAnnualFee: maxAnnualFee[0],
-      minCashback: minCashback[0],
-      limit: 50
-    }),
-  });
-
-  // User portfolio query
-  const { data: portfolioData, isLoading: isPortfolioLoading } = useQuery({
-    queryKey: ['portfolio', user?.userId],
-    queryFn: () => user ? backend.cards.getUserPortfolio({ userId: user.userId }) : null,
-    enabled: !!user,
-  });
-
-  // User merchant offers query
-  const { data: offersData, isLoading: isOffersLoading } = useQuery({
-    queryKey: ['merchant-offers', user?.userId],
-    queryFn: () => user ? backend.cards.getUserMerchantOffers({ userId: user.userId }) : null,
-    enabled: !!user,
-  });
+  const shown = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    return pool
+      .filter((c) => (scope === 'mine' ? wallet.has(c.id) : true))
+      .filter((c) => (issuer ? c.issuer === issuer : true))
+      .filter((c) => !q || c.name.toLowerCase().includes(q) || c.issuer.toLowerCase().includes(q))
+      .sort((a, b) => {
+        const mine = Number(wallet.has(b.id)) - Number(wallet.has(a.id));
+        return mine !== 0 ? mine : a.name.localeCompare(b.name);
+      });
+  }, [pool, query, issuer, scope, wallet]);
 
   const addCardMutation = useMutation({
-    mutationFn: (data: { name: string; issuer?: string; useExternalApi?: boolean }) => 
+    mutationFn: (data: { name: string; issuer?: string; useExternalApi?: boolean }) =>
       backend.cards.addCard(data),
     onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: ['comprehensive-cards'] });
-      setIsAddDialogOpen(false);
-      setNewCardName('');
-      setNewCardIssuer('');
+      queryClient.invalidateQueries({ queryKey: ['cards', 'catalogue'] });
+      setNewName('');
+      setNewIssuer('');
       toast({
-        title: data.isNew ? "Card Added" : "Card Found",
-        description: data.isNew 
-          ? `${data.card.name} has been added to the database${data.fromExternalApi ? ' with data from RewardsCC API' : ''}.`
-          : `${data.card.name} was already in our database.`,
+        title: data.isNew ? 'Card added' : 'Already listed',
+        description: data.isNew
+          ? `${data.card.name} is in the catalogue now${data.fromExternalApi ? ', with details from RewardsCC' : ''}.`
+          : `${data.card.name} was already in the catalogue.`,
       });
     },
     onError: (error: any) => {
-      console.error('Add card error:', error);
       toast({
-        title: "Error",
-        description: error.message || "Failed to add card. Please try again.",
-        variant: "destructive",
+        title: 'Could not add that card',
+        description: error?.message || 'Check the name and try again.',
+        variant: 'destructive',
       });
     },
   });
 
-  const addToPortfolioMutation = useMutation({
-    mutationFn: (data: { cardId: number; nickname?: string }) => 
-      user ? backend.cards.addToPortfolio({ 
-        userId: user.userId, 
-        cardId: data.cardId, 
-        nickname: data.nickname 
-      }) : Promise.reject('Not authenticated'),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['portfolio', user?.userId] });
-      toast({
-        title: "Card Added to Portfolio",
-        description: "The card has been added to your portfolio.",
-      });
-    },
-    onError: (error: any) => {
-      console.error('Add to portfolio error:', error);
-      toast({
-        title: "Error",
-        description: error.message || "Failed to add card to portfolio.",
-        variant: "destructive",
-      });
-    },
-  });
-
-  const comprehensiveCards = comprehensiveData?.cards || [];
-  const popularCards = comprehensiveData?.popularCards || [];
-  const portfolioCards = portfolioData?.cards || [];
-  const merchantOffers = offersData?.offers || [];
-  
-  const issuers = [...new Set(comprehensiveCards.filter(Boolean).map(card => card.issuer).filter(Boolean))];
-  const networks = [...new Set(comprehensiveCards.filter(Boolean).map(card => card.network).filter(Boolean))];
-  const categories = ['Groceries', 'Gas', 'Dining', 'Travel', 'Shopping', 'Streaming', 'All Purchases'];
-
-  const handleAddCard = () => {
-    if (!newCardName.trim()) {
-      toast({
-        title: "Error",
-        description: "Please enter a card name.",
-        variant: "destructive",
-      });
+  async function toggle(card: (typeof pool)[number]) {
+    if (wallet.mode === 'signed-out') {
+      toast({ title: 'Sign in to build your wallet', description: 'Your cards are saved to your account.' });
       return;
     }
-
-    addCardMutation.mutate({
-      name: newCardName.trim(),
-      issuer: newCardIssuer.trim() || undefined,
-      useExternalApi
-    });
-  };
-
-  const handleAddToPortfolio = (cardId: number) => {
-    if (!user) {
-      toast({
-        title: "Sign In Required",
-        description: "Please sign in to add cards to your portfolio.",
-        variant: "destructive",
-      });
+    if (wallet.has(card.id)) {
+      if (confirmRemove !== card.id) {
+        setConfirmRemove(card.id);
+        return;
+      }
+      setConfirmRemove(null);
+      const ok = await wallet.remove(card.id);
+      if (!ok) toast({ title: 'Could not remove that card', variant: 'destructive' });
       return;
     }
-
-    addToPortfolioMutation.mutate({ cardId });
-  };
-
-  const isCardInPortfolio = (cardId: number) => {
-    return portfolioCards.some(pc => pc && pc.card && pc.card.id === cardId);
-  };
-
-  const clearFilters = () => {
-    setSearchQuery('');
-    setSelectedIssuer('all');
-    setSelectedNetwork('all');
-    setSelectedCategory('all');
-    setMaxAnnualFee([500]);
-    setMinCashback([0]);
-  };
-
-  if (focusedCardId && user) {
-    return (
-      <CardProfileView
-        userId={user.userId}
-        cardId={focusedCardId}
-        onBack={() => setSearchParams({})}
-      />
-    );
+    const ok = await wallet.add(card);
+    if (!ok) toast({ title: 'Could not add that card', variant: 'destructive' });
   }
 
-  return (
-    <div className="w-full min-w-0 max-w-6xl mx-auto px-4 py-6 space-y-6 overflow-x-hidden">
-      {/* Header */}
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="space-y-1.5 min-w-0">
-          <h1 className="text-3xl font-bold text-[#F3EBF8]">Credit Cards</h1>
-          <p className="text-[#9B8FA6]">Explore our comprehensive database and manage your portfolio</p>
-        </div>
-        
-        <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
-          <DialogTrigger asChild>
-            <Button className="bg-fuchsia-500 hover:bg-fuchsia-600">
-              <Plus className="h-4 w-4 mr-2" />
-              Add Card
-            </Button>
-          </DialogTrigger>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Add New Credit Card</DialogTitle>
-            </DialogHeader>
-            <div className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="cardName">Card Name *</Label>
-                <Input
-                  id="cardName"
-                  placeholder="e.g., Chase Sapphire Reserve"
-                  value={newCardName}
-                  onChange={(e) => setNewCardName(e.target.value)}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="cardIssuer">Issuer (Optional)</Label>
-                <Input
-                  id="cardIssuer"
-                  placeholder="e.g., Chase, Amex, Capital One"
-                  value={newCardIssuer}
-                  onChange={(e) => setNewCardIssuer(e.target.value)}
-                />
-              </div>
-              <div className="flex items-center space-x-2">
-                <Switch
-                  id="useExternalApi"
-                  checked={useExternalApi}
-                  onCheckedChange={setUseExternalApi}
-                />
-                <Label htmlFor="useExternalApi">Use RewardsCC API for card details</Label>
-              </div>
-              <div className="flex justify-end space-x-2">
-                <Button 
-                  variant="outline" 
-                  onClick={() => setIsAddDialogOpen(false)}
-                  disabled={addCardMutation.isPending}
-                >
-                  Cancel
-                </Button>
-                <Button 
-                  onClick={handleAddCard}
-                  disabled={addCardMutation.isPending}
-                  className="bg-fuchsia-500 hover:bg-fuchsia-600"
-                >
-                  {addCardMutation.isPending ? 'Adding...' : 'Add Card'}
-                </Button>
-              </div>
-            </div>
-          </DialogContent>
-        </Dialog>
-      </div>
+  if (legacyCard) return <Navigate to={`/recommendations?card=${legacyCard}`} replace />;
 
-      {/* Tabs */}
-      <Tabs value={activeTab} onValueChange={setActiveTab}>
-        {/* Four equal grid columns crushed these labels into each other on a
-            phone. Scroll the row instead, and keep the labels short. */}
-        <TabsList className="flex w-full min-w-0 max-w-full justify-start gap-1 overflow-x-auto overflow-y-hidden">
-          <TabsTrigger value="comprehensive" className="flex shrink-0 items-center gap-1.5">
-            <CreditCardIcon className="h-4 w-4 shrink-0" />
-            <span>All cards</span>
-          </TabsTrigger>
-          <TabsTrigger value="portfolio" className="flex shrink-0 items-center gap-1.5" disabled={!user}>
-            <Wallet className="h-4 w-4 shrink-0" />
-            <span>My wallet</span>
-          </TabsTrigger>
-          <TabsTrigger value="expiring" className="flex shrink-0 items-center gap-1.5" disabled={!user}>
-            <Calendar className="h-4 w-4 shrink-0" />
-            <span>Deadlines</span>
-          </TabsTrigger>
-          <TabsTrigger value="portfolio-offers" className="flex shrink-0 items-center gap-1.5" disabled={!user}>
-            <Clock className="h-4 w-4 shrink-0" />
-            <span>Offers</span>
-          </TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="comprehensive" className="space-y-6">
-          {/* Popular Cards Section */}
-          {popularCards.length > 0 && (
-            <div className="space-y-4">
-              <div className="flex items-center space-x-2">
-                <Star className="h-5 w-5 text-yellow-500" />
-                <h2 className="text-xl font-semibold text-[#F3EBF8]">Popular Cards</h2>
-              </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {popularCards.filter(card => card && card.id).slice(0, 6).map((card) => (
-                  <ComprehensiveCardComponent 
-                    key={card.id} 
-                    card={card} 
-                    isInPortfolio={isCardInPortfolio(card.id)}
-                    onAddToPortfolio={() => handleAddToPortfolio(card.id)}
-                    showAddButton={!!user}
-                    isAddingToPortfolio={addToPortfolioMutation.isPending}
-                    isPopular={true}
-                  />
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Filters */}
-          <div className="space-y-4 bg-white/5 p-4 rounded-lg">
-            <div className="flex items-center justify-between">
-              <h3 className="font-medium text-[#F3EBF8]">Filters</h3>
-              <Button variant="ghost" size="sm" onClick={clearFilters}>
-                Clear All
-              </Button>
-            </div>
-            
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-              {/* Search */}
-              <div className="space-y-2">
-                <Label>Search</Label>
-                <div className="relative">
-                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-[#6E637A] h-4 w-4" />
-                  <Input
-                    placeholder="Card name or issuer..."
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    className="pl-10"
-                  />
-                </div>
-              </div>
-
-              {/* Issuer */}
-              <div className="space-y-2">
-                <Label>Issuer</Label>
-                <Select value={selectedIssuer} onValueChange={setSelectedIssuer}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="All Issuers" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All Issuers</SelectItem>
-                    {issuers.map(issuer => (
-                      <SelectItem key={issuer} value={issuer}>{issuer}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              {/* Network */}
-              <div className="space-y-2">
-                <Label>Network</Label>
-                <Select value={selectedNetwork} onValueChange={setSelectedNetwork}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="All Networks" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All Networks</SelectItem>
-                    {networks.map(network => (
-                      <SelectItem key={network} value={network}>{network}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              {/* Category */}
-              <div className="space-y-2">
-                <Label>Category</Label>
-                <Select value={selectedCategory} onValueChange={setSelectedCategory}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="All Categories" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All Categories</SelectItem>
-                    {categories.map(category => (
-                      <SelectItem key={category} value={category}>{category}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {/* Annual Fee */}
-              <div className="space-y-2">
-                <Label>Max Annual Fee: ${maxAnnualFee[0]}</Label>
-                <Slider
-                  value={maxAnnualFee}
-                  onValueChange={setMaxAnnualFee}
-                  max={1000}
-                  step={25}
-                  className="w-full"
-                />
-              </div>
-
-              {/* Min Cashback */}
-              <div className="space-y-2">
-                <Label>Min Cashback Rate: {minCashback[0]}%</Label>
-                <Slider
-                  value={minCashback}
-                  onValueChange={setMinCashback}
-                  max={10}
-                  step={0.5}
-                  className="w-full"
-                />
-              </div>
-            </div>
-          </div>
-
-          {/* All Cards Grid */}
-          {isComprehensiveLoading ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {[...Array(9)].map((_, i) => (
-                <Card key={i} className="animate-pulse">
-                  <CardContent className="p-6">
-                    <div className="h-32 bg-white/10 rounded mb-4"></div>
-                    <div className="h-4 bg-white/10 rounded mb-2"></div>
-                    <div className="h-4 bg-white/10 rounded w-2/3"></div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          ) : comprehensiveCards.length > 0 ? (
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <h3 className="text-lg font-semibold text-[#F3EBF8]">
-                  All Cards ({comprehensiveData?.totalCount || 0})
-                </h3>
-              </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {comprehensiveCards.filter(card => card && card.id).map((card) => (
-                  <ComprehensiveCardComponent 
-                    key={card.id} 
-                    card={card} 
-                    isInPortfolio={isCardInPortfolio(card.id)}
-                    onAddToPortfolio={() => handleAddToPortfolio(card.id)}
-                    showAddButton={!!user}
-                    isAddingToPortfolio={addToPortfolioMutation.isPending}
-                  />
-                ))}
-              </div>
-            </div>
-          ) : (
-            <div className="text-center py-12">
-              <Filter className="h-12 w-12 text-[#6E637A] mx-auto mb-4" />
-              <h3 className="text-lg font-medium text-[#F3EBF8] mb-2">No cards found</h3>
-              <p className="text-[#9B8FA6]">Try adjusting your filters</p>
-            </div>
-          )}
-        </TabsContent>
-
-        <TabsContent value="portfolio" className="space-y-4">
-          {user ? (
-            <>
-              {portfolioCards.length > 0 && (
-                <h3 className="text-[15px] font-bold tracking-tight text-[#F3EBF8]">
-                  {portfolioCards.length} card{portfolioCards.length === 1 ? '' : 's'} in your wallet
-                </h3>
-              )}
-              <WalletCards
-                cards={portfolioCards}
-                loading={isPortfolioLoading}
-                onOpen={(cardId) => setSearchParams({ card: String(cardId) })}
-                onBrowse={() => setActiveTab('comprehensive')}
-              />
-            </>
-          ) : (
-            <div className="rounded-2xl border border-dashed border-[#E64BD4]/25 px-6 py-12 text-center">
-              <User className="mx-auto mb-3 h-9 w-9 text-[#4A4453]" />
-              <h3 className="text-[16px] font-bold tracking-tight text-[#F3EBF8]">
-                Sign in to see your wallet
-              </h3>
-              <p className="mx-auto mt-1.5 max-w-[38ch] text-[13.5px] leading-relaxed text-[#9B8FA6]">
-                Your cards, their benefits, and what is about to expire all live here
-                once you have an account.
-              </p>
-            </div>
-          )}
-        </TabsContent>
-
-        <TabsContent value="expiring" className="space-y-6">
-          <div className="bg-gradient-to-r from-fuchsia-500/10 via-fuchsia-500/5 to-transparent p-6 rounded-3xl border border-fuchsia-500/15 space-y-2">
-            <div className="flex items-center space-x-2 text-fuchsia-400">
-              <Calendar className="h-5 w-5" />
-              <h2 className="text-lg font-bold">Reward Deadlines & Expiring Benefits</h2>
-            </div>
-            <p className="text-sm text-[#9B8FA6] max-w-2xl">
-              Never let valuable credits expire. This panel aggregates static annual resetting benefits for cards in your wallet and dynamic merchant offers from your synced accounts.
-            </p>
-          </div>
-
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {/* Left Column: Annual Card Credits */}
-            <div className="space-y-4">
-              <div className="flex items-center space-x-2">
-                <Wallet className="h-5 w-5 text-[#DDD0E6]" />
-                <h3 className="text-md font-bold text-[#F3EBF8]">Annual Statement Credits</h3>
-              </div>
-
-              <div className="space-y-3">
-                {portfolioCards.length > 0 ? (
-                  (() => {
-                    let hasCredits = false;
-                    const rendered = portfolioCards.map((userCard) => {
-                      const card = userCard?.card;
-                      if (!card) return null;
-                      
-                      const credits = getAnnualCredits(card.id);
-                      if (credits.length === 0) return null;
-                      hasCredits = true;
-                      
-                      return (
-                        <Card key={userCard.id} className="border border-white/10 rounded-2xl p-4 bg-white/5 hover:shadow-md transition-all">
-                          <div className="flex items-start justify-between">
-                            <div className="space-y-1">
-                              <span className="text-[10px] uppercase font-bold tracking-wider text-fuchsia-400 block">{card.name}</span>
-                              {credits.map((cr, idx) => (
-                                <div key={idx} className="space-y-1 mt-2 pt-2 border-t border-white/10 first:border-t-0 first:mt-0 first:pt-0">
-                                  <h4 className="text-sm font-extrabold text-[#9B8FA6]">{cr.name}</h4>
-                                  <p className="text-xs text-[#9B8FA6] leading-normal">{cr.description}</p>
-                                  <div className="flex items-center space-x-1 text-[10px] text-fuchsia-400 font-bold bg-fuchsia-500/12 px-2 py-0.5 rounded-md w-fit mt-1">
-                                    <Clock className="h-3 w-3" />
-                                    <span>Resets: {cr.resets}</span>
-                                  </div>
-                                </div>
-                              ))}
-                            </div>
-                          </div>
-                        </Card>
-                      );
-                    });
-                    
-                    return hasCredits ? rendered : (
-                      <div className="text-center py-8 bg-white/5 rounded-2xl border border-white/10">
-                        <p className="text-sm text-[#6E637A]">Your portfolio cards do not have annual resetting credits recorded.</p>
-                      </div>
-                    );
-                  })()
-                ) : (
-                  <div className="text-center py-8 bg-white/5 rounded-2xl border border-white/10">
-                    <p className="text-sm text-[#6E637A]">Add cards to your portfolio to view their annual credits.</p>
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {/* Right Column: Synced Merchant Offers */}
-            <div className="space-y-4">
-              <div className="flex items-center space-x-2">
-                <Clock className="h-5 w-5 text-[#DDD0E6]" />
-                <h3 className="text-md font-bold text-[#F3EBF8]">Expiring Merchant Offers</h3>
-              </div>
-
-              <div className="space-y-3">
-                {isOffersLoading ? (
-                  <div className="space-y-3">
-                    {[...Array(3)].map((_, i) => (
-                      <div key={i} className="h-24 bg-white/[0.07] animate-pulse rounded-2xl border border-gray-150" />
-                    ))}
-                  </div>
-                ) : merchantOffers.length > 0 ? (
-                  <div className="space-y-3">
-                    {merchantOffers.slice().sort((a: any, b: any) => {
-                      return a.merchantName.localeCompare(b.merchantName);
-                    }).map((offer: any) => {
-                      const isUrgent = offer.offerDescription.toLowerCase().includes("10%") || offer.offerDescription.toLowerCase().includes("10");
-                      return (
-                        <Card key={offer.offerId} className="border border-white/10 rounded-2xl p-4 bg-white/5 hover:shadow-md transition-all">
-                          <div className="flex items-start justify-between">
-                            <div className="space-y-1 flex-1">
-                              <div className="flex items-center justify-between">
-                                <span className="text-sm font-extrabold text-[#9B8FA6]">{offer.merchantName}</span>
-                                <Badge className={isUrgent ? "bg-orange-100 text-orange-700 text-[10px] font-bold" : "bg-fuchsia-500/12 text-fuchsia-400 text-[10px] font-bold"}>
-                                  {isUrgent ? "Expiring Soon!" : "Active"}
-                                </Badge>
-                              </div>
-                              <p className="text-xs text-[#9B8FA6] leading-normal">{offer.offerDescription}</p>
-                              
-                              <div className="flex items-center justify-between pt-2 mt-2 border-t border-white/10">
-                                <span className="text-[10px] text-[#9B8FA6] font-semibold">Ends: {new Date(offer.endDate).toLocaleDateString()}</span>
-                                <span className="text-[10px] text-fuchsia-400 font-bold bg-fuchsia-500/12 px-2 py-0.5 rounded-full border border-fuchsia-500/25">Simulated Sync</span>
-                              </div>
-                            </div>
-                          </div>
-                        </Card>
-                      );
-                    })}
-                  </div>
-                ) : (
-                  <div className="text-center py-8 bg-white/5 rounded-2xl border border-white/10">
-                    <p className="text-sm text-[#6E637A]">No active merchant offers synced. Sync your cards to pull targeted bank deals.</p>
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-        </TabsContent>
-
-        <TabsContent value="portfolio-offers" className="space-y-6">
-          {user && (
-            <>
-              <OfferInboxView userId={user.userId} cards={portfolioCards} />
-              <div className="border-t border-white/[0.07]" />
-            </>
-          )}
-          {(() => {
-            const portfolioCardIds = portfolioCards.map(pc => pc && pc.card ? pc.card.id : 0).filter(Boolean);
-            
-            // Filter offers that belong to any card in the user's portfolio
-            const targetedOffers = merchantOffers.filter((offer: any) => 
-              offer && offer.cardId && portfolioCardIds.includes(offer.cardId)
-            );
-
-            // Calculations
-            const totalCreditSaved = Object.keys(creditSavings).reduce((sum, key) => {
-              // Ensure we only sum cards that exist in the portfolio
-              const cardId = parseInt(key.split('_')[0]);
-              if (portfolioCardIds.includes(cardId)) {
-                return sum + (creditSavings[key] || 0);
-              }
-              return sum;
-            }, 0);
-
-            let totalSubscriptionSaved = 0;
-            portfolioCardIds.forEach(cardId => {
-              const benefits = getCardBenefits(cardId);
-              benefits.forEach(b => {
-                if (b.type === 'subscription' && subscriptionSavings[b.id]) {
-                  totalSubscriptionSaved += b.maxValue;
-                }
-              });
-            });
-
-            const totalMerchantSaved = Object.keys(merchantSavings).reduce((sum, key) => {
-              const offerId = parseInt(key);
-              const offer = targetedOffers.find((o: any) => o.offerId === offerId);
-              if (offer && merchantRedeemed[offerId]) {
-                return sum + (merchantSavings[key] || 0);
-              }
-              return sum;
-            }, 0);
-
-            const grandTotalSaved = totalCreditSaved + totalSubscriptionSaved + totalMerchantSaved;
-
-            let totalPotentialValue = 0;
-            portfolioCardIds.forEach(cardId => {
-              const benefits = getCardBenefits(cardId);
-              benefits.forEach(b => {
-                totalPotentialValue += b.maxValue;
-              });
-            });
-            
-            targetedOffers.forEach((offer: any) => {
-              if (offer.cashbackAmount) {
-                totalPotentialValue += offer.cashbackAmount / 100;
-              } else if (offer.cashbackRate) {
-                totalPotentialValue += 15; // default estimate for rate offers
-              }
-            });
-
-            const progressPercent = totalPotentialValue > 0 ? Math.min(Math.round((grandTotalSaved / totalPotentialValue) * 100), 100) : 0;
-
-            const handleResetTracker = () => {
-              setCreditSavings({});
-              setSubscriptionSavings({});
-              setMerchantRedeemed({});
-              setMerchantSavings({});
-              setMerchantPurchaseAmounts({});
-              toast({
-                title: "Tracker Reset",
-                description: "All logged spendings and savings have been cleared for a fresh month.",
-              });
-            };
-
-            return (
-              <div className="space-y-6">
-                {/* Header Info */}
-                <div className="bg-gradient-to-r from-orange-500/10 via-red-500/5 to-transparent p-6 rounded-3xl border border-orange-500/15 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-                  <div className="space-y-2">
-                    <div className="flex items-center space-x-2 text-orange-700">
-                      <Clock className="h-5 w-5" />
-                      <h2 className="text-lg font-bold">My Portfolio's Expiring Merchant Offers</h2>
-                    </div>
-                    <p className="text-sm text-[#9B8FA6] max-w-2xl">
-                      These are targeted custom merchant deals that are active and expiring **strictly on the credit cards in your wallet portfolio**.
-                    </p>
-                  </div>
-                  <Button 
-                    variant="outline" 
-                    size="sm" 
-                    onClick={handleResetTracker}
-                    className="border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700 font-extrabold rounded-xl"
-                  >
-                    <RefreshCw className="h-3.5 w-3.5 mr-1" />
-                    Reset Tracker
-                  </Button>
-                </div>
-
-                {/* Dashboard Stats */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                  {/* Glowing savings wheel */}
-                  <div className="md:col-span-1 bg-gradient-to-br from-fuchsia-500 to-fuchsia-600 p-6 rounded-3xl text-white shadow-xl flex flex-col items-center justify-center text-center relative overflow-hidden">
-                    <div className="absolute inset-0 bg-gradient-to-tr from-transparent via-white/5 to-white/10 pointer-events-none" />
-                    <div className="relative w-32 h-32 flex items-center justify-center">
-                      <svg className="w-full h-full transform -rotate-90">
-                        <circle cx="64" cy="64" r="56" className="text-fuchsia-400" strokeWidth="8" stroke="currentColor" fill="transparent" />
-                        <circle cx="64" cy="64" r="56" className="text-fuchsia-400" strokeWidth="8" strokeDasharray={351.8} strokeDashoffset={351.8 - (351.8 * progressPercent) / 100} strokeLinecap="round" stroke="currentColor" fill="transparent" />
-                      </svg>
-                      <div className="absolute flex flex-col items-center justify-center">
-                        <span className="text-[10px] uppercase font-bold tracking-widest text-fuchsia-400">Logged</span>
-                        <span className="text-2xl font-black">${grandTotalSaved.toFixed(2)}</span>
-                        <span className="text-[9px] text-fuchsia-200">{progressPercent}% of potential</span>
-                      </div>
-                    </div>
-                    <div className="mt-4 space-y-1">
-                      <h4 className="text-xs font-black text-fuchsia-400 uppercase tracking-wider">Privacy-First Savings Dial</h4>
-                      <p className="text-[10px] text-fuchsia-200/70 max-w-[200px]">Logs your rewards value manually without scanning statements.</p>
-                    </div>
-                  </div>
-
-                  {/* Savings Stats Breakdowns */}
-                  <div className="md:col-span-2 bg-white/5 border border-white/10 p-6 rounded-3xl shadow-sm flex flex-col justify-between space-y-4">
-                    <div className="space-y-3">
-                      <h3 className="font-extrabold text-[#9B8FA6] text-sm flex items-center space-x-1.5 border-b border-white/10 pb-2">
-                        <Wallet className="h-4 w-4 text-fuchsia-400" />
-                        <span>Manual Rewards Savings Breakdown</span>
-                      </h3>
-                      <div className="grid grid-cols-3 gap-4 pt-1">
-                        <div className="space-y-1">
-                          <span className="text-[10px] uppercase font-bold text-[#9B8FA6]">Statement Credits</span>
-                          <p className="text-lg font-black text-[#9B8FA6]">${totalCreditSaved.toFixed(2)}</p>
-                        </div>
-                        <div className="space-y-1">
-                          <span className="text-[10px] uppercase font-bold text-[#9B8FA6]">Sub Perks saved</span>
-                          <p className="text-lg font-black text-[#9B8FA6]">${totalSubscriptionSaved.toFixed(2)}</p>
-                        </div>
-                        <div className="space-y-1">
-                          <span className="text-[10px] uppercase font-bold text-[#9B8FA6]">Synced deals used</span>
-                          <p className="text-lg font-black text-[#9B8FA6]">${totalMerchantSaved.toFixed(2)}</p>
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="bg-fuchsia-500/10 border border-fuchsia-500/25 p-3 rounded-2xl flex items-start space-x-2.5">
-                      <Shield className="h-4 w-4 text-fuchsia-400 shrink-0 mt-0.5" />
-                      <div className="space-y-0.5">
-                        <span className="text-[10px] font-black text-fuchsia-400 uppercase tracking-wider flex items-center space-x-1">
-                          <Lock className="h-3 w-3 mr-0.5" />
-                          <span>Privacy Shield Active</span>
-                        </span>
-                        <p className="text-[10px] text-fuchsia-400/80 leading-normal font-medium">
-                          SwipeRight does not read your bank statements or track transactions. This tracker operates purely on manual entries to keep your personal data 100% private.
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Main Content Split: Left Wallet Credits, Right Synced Deals */}
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                  {/* Left Column: Wallet Benefits & Credits */}
-                  <div className="space-y-4">
-                    <h3 className="text-sm font-black text-[#9B8FA6] uppercase tracking-wider flex items-center space-x-1.5">
-                      <span>💳 My Wallet Credits & Perks ({portfolioCardIds.length} cards)</span>
-                    </h3>
-
-                    {portfolioCards.length > 0 ? (
-                      <div className="space-y-4">
-                        {portfolioCards.map((userCard) => {
-                          const card = userCard?.card;
-                          if (!card) return null;
-                          const benefits = getCardBenefits(card.id);
-                          if (benefits.length === 0) return null;
-
-                          return (
-                            <Card key={userCard.id} className="border border-white/10 p-5 rounded-2xl bg-white/5 space-y-4 hover:shadow-md transition-all">
-                              <div className="flex items-center justify-between border-b border-white/10 pb-2">
-                                <div>
-                                  <span className="text-[9px] uppercase font-black tracking-wider text-fuchsia-400 block">{card.issuer}</span>
-                                  <h4 className="text-xs font-black text-[#9B8FA6]">{userCard.nickname || card.name}</h4>
-                                </div>
-                                <span className="text-[9px] font-black bg-white/5 text-[#9B8FA6] px-2 py-0.5 rounded-full border border-white/10">
-                                  {card.network}
-                                </span>
-                              </div>
-
-                              <div className="space-y-4">
-                                {benefits.map((b) => (
-                                  <div key={b.id} className="space-y-2">
-                                    {b.type === 'statement_credit' ? (
-                                      <div className="space-y-1.5">
-                                        <div className="flex justify-between items-start">
-                                          <div className="space-y-0.5 max-w-[70%]">
-                                            <span className="text-[10px] font-black text-[#9B8FA6]">{b.name}</span>
-                                            <p className="text-[9px] text-[#9B8FA6] leading-normal">{b.description}</p>
-                                          </div>
-                                          <div className="text-right">
-                                            <span className="text-xs font-black text-[#9B8FA6]">${creditSavings[b.id] || 0}</span>
-                                            <span className="text-[9px] text-[#9B8FA6] block font-semibold">/ ${b.maxValue} {b.period}</span>
-                                          </div>
-                                        </div>
-                                        <div className="flex items-center space-x-3 pt-1">
-                                          <div className="flex-1">
-                                            <Slider
-                                              value={[creditSavings[b.id] || 0]}
-                                              max={b.maxValue}
-                                              step={1}
-                                              onValueChange={(val) => {
-                                                setCreditSavings(prev => ({ ...prev, [b.id]: val[0] }));
-                                              }}
-                                              className="w-full"
-                                            />
-                                          </div>
-                                          <button
-                                            onClick={() => setCreditSavings(prev => ({ ...prev, [b.id]: b.maxValue }))}
-                                            className="text-[9px] font-black text-fuchsia-400 bg-fuchsia-500/12 border border-fuchsia-500/25 rounded-md px-2 py-0.5 hover:bg-fuchsia-500/12 transition-colors"
-                                          >
-                                            Max
-                                          </button>
-                                        </div>
-                                      </div>
-                                    ) : (
-                                      <div className="flex items-center justify-between p-3 bg-white/5 border border-white/10 rounded-xl hover:bg-white/5 transition-all">
-                                        <div className="space-y-0.5 max-w-[70%]">
-                                          <span className="text-[10px] font-black text-[#9B8FA6] block">{b.name}</span>
-                                          <p className="text-[9px] text-[#9B8FA6] leading-normal">{b.description}</p>
-                                        </div>
-                                        <div className="flex items-center space-x-2 shrink-0">
-                                          <Badge className="bg-fuchsia-500/12 text-fuchsia-400 border border-fuchsia-500/25 text-[9px] font-bold py-px">
-                                            +${b.maxValue}/mo
-                                          </Badge>
-                                          <Switch
-                                            checked={!!subscriptionSavings[b.id]}
-                                            onCheckedChange={(checked) => {
-                                              setSubscriptionSavings(prev => ({ ...prev, [b.id]: checked }));
-                                            }}
-                                          />
-                                        </div>
-                                      </div>
-                                    )}
-                                  </div>
-                                ))}
-                              </div>
-                            </Card>
-                          );
-                        })}
-                      </div>
-                    ) : (
-                      <div className="text-center py-8 bg-white/5 rounded-2xl border border-white/10 p-6">
-                        <p className="text-sm text-[#6E637A]">No cards in your portfolio. Add cards to start tracking statement credits.</p>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Right Column: Expiring Sycned Merchant Offers */}
-                  <div className="space-y-4">
-                    <h3 className="text-sm font-black text-[#9B8FA6] uppercase tracking-wider flex items-center space-x-1.5">
-                      <span>🏷️ Synced Merchant Deals ({targetedOffers.filter((o: any) => !merchantRedeemed[o.offerId]).length} active)</span>
-                    </h3>
-
-                    {isOffersLoading ? (
-                      <div className="space-y-4">
-                        {[...Array(2)].map((_, i) => (
-                          <div key={i} className="h-28 bg-white/[0.07] animate-pulse rounded-2xl border border-white/10" />
-                        ))}
-                      </div>
-                    ) : targetedOffers.filter((o: any) => !merchantRedeemed[o.offerId]).length > 0 ? (
-                      <div className="grid grid-cols-1 gap-4">
-                        {targetedOffers.filter((o: any) => !merchantRedeemed[o.offerId]).map((offer: any) => {
-                          const isUrgent = offer.offerDescription.toLowerCase().includes("10%") || offer.offerDescription.toLowerCase().includes("10") || offer.offerDescription.toLowerCase().includes("$25");
-                          return (
-                            <Card key={offer.offerId} className="border border-white/10 rounded-2xl p-5 bg-gradient-to-br from-white to-transparent hover:shadow-lg transition-all flex flex-col justify-between space-y-4 shadow-sm">
-                              <div className="space-y-1">
-                                <div className="flex items-center justify-between">
-                                  <span className="text-[10px] uppercase font-black tracking-wider text-orange-600 bg-orange-50 px-2 py-0.5 rounded border border-orange-100">{offer.cardName}</span>
-                                  <Badge className={isUrgent ? "bg-red-100 text-red-700 border border-red-200 text-[9px] font-bold" : "bg-fuchsia-500/12 text-fuchsia-400 border border-fuchsia-500/25 text-[9px] font-bold"}>
-                                    {isUrgent ? "Expiring Soon!" : "Active"}
-                                  </Badge>
-                                </div>
-                                <h4 className="text-sm font-black text-[#9B8FA6] pt-1">{offer.merchantName}</h4>
-                                <p className="text-xs text-[#9B8FA6] leading-relaxed font-semibold">{offer.offerDescription}</p>
-                              </div>
-
-                              {showOfferPurchaseId === offer.offerId ? (
-                                <div className="bg-white/5 border border-white/10 rounded-xl p-3 space-y-3 animate-in fade-in slide-in-from-top-1 duration-200">
-                                  <div className="space-y-1">
-                                    <Label htmlFor={`amt-${offer.offerId}`} className="text-[10px] font-black text-[#9B8FA6]">Enter Purchase Amount:</Label>
-                                    <div className="relative">
-                                      <span className="absolute left-2.5 top-1/2 transform -translate-y-1/2 text-xs font-bold text-[#9B8FA6]">$</span>
-                                      <Input
-                                        id={`amt-${offer.offerId}`}
-                                        type="number"
-                                        placeholder="0.00"
-                                        value={merchantPurchaseAmounts[offer.offerId] || ''}
-                                        onChange={(e) => setMerchantPurchaseAmounts(prev => ({ ...prev, [offer.offerId]: e.target.value }))}
-                                        className="pl-6 py-1 h-8 text-xs font-bold"
-                                      />
-                                    </div>
-                                  </div>
-                                  
-                                  {(() => {
-                                    const amt = parseFloat(merchantPurchaseAmounts[offer.offerId] || '0');
-                                    let savings = 0;
-                                    if (offer.cashbackRate) {
-                                      savings = (offer.cashbackRate * amt) / 100;
-                                    } else if (offer.cashbackAmount) {
-                                      savings = offer.cashbackAmount / 100;
-                                    }
-                                    return (
-                                      <div className="flex items-center justify-between text-[10px] font-bold">
-                                        <span className="text-[#9B8FA6]">Estimated Saving:</span>
-                                        <span className="text-fuchsia-400 font-extrabold text-xs">${savings.toFixed(2)}</span>
-                                      </div>
-                                    );
-                                  })()}
-
-                                  <div className="flex space-x-2">
-                                    <Button
-                                      size="sm"
-                                      variant="outline"
-                                      onClick={() => {
-                                        setShowOfferPurchaseId(null);
-                                        setMerchantPurchaseAmounts(prev => ({ ...prev, [offer.offerId]: '' }));
-                                      }}
-                                      className="h-7 text-[10px] flex-1 font-bold rounded-lg border-white/10"
-                                    >
-                                      Cancel
-                                    </Button>
-                                    <Button
-                                      size="sm"
-                                      onClick={() => {
-                                        const amt = parseFloat(merchantPurchaseAmounts[offer.offerId] || '0');
-                                        let savings = 0;
-                                        if (offer.cashbackRate) {
-                                          savings = (offer.cashbackRate * amt) / 100;
-                                        } else if (offer.cashbackAmount) {
-                                          savings = offer.cashbackAmount / 100;
-                                        }
-                                        setMerchantRedeemed(prev => ({ ...prev, [offer.offerId]: true }));
-                                        setMerchantSavings(prev => ({ ...prev, [offer.offerId]: savings }));
-                                        setShowOfferPurchaseId(null);
-                                        
-                                        // Call mock API in background to save state
-                                        backend.cards.markOfferAsUsed({ userId: user?.userId || 'mock', offerId: offer.offerId });
-
-                                        toast({
-                                          title: "Savings Logged!",
-                                          description: `Logged $${savings.toFixed(2)} cash back saved at ${offer.merchantName}!`,
-                                        });
-                                      }}
-                                      className="h-7 text-[10px] flex-1 bg-fuchsia-500/12 hover:bg-fuchsia-600 text-white font-extrabold rounded-lg shadow-md border-0"
-                                    >
-                                      Log Savings
-                                    </Button>
-                                  </div>
-                                </div>
-                              ) : (
-                                <div className="flex items-center justify-between pt-2 border-t border-white/10 text-[10px] font-bold">
-                                  <span className="text-red-600 font-extrabold bg-red-50/60 px-2 py-0.5 rounded-full border border-red-100">Ends: {new Date(offer.endDate).toLocaleDateString()}</span>
-                                  <button
-                                    onClick={() => setShowOfferPurchaseId(offer.offerId)}
-                                    className="text-fuchsia-400 bg-fuchsia-500/12 px-2.5 py-1 rounded-lg border border-fuchsia-500/25 hover:bg-fuchsia-500/12 transition-all flex items-center space-x-1"
-                                  >
-                                    <CheckCircle className="h-3 w-3 mr-0.5" />
-                                    <span>Log Savings</span>
-                                  </button>
-                                </div>
-                              )}
-                            </Card>
-                          );
-                        })}
-                      </div>
-                    ) : (
-                      <Card className="border border-dashed border-white/10 rounded-3xl p-8 text-center bg-white/5">
-                        <p className="text-sm text-[#6E637A] font-semibold">No active expiring merchant offers found.</p>
-                        <p className="text-xs text-[#9B8FA6] mt-1">Make sure you have added cards like <b>Chase Sapphire Preferred</b> or <b>American Express Gold Card</b> to see active merchant deals.</p>
-                      </Card>
-                    )}
-                  </div>
-                </div>
-
-                {/* Bottom Folder: Redeemed Offers */}
-                {Object.keys(merchantRedeemed).filter(k => merchantRedeemed[k]).length > 0 && (
-                  <div className="space-y-4 pt-6 border-t border-white/10">
-                    <h4 className="text-xs uppercase font-extrabold tracking-widest text-[#9B8FA6] flex items-center space-x-1.5">
-                      <CheckCircle className="h-4 w-4 text-fuchsia-400" />
-                      <span>✓ Redeemed Sync Offers ({Object.keys(merchantRedeemed).filter(k => merchantRedeemed[k]).length})</span>
-                    </h4>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-                      {targetedOffers.filter((o: any) => merchantRedeemed[o.offerId]).map((offer: any) => (
-                        <Card key={offer.offerId} className="border border-white/10 bg-white/5 p-4 rounded-2xl flex items-center justify-between hover:bg-white/5 transition-all">
-                          <div className="space-y-0.5 pr-2">
-                            <span className="text-[9px] uppercase font-black text-[#9B8FA6] block">{offer.cardName}</span>
-                            <span className="text-xs font-black text-[#9B8FA6] line-through block leading-tight">{offer.merchantName}</span>
-                            <span className="text-[10px] text-fuchsia-400 font-extrabold block">Saved: ${merchantSavings[offer.offerId]?.toFixed(2) || '0.00'}</span>
-                          </div>
-                          <button
-                            onClick={() => {
-                              setMerchantRedeemed(prev => {
-                                const copy = { ...prev };
-                                delete copy[offer.offerId];
-                                return copy;
-                              });
-                              setMerchantSavings(prev => {
-                                const copy = { ...prev };
-                                delete copy[offer.offerId];
-                                return copy;
-                              });
-                            }}
-                            className="text-[9px] font-black text-[#9B8FA6] hover:text-[#9B8FA6] bg-white/5 hover:bg-white/5 border border-white/10 px-2 py-0.5 rounded-md transition-colors"
-                          >
-                            Undo
-                          </button>
-                        </Card>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </div>
-            );
-          })()}
-        </TabsContent>
-      </Tabs>
-    </div>
-  );
-}
-
-const getAnnualCredits = (cardId: number) => {
-  switch (cardId) {
-    case 101: // Chase Sapphire Preferred
-      return [
-        { name: "$50 Annual Hotel Credit", description: "Statement credit for hotel stays booked through Chase Travel.", resets: "December 31, 2026" }
-      ];
-    case 107: // Chase Sapphire Reserve
-      return [
-        { name: "$300 Annual Travel Credit", description: "Automatic statement credit for travel purchases charged to your card.", resets: "December 31, 2026" }
-      ];
-    case 102: // Amex Gold
-      return [
-        { name: "$120 Annual Dining Credit", description: "Earn up to $10/month in statement credits at Grubhub, Cheesecake Factory, etc.", resets: "Monthly (Dec 31, 2026)" },
-        { name: "$120 Uber Cash", description: "Earn $10/month in Uber Cash added to your Uber account for rides or Uber Eats.", resets: "Monthly (Dec 31, 2026)" }
-      ];
-    case 110: // Amex Platinum
-      return [
-        { name: "$200 Hotel Credit", description: "Statement credit for prepaid Fine Hotels + Resorts bookings via Amex Travel.", resets: "December 31, 2026" },
-        { name: "$200 Airline Fee Credit", description: "Statement credit for incidental airline fees charged to your card.", resets: "December 31, 2026" },
-        { name: "$200 Uber Cash", description: "$15/month in Uber Cash (plus a $20 bonus in December) for U.S. rides and eats.", resets: "Monthly (Dec 31, 2026)" },
-        { name: "$189 CLEAR® Plus Credit", description: "Statement credit for annual CLEAR Plus biometric security membership.", resets: "December 31, 2026" }
-      ];
-    case 106: // Venture X
-      return [
-        { name: "$300 Annual Travel Credit", description: "Statement credit for travel bookings made through Capital One Travel.", resets: "December 31, 2026" },
-        { name: "10,000 Anniversary Miles", description: "Bonus miles awarded on every account anniversary worth $100 in travel.", resets: "Card Anniversary Date" }
-      ];
-    default:
-      return [];
-  }
-};
-
-export interface CardBenefit {
-  id: string;
-  name: string;
-  description: string;
-  type: "statement_credit" | "subscription";
-  period: "monthly" | "yearly" | "semi-annually";
-  maxValue: number;
-  unit: "$" | "count";
-  step?: number;
-}
-
-export const getCardBenefits = (cardId: number): CardBenefit[] => {
-  switch (cardId) {
-    case 101: // Chase Sapphire Preferred
-      return [
-        { id: "101_hotel", name: "$50 Annual Hotel Credit", description: "Statement credit for hotels booked through Chase Travel.", type: "statement_credit", period: "yearly", maxValue: 50, unit: "$" },
-        { id: "101_dashpass", name: "DoorDash DashPass", description: "Complimentary DashPass membership covering delivery fees.", type: "subscription", period: "monthly", maxValue: 9.99, unit: "$" }
-      ];
-    case 107: // Chase Sapphire Reserve
-      return [
-        { id: "107_travel", name: "$300 Annual Travel Credit", description: "Automatic statement credit for general travel purchases.", type: "statement_credit", period: "yearly", maxValue: 300, unit: "$" },
-        { id: "107_dashpass", name: "DoorDash DashPass", description: "Complimentary DashPass membership covering delivery fees.", type: "subscription", period: "monthly", maxValue: 9.99, unit: "$" },
-        { id: "107_doordash_credit", name: "$5 Monthly DoorDash Credit", description: "Monthly statement credit added to your DoorDash account.", type: "statement_credit", period: "monthly", maxValue: 5, unit: "$" }
-      ];
-    case 102: // Amex Gold
-      return [
-        { id: "102_dining", name: "$120 Dining Credit ($10/mo)", description: "Statement credit spent at Grubhub, Cheesecake Factory, Resy, etc.", type: "statement_credit", period: "monthly", maxValue: 10, unit: "$" },
-        { id: "102_uber", name: "$120 Uber Cash ($10/mo)", description: "Monthly Uber Cash added to your Uber account for rides or eats.", type: "statement_credit", period: "monthly", maxValue: 10, unit: "$" },
-        { id: "102_dunkin", name: "$84 Dunkin' Credit ($7/mo)", description: "Monthly statement credit spent at Dunkin' locations.", type: "statement_credit", period: "monthly", maxValue: 7, unit: "$" },
-        { id: "102_resy", name: "$100 Resy Credit ($50 semi-annually)", description: "Semi-annual statement credit for Resy dining.", type: "statement_credit", period: "semi-annually", maxValue: 50, unit: "$" }
-      ];
-    case 110: // Amex Platinum
-      return [
-        { id: "110_hotel", name: "$200 Fine Hotels + Resorts Credit", description: "Prepaid FHR hotel statement credit booked via Amex Travel.", type: "statement_credit", period: "yearly", maxValue: 200, unit: "$" },
-        { id: "110_airline", name: "$200 Airline Fee Credit", description: "Statement credit for airline incidental fees.", type: "statement_credit", period: "yearly", maxValue: 200, unit: "$" },
-        { id: "110_uber", name: "$200 Uber Cash ($15/mo, $35 Dec)", description: "Monthly Uber Cash added for U.S. rides and Uber Eats.", type: "statement_credit", period: "monthly", maxValue: 15, unit: "$" },
-        { id: "110_digital", name: "$240 Digital Entertainment Credit ($20/mo)", description: "Statement credit for Disney+, Peacock, NYTimes, etc.", type: "statement_credit", period: "monthly", maxValue: 20, unit: "$" },
-        { id: "110_clear", name: "$189 CLEAR® Plus Credit", description: "Statement credit for annual CLEAR Plus membership.", type: "statement_credit", period: "yearly", maxValue: 189, unit: "$" },
-        { id: "110_walmart", name: "Walmart+ Membership Credit ($12.95/mo)", description: "Statement credit covering full Walmart+ membership cost.", type: "subscription", period: "monthly", maxValue: 12.95, unit: "$" },
-        { id: "110_saks", name: "$100 Saks Credit ($50 semi-annually)", description: "Semi-annual statement credit for Saks purchases.", type: "statement_credit", period: "semi-annually", maxValue: 50, unit: "$" }
-      ];
-    case 106: // Venture X
-      return [
-        { id: "106_travel", name: "$300 Annual Travel Credit", description: "Statement credit for travel booked via Capital One Travel.", type: "statement_credit", period: "yearly", maxValue: 300, unit: "$" },
-        { id: "106_anniversary", name: "10,000 Anniversary Miles ($100 value)", description: "Anniversary bonus miles awarded every year.", type: "statement_credit", period: "yearly", maxValue: 100, unit: "$" }
-      ];
-    case 104: // Amex Blue Cash Preferred
-      return [
-        { id: "104_disney", name: "Disney+ Bundle Credit ($7/mo)", description: "Monthly statement credit for Disney+ subscription bundle.", type: "statement_credit", period: "monthly", maxValue: 7, unit: "$" },
-        { id: "104_equinox", name: "Equinox Credit ($10/mo)", description: "Monthly statement credit for Equinox app/club membership.", type: "statement_credit", period: "monthly", maxValue: 10, unit: "$" }
-      ];
-    case 108: // Capital One SavorOne
-      return [
-        { id: "108_uber_one", name: "Uber One Membership Credit", description: "Monthly membership fee fully covered by statement credit.", type: "subscription", period: "monthly", maxValue: 9.99, unit: "$" }
-      ];
-    default:
-      return [];
-  }
-};
-
-function CreditCardRender({ 
-  name, 
-  issuer, 
-  network, 
-  annualFee,
-  bestRate
-}: { 
-  name: string; 
-  issuer: string; 
-  network: string; 
-  annualFee?: number;
-  bestRate?: string;
-}) {
-  const [imageError, setImageError] = useState(false);
-  const normalizedIssuer = issuer.toLowerCase();
-  const normalizedNetwork = network.toLowerCase();
-  const normalizedName = name.toLowerCase();
-
-  // Curated premium card styling based on issuer/brand colorways
-  const getCardStyle = () => {
-    if (normalizedIssuer.includes('chase')) {
-      if (normalizedName.includes('reserve')) {
-        return 'from-white/5 via-indigo-950 to-transparent text-[#9B8FA6] border border-white/10 shadow-[0_12px_30px_rgba(15,23,42,0.4)]';
-      }
-      if (normalizedName.includes('preferred')) {
-        return 'from-indigo-900 via-blue-900 to-indigo-950 text-white border border-indigo-900/60 shadow-[0_12px_30px_rgba(30,58,138,0.4)]';
-      }
-      return 'from-blue-600 via-blue-700 to-indigo-900 text-white shadow-[0_12px_30px_rgba(29,78,216,0.35)]';
-    }
-    if (normalizedIssuer.includes('american express') || normalizedIssuer.includes('amex')) {
-      if (normalizedName.includes('platinum')) {
-        return 'from-white/5 via-zinc-150 to-transparent text-zinc-800 border border-white/10 shadow-[0_12px_30px_rgba(100,116,139,0.25)]';
-      }
-      if (normalizedName.includes('gold')) {
-        return 'from-amber-200 via-amber-400 to-yellow-600 text-amber-950 border border-amber-300 shadow-[0_12px_30px_rgba(217,119,6,0.35)]';
-      }
-      if (normalizedName.includes('blue cash')) {
-        return 'from-sky-850 via-blue-900 to-transparent text-white border border-blue-950 shadow-[0_12px_30px_rgba(3,105,161,0.3)]';
-      }
-      return 'from-amber-500 via-yellow-500 to-yellow-600 text-amber-950 shadow-[0_12px_30px_rgba(245,158,11,0.3)]';
-    }
-    if (normalizedIssuer.includes('capital one')) {
-      if (normalizedName.includes('venture')) {
-        return 'from-white/5 via-white/5 to-transparent text-[#9B8FA6] border border-white/10 shadow-[0_12px_30px_rgba(15,23,42,0.4)]';
-      }
-      if (normalizedName.includes('savor')) {
-        return 'from-amber-900 via-yellow-950 to-amber-950 text-amber-100 border border-amber-900/60 shadow-[0_12px_30px_rgba(120,53,4,0.3)]';
-      }
-      return 'from-white/5 via-white/5 to-transparent text-white border border-white/10';
-    }
-    if (normalizedIssuer.includes('citi')) {
-      return 'from-fuchsia-500 via-blue-600 to-blue-800 text-white border border-blue-600/40 shadow-[0_12px_30px_rgba(6,182,212,0.3)]';
-    }
-    if (normalizedIssuer.includes('discover')) {
-      return 'from-orange-500 via-red-500 to-pink-600 text-white shadow-[0_12px_30px_rgba(249,115,22,0.3)]';
-    }
-    if (normalizedIssuer.includes('apple')) {
-      return 'from-zinc-50 via-zinc-100 to-zinc-250 text-[#9B8FA6] border border-zinc-200 shadow-[0_12px_30px_rgba(0,0,0,0.06)]';
-    }
-    return 'from-fuchsia-500 via-fuchsia-500 to-fuchsia-600 text-white shadow-[0_12px_30px_rgba(13,148,136,0.3)]';
-  };
-
-  const renderNetworkLogo = () => {
-    switch (normalizedNetwork) {
-      case 'visa':
-        return <span className="text-xl font-black italic tracking-widest text-blue-100 drop-shadow-[0_1px_2px_rgba(0,0,0,0.3)]">VISA</span>;
-      case 'mastercard':
-        return (
-          <div className="flex items-center">
-            <span className="w-4.5 h-4.5 rounded-full bg-red-500 opacity-95"></span>
-            <span className="w-4.5 h-4.5 rounded-full bg-yellow-500 opacity-95 -ml-2.5"></span>
-            <span className="text-[9px] font-black text-white ml-1.5 uppercase tracking-tighter drop-shadow-sm">mc</span>
-          </div>
-        );
-      case 'american express':
-      case 'amex':
-        return (
-          <div className="border border-white/40 px-1.5 py-0.5 rounded bg-fuchsia-500/10 flex items-center justify-center">
-            <span className="text-[7.5px] font-black uppercase tracking-widest text-white">AMEX</span>
-          </div>
-        );
-      case 'discover':
-        return <span className="text-xs font-black tracking-tight text-white uppercase drop-shadow-[0_1px_2px_rgba(0,0,0,0.3)]">DISCOVER</span>;
-      default:
-        return <span className="text-[9px] font-bold text-white/60 uppercase">{network}</span>;
-    }
-  };
-
-  // Premium CSS layout (always used to keep themed HSL designs and avoid slow/broken hotlink block raw images)
-  return (
-    <div className={`relative w-full aspect-[1.586/1] rounded-2xl p-5 flex flex-col justify-between overflow-hidden bg-gradient-to-br transition-all duration-500 shadow-xl ${getCardStyle()}`}>
-      <div className="absolute inset-0 bg-gradient-to-tr from-transparent via-white/5 to-white/12 pointer-events-none" />
-      
-      {/* Top Section */}
-      <div className="flex justify-between items-start z-10">
-        <div className="space-y-0.5">
-          <span className="text-[9px] font-black uppercase tracking-widest opacity-80 block">{issuer}</span>
-          <span className="text-sm font-black tracking-tight block leading-tight drop-shadow-md">{name}</span>
-        </div>
-        
-        {/* Realistic Gold EMV Metallic Chip */}
-        <div className="w-8.5 h-6.5 bg-gradient-to-br from-amber-200 via-yellow-400 to-amber-300 rounded-md border border-yellow-600/35 relative flex items-center justify-center shadow-md">
-          <div className="absolute top-0 bottom-0 left-3 w-px bg-yellow-800/20" />
-          <div className="absolute top-0 bottom-0 right-3 w-px bg-yellow-800/20" />
-          <div className="absolute left-0 right-0 top-3 h-px bg-yellow-800/20" />
-        </div>
-      </div>
-
-      {/* Bottom Section */}
-      {(() => {
-        const isLightCard = normalizedIssuer.includes('apple') || 
-                            (normalizedIssuer.includes('american express') && normalizedName.includes('platinum')) ||
-                            (normalizedIssuer.includes('amex') && normalizedName.includes('platinum'));
-        return (
-          <div className="flex justify-between items-end z-10">
-            <div className="space-y-0.5">
-              <span className={`text-[10px] uppercase tracking-wider block font-bold ${isLightCard ? 'text-[#9B8FA6] opacity-90' : 'text-white opacity-85'}`}>
-                Fee: {annualFee === 0 ? 'No Annual Fee' : `$${annualFee}/yr`}
-              </span>
-              {bestRate && (
-                <span className={`text-[10px] font-black block leading-none ${isLightCard ? 'text-[#9B8FA6]' : 'text-fuchsia-400'}`}>
-                  Top Rate: {bestRate}
-                </span>
-              )}
-            </div>
-            <div className="flex items-center justify-center">
-              {renderNetworkLogo()}
-            </div>
-          </div>
-        );
-      })()}
-
-      {/* Futuristic soft background circle mesh */}
-      <div className="absolute -right-12 -bottom-12 w-28 h-28 bg-white/5 rounded-full blur-xl pointer-events-none" />
-    </div>
-  );
-}
-
-function ComprehensiveCardComponent({ 
-  card, 
-  isInPortfolio, 
-  onAddToPortfolio, 
-  showAddButton, 
-  isAddingToPortfolio,
-  isPopular = false
-}: { 
-  card: ComprehensiveCard; 
-  isInPortfolio: boolean;
-  onAddToPortfolio: () => void;
-  showAddButton: boolean;
-  isAddingToPortfolio: boolean;
-  isPopular?: boolean;
-}) {
-  if (!card) return null;
-
-  // Fix the reduce error by providing a default value and checking for empty array
-  const bestCategory = card.categories && card.categories.length > 0 
-    ? card.categories.reduce((best, current) => 
-        current.cashbackRate > best.cashbackRate ? current : best
-      )
-    : { cashbackRate: 0, category: 'N/A', id: 0, isRotating: false };
-
-  const getNetworkColor = (network: string) => {
-    switch (network.toLowerCase()) {
-      case 'visa': return 'bg-blue-100 text-blue-700 border-blue-200';
-      case 'mastercard': return 'bg-red-100 text-red-700 border-red-200';
-      case 'american express': return 'bg-fuchsia-500/12 text-fuchsia-400 border-fuchsia-500/25';
-      case 'discover': return 'bg-orange-100 text-orange-700 border-orange-200';
-      default: return 'bg-white/[0.07] text-[#DDD0E6] border-white/10';
-    }
-  };
+  const count = wallet.cards.length;
 
   return (
-    <Card className={`group hover:shadow-2xl transition-all duration-500 border border-white/10 rounded-3xl overflow-hidden flex flex-col justify-between ${isPopular ? 'ring-2 ring-yellow-250 bg-gradient-to-br from-yellow-50/70 via-orange-50/20 to-transparent' : 'bg-white/5'}`}>
-      
-      {/* Top Banner Renders */}
-      <div className="p-4 pb-0">
-        <CreditCardRender 
-          name={card.name} 
-          issuer={card.issuer} 
-          network={card.network} 
-          annualFee={card.annualFee}
-          bestRate={bestCategory.cashbackRate > 0 ? `${bestCategory.cashbackRate}% ${bestCategory.category}` : undefined}
+    <div className="mx-auto w-full max-w-md px-5 pb-8 pt-4">
+      <h1 className="text-[26px] font-extrabold leading-tight tracking-tight text-[#F3EBF8]">Wallet</h1>
+      <p className="mt-1.5 text-[13.5px] leading-relaxed text-[#9B8FA6]">
+        {wallet.mode === 'signed-out'
+          ? 'Browse every card. Sign in to choose the ones you carry.'
+          : count > 0
+            ? `${count} card${count === 1 ? '' : 's'} in your wallet. Tap a card to add or open it.`
+            : 'Tap the cards you carry to add them to your wallet.'}
+      </p>
+      {wallet.mode === 'device' && (
+        <p className="mt-1 text-[11.5px] text-[#6E637A]">
+          Offline. Your wallet is saved on this device until the app can reach your account.
+        </p>
+      )}
+
+      {/* search */}
+      <div className="mt-4 flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.05] py-2 pl-3.5 pr-2">
+        <Search className="h-4 w-4 shrink-0 text-[#6E637A]" />
+        <input
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          placeholder="Card or issuer"
+          aria-label="Search cards"
+          className="min-w-0 flex-1 bg-transparent text-[14.5px] text-[#F3EBF8] placeholder:text-[#5C5468] outline-none"
         />
-      </div>
-
-      <CardHeader className="pt-4 pb-2 px-5">
-        <div className="flex items-start justify-between">
-          <div className="space-y-1">
-            <div className="flex items-center space-x-2">
-              <h3 className="font-extrabold text-[#9B8FA6] group-hover:text-fuchsia-400 transition-colors text-base tracking-tight leading-tight">
-                {card.name}
-              </h3>
-              {isPopular && <Star className="h-4 w-4 text-yellow-500 fill-yellow-500" />}
-            </div>
-            <div className="flex items-center space-x-2">
-              <p className="text-xs text-[#9B8FA6] font-semibold">{card.issuer}</p>
-              <Badge variant="outline" className={`text-[10px] font-bold py-px px-2 border rounded-full ${getNetworkColor(card.network)}`}>
-                {card.network}
-              </Badge>
-            </div>
-          </div>
-          <div className="text-right">
-            <div className="flex items-center space-x-0.5 justify-end">
-              <Star className="h-3.5 w-3.5 text-yellow-500 fill-yellow-500" />
-              <span className="text-xs font-bold text-[#9B8FA6]">{card.rating}</span>
-            </div>
-            <p className="text-[10px] text-[#9B8FA6] font-medium">{card.reviewCount} reviews</p>
-          </div>
-        </div>
-      </CardHeader>
-      
-      <CardContent className="pt-0 px-5 pb-5 space-y-4 flex-1 flex flex-col justify-between">
-        <div className="space-y-3">
-          <div className="flex items-center justify-between text-xs font-medium border-b border-white/10 pb-2">
-            <span className="text-[#9B8FA6]">Annual Fee</span>
-            <span className="font-extrabold text-[#9B8FA6]">
-              {card.annualFee === 0 ? 'No Fee' : `$${card.annualFee}`}
-            </span>
-          </div>
-
-          <div className="space-y-1.5">
-            <div className="flex items-center justify-between">
-              <span className="text-xs text-[#9B8FA6] font-medium">Top Reward</span>
-              <Badge variant="secondary" className="bg-fuchsia-500/12 border border-fuchsia-500/25 text-fuchsia-400 text-xs font-black py-0.5 rounded-lg">
-                {bestCategory.cashbackRate}% {bestCategory.category}
-              </Badge>
-            </div>
-            
-            {bestCategory.isRotating && bestCategory.validUntil && (
-              <div className="flex items-center space-x-1 text-[10px] text-orange-600 font-bold bg-orange-50 border border-orange-100 p-1 rounded-md">
-                <TrendingUp className="h-3.5 w-3.5 text-orange-500" />
-                <span>Expires {new Date(bestCategory.validUntil).toLocaleDateString()}</span>
-              </div>
-            )}
-          </div>
-
-          {card.welcomeBonus && (
-            <div className="text-[11px] text-fuchsia-400 bg-fuchsia-500/10 border border-fuchsia-500/25 p-2.5 rounded-xl font-medium leading-normal">
-              <strong className="text-fuchsia-400 font-bold">Welcome Bonus:</strong> {card.welcomeBonus}
-            </div>
-          )}
-
-          <div className="space-y-1.5">
-            <span className="text-xs font-bold text-[#9B8FA6]">Categorized Perks:</span>
-            <div className="flex flex-wrap gap-1">
-              {card.categories && card.categories.length > 0 ? (
-                <>
-                  {card.categories.slice(0, 3).map((category, index) => (
-                    <Badge key={index} variant="outline" className="text-[10px] font-bold py-0.5 px-2 border border-white/10 text-[#9B8FA6] rounded-md">
-                      {category.cashbackRate}% {category.category}
-                    </Badge>
-                  ))}
-                  {card.categories.length > 3 && (
-                    <Badge variant="outline" className="text-[10px] font-bold py-0.5 px-1.5 border border-white/10 text-[#9B8FA6] rounded-md">
-                      +{card.categories.length - 3} more
-                    </Badge>
-                  )}
-                </>
-              ) : (
-                <Badge variant="outline" className="text-[10px]">
-                  No rates recorded
-                </Badge>
-              )}
-            </div>
-          </div>
-        </div>
-
-        <div className="flex space-x-2 pt-3 border-t border-white/10">
-          {showAddButton && (
-            <div className="flex-1">
-              {isInPortfolio ? (
-                <Badge className="bg-fuchsia-500/12 border border-fuchsia-500/25 text-fuchsia-400 font-extrabold w-full py-1.5 justify-center rounded-xl text-xs">
-                  In Portfolio
-                </Badge>
-              ) : (
-                <Button 
-                  onClick={onAddToPortfolio}
-                  disabled={isAddingToPortfolio}
-                  size="sm"
-                  className="w-full bg-fuchsia-500 hover:bg-fuchsia-600 text-white font-extrabold rounded-xl py-1.5 text-xs shadow-md transition-all active:scale-[0.98]"
-                >
-                  {isAddingToPortfolio ? 'Adding...' : 'Add to Portfolio'}
-                </Button>
-              )}
-            </div>
-          )}
-          {card.applyUrl && (
-            <Button 
-              variant="outline" 
-              size="sm" 
-              className="text-xs font-extrabold border-white/10 hover:bg-white/5 text-[#9B8FA6] rounded-xl"
-              onClick={() => window.open(card.applyUrl, '_blank')}
-            >
-              <ExternalLink className="h-3.5 w-3.5 mr-1" />
-              Apply
-            </Button>
-          )}
-        </div>
-      </CardContent>
-    </Card>
-  );
-}
-
-function PortfolioCardComponent({ userCard }: { userCard: UserCard }) {
-  const card = userCard?.card;
-  if (!card) return null;
-  
-  // Fix the reduce error by providing a default value and checking for empty array
-  const bestCategory = card.categories && card.categories.length > 0 
-    ? card.categories.reduce((best, current) => 
-        current.cashbackRate > best.cashbackRate ? current : best
-      )
-    : { cashbackRate: 0, category: 'N/A', id: 0, isRotating: false };
-
-  const getNetworkColor = (network: string) => {
-    switch (network.toLowerCase()) {
-      case 'visa': return 'bg-blue-100 text-blue-700 border-blue-200';
-      case 'mastercard': return 'bg-red-100 text-red-700 border-red-200';
-      case 'american express': return 'bg-fuchsia-500/12 text-fuchsia-400 border-fuchsia-500/25';
-      case 'discover': return 'bg-orange-100 text-orange-700 border-orange-200';
-      default: return 'bg-white/[0.07] text-[#DDD0E6] border-white/10';
-    }
-  };
-
-  return (
-    <Card className="group hover:shadow-2xl transition-all duration-500 border border-white/10 rounded-3xl overflow-hidden bg-gradient-to-br from-white/5 via-fuchsia-500/10 to-transparent flex flex-col justify-between">
-      
-      {/* Top Banner aspect-ratio renders */}
-      <div className="p-4 pb-0">
-        <CreditCardRender 
-          name={card.name} 
-          issuer={card.issuer} 
-          network={card.network} 
-          annualFee={card.annualFee}
-          bestRate={bestCategory.cashbackRate > 0 ? `${bestCategory.cashbackRate}% ${bestCategory.category}` : undefined}
-        />
-      </div>
-
-      <CardHeader className="pt-4 pb-2 px-5">
-        <div className="flex items-center space-x-3">
-          <div className="flex-1">
-            <h3 className="font-extrabold text-[#9B8FA6] text-base tracking-tight leading-tight">
-              {userCard.nickname || card.name}
-            </h3>
-            {userCard.nickname && (
-              <p className="text-[10px] text-[#9B8FA6] font-medium leading-none mt-1">{card.name}</p>
-            )}
-            <div className="flex items-center space-x-2 mt-1">
-              <p className="text-xs text-[#9B8FA6] font-semibold leading-none">{card.issuer}</p>
-              <Badge variant="outline" className={`text-[9px] font-black py-0.5 px-2 border rounded-full ${getNetworkColor(card.network)}`}>
-                {card.network}
-              </Badge>
-            </div>
-          </div>
-        </div>
-      </CardHeader>
-      
-      <CardContent className="pt-0 px-5 pb-5 space-y-4">
-        {userCard.creditLimit && (
-          <div className="flex items-center justify-between text-xs font-semibold border-b border-white/10 pb-2">
-            <span className="text-[#9B8FA6]">Credit Limit</span>
-            <span className="font-extrabold text-[#9B8FA6]">${userCard.creditLimit.toLocaleString()}</span>
-          </div>
+        {query && (
+          <button onClick={() => setQuery('')} aria-label="Clear search" className="shrink-0 rounded-full p-1.5 text-[#6E637A] hover:text-[#F3EBF8]">
+            <X className="h-3.5 w-3.5" />
+          </button>
         )}
+      </div>
 
-        <div className="flex items-center justify-between text-xs font-semibold border-b border-white/10 pb-2">
-          <span className="text-[#9B8FA6] font-semibold">Best Portfolio Rate</span>
-          <Badge variant="secondary" className="bg-fuchsia-500/12 border border-fuchsia-500/25 text-fuchsia-400 font-black rounded-lg">
-            {bestCategory.cashbackRate}% {bestCategory.category}
-          </Badge>
+      {/* scope */}
+      <div className="mt-3 flex rounded-full border border-white/10 bg-white/[0.04] p-1" role="tablist" aria-label="Which cards">
+        {([['all', 'All cards'], ['mine', `My wallet${count ? ` (${count})` : ''}`]] as [Scope, string][]).map(([key, label]) => (
+          <button
+            key={key}
+            role="tab"
+            aria-selected={scope === key}
+            onClick={() => setScope(key)}
+            className={`flex-1 rounded-full py-2 text-[13px] font-semibold transition-colors
+              ${scope === key ? 'bg-[#E64BD4] text-black' : 'text-[#9B8FA6] hover:text-[#F3EBF8]'}
+              focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#E64BD4]`}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+
+      {/* issuers, taken from the catalogue */}
+      {issuers.length > 1 && (
+        <div className="-mx-5 mt-3 flex gap-1.5 overflow-x-auto px-5 pb-1">
+          {issuers.map((name) => {
+            const on = issuer === name;
+            return (
+              <button
+                key={name}
+                onClick={() => setIssuer(on ? null : name)}
+                aria-pressed={on}
+                className={`shrink-0 rounded-full border px-3 py-1.5 text-[12.5px] font-semibold transition-colors
+                  ${on ? 'border-[#E64BD4] text-[#F58EE4]' : 'border-white/10 text-[#DDD0E6] hover:border-[#E64BD4]/40'}
+                  focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#E64BD4]`}
+              >
+                {name}
+              </button>
+            );
+          })}
         </div>
+      )}
 
-        <div className="space-y-1.5">
-          <span className="text-xs font-bold text-[#9B8FA6]">Category Cashback Rates:</span>
-          <div className="flex flex-wrap gap-1">
-            {card.categories && card.categories.length > 0 ? (
-              <>
-                {card.categories.slice(0, 3).map((category, index) => (
-                  <Badge key={index} variant="outline" className="text-[10px] font-bold py-0.5 px-2 border border-white/10 text-[#9B8FA6] rounded-md">
-                    {category.cashbackRate}% {category.category}
-                  </Badge>
-                ))}
-                {card.categories.length > 3 && (
-                  <Badge variant="outline" className="text-[10px] font-bold py-0.5 px-1.5 border border-white/10 text-[#9B8FA6] rounded-md">
-                    +{card.categories.length - 3} more
-                  </Badge>
-                )}
-              </>
-            ) : (
-              <Badge variant="outline" className="text-[10px]">
-                No category details available
-              </Badge>
-            )}
+      {/* the cards */}
+      {isLoading ? (
+        <div className="mt-4 grid grid-cols-2 gap-3">
+          {[0, 1, 2, 3].map((i) => (
+            <div key={i} className="aspect-[1.58/1] animate-pulse rounded-xl bg-white/[0.06]" />
+          ))}
+        </div>
+      ) : shown.length === 0 ? (
+        <div className="mt-8 rounded-2xl border border-dashed border-[#E64BD4]/25 px-6 py-10 text-center">
+          <p className="text-[14px] leading-relaxed text-[#9B8FA6]">
+            {scope === 'mine' && count === 0
+              ? 'Your wallet is empty. Switch to All cards and tap the ones you carry.'
+              : 'No cards match that search.'}
+          </p>
+        </div>
+      ) : (
+        <>
+          <p className="mb-2.5 mt-4 text-[11.5px] font-semibold uppercase tracking-wider text-[#6E637A]">
+            {shown.length} card{shown.length === 1 ? '' : 's'}
+            {offline && <span className="ml-1.5 normal-case tracking-normal text-[#4A4453]">· offline reference, headline rates only</span>}
+          </p>
+          <div className="grid grid-cols-2 gap-x-3 gap-y-4">
+            {shown.map((c) => {
+              const mine = wallet.has(c.id);
+              const arming = confirmRemove === c.id;
+              const working = wallet.busy === c.id;
+              return (
+                <div key={c.id} className="flex flex-col gap-1.5">
+                  <CardFace
+                    name={c.name}
+                    issuer={c.issuer}
+                    network={c.network}
+                    type={c.type}
+                    annualFeeCents={c.annualFee}
+                    categories={c.categories}
+                    owned={mine}
+                    onClick={() => (mine ? navigate(`/recommendations?card=${c.id}`) : toggle(c))}
+                  />
+                  <button
+                    onClick={() => toggle(c)}
+                    disabled={working}
+                    aria-label={mine ? `Remove ${c.name} from wallet` : `Add ${c.name} to wallet`}
+                    className={`flex items-center justify-center gap-1 rounded-full border py-1.5 text-[12px] font-semibold transition-colors disabled:opacity-50
+                      ${arming
+                        ? 'border-[#FF6B6B]/60 text-[#FF8A8A]'
+                        : mine
+                          ? 'border-[#E64BD4]/40 text-[#F58EE4] hover:border-[#E64BD4]'
+                          : 'border-white/10 text-[#DDD0E6] hover:border-[#E64BD4]/40'}
+                      focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#E64BD4]`}
+                  >
+                    {arming ? 'Tap to remove' : mine ? <><Check className="h-3.5 w-3.5" /> In wallet</> : <><Plus className="h-3.5 w-3.5" /> Add</>}
+                  </button>
+                </div>
+              );
+            })}
           </div>
-        </div>
+        </>
+      )}
 
-        <div className="text-[10px] text-[#9B8FA6] font-semibold pt-1 border-t border-white/10 flex items-center justify-between">
-          <span>Added {new Date(userCard.addedAt).toLocaleDateString()}</span>
-          <span className="text-fuchsia-400 font-bold bg-fuchsia-500/12 px-2 py-0.5 rounded-full border border-fuchsia-500/25">Wallet Synced</span>
-        </div>
-      </CardContent>
-    </Card>
+      {/* a card the catalogue does not have yet */}
+      <section className="mt-8 rounded-2xl border border-white/10 bg-white/[0.035] p-4">
+        <h2 className="text-[15px] font-bold tracking-tight text-[#F3EBF8]">Can't find your card?</h2>
+        <p className="mt-1 text-[12.5px] leading-relaxed text-[#9B8FA6]">
+          Add it to the catalogue. With lookup on, its rates are filled in from RewardsCC.
+        </p>
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            if (!newName.trim()) return;
+            addCardMutation.mutate({ name: newName.trim(), issuer: newIssuer.trim() || undefined, useExternalApi: useLookup });
+          }}
+          className="mt-3 flex flex-col gap-2.5"
+        >
+          <label className="flex flex-col gap-1.5">
+            <span className="text-[12px] font-semibold text-[#DDD0E6]">Card name</span>
+            <input
+              value={newName}
+              onChange={(e) => setNewName(e.target.value)}
+              placeholder="Bilt Mastercard"
+              className="rounded-lg border border-white/10 bg-black/40 px-3 py-2.5 text-[13.5px] text-[#F3EBF8] placeholder:text-[#4A4453] outline-none focus:border-[#E64BD4]/60"
+            />
+          </label>
+          <label className="flex flex-col gap-1.5">
+            <span className="text-[12px] font-semibold text-[#DDD0E6]">Issuer (optional)</span>
+            <input
+              value={newIssuer}
+              onChange={(e) => setNewIssuer(e.target.value)}
+              placeholder="Wells Fargo"
+              className="rounded-lg border border-white/10 bg-black/40 px-3 py-2.5 text-[13.5px] text-[#F3EBF8] placeholder:text-[#4A4453] outline-none focus:border-[#E64BD4]/60"
+            />
+          </label>
+          <label className="flex items-center gap-2 text-[12.5px] text-[#DDD0E6]">
+            <input type="checkbox" checked={useLookup} onChange={(e) => setUseLookup(e.target.checked)} className="accent-[#E64BD4]" />
+            Look up rates from RewardsCC
+          </label>
+          <button
+            type="submit"
+            disabled={!newName.trim() || addCardMutation.isPending || offline}
+            className="mt-1 self-start rounded-full bg-[#E64BD4] px-4 py-2 text-[13px] font-bold text-black transition-colors hover:bg-[#F06BDD] disabled:opacity-40
+                       focus-visible:outline focus-visible:outline-2 focus-visible:outline-white"
+          >
+            {addCardMutation.isPending ? 'Adding…' : 'Add to catalogue'}
+          </button>
+          {offline && <p className="text-[11.5px] text-[#6E637A]">Needs a connection to the app's server.</p>}
+        </form>
+      </section>
+    </div>
   );
 }

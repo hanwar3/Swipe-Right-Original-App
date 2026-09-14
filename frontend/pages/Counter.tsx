@@ -4,6 +4,7 @@ import { Mic, X, Clock, ChevronRight } from 'lucide-react';
 import SwarmOrb, { type OrbState } from '../components/SwarmOrb';
 import CardStack, { type StackCard } from '../components/CardStack';
 import { useAuth } from '../contexts/AuthContext';
+import { useWallet, type WalletCard } from '../lib/wallet';
 import { decide, cardProfile, formatMoney, type Decision, type CardProfile } from '../lib/engine';
 
 /**
@@ -25,6 +26,18 @@ const SAMPLE: StackCard[] = [
   { cardId: -5, name: 'Chase Sapphire Preferred', issuer: 'Chase', rate: '5x', on: 'Travel via portal' },
 ];
 
+/** A wallet card, as the deck draws it: its best rate on the face. */
+function toStack(c: WalletCard): StackCard {
+  const best = [...(c.categories || [])].sort((a, b) => (b.cashbackRate || 0) - (a.cashbackRate || 0))[0];
+  return {
+    cardId: c.id,
+    name: c.nickname || c.name,
+    issuer: c.issuer,
+    rate: best ? `${best.cashbackRate}%` : undefined,
+    on: best?.category,
+  };
+}
+
 const PROMPTS = ['I’m at a gas station', 'Booking a flight', 'Groceries at Trader Joe’s', 'Dinner out'];
 
 export default function Counter() {
@@ -42,11 +55,18 @@ export default function Counter() {
   const [promptIdx, setPromptIdx] = useState(0);
   const inputRef = useRef<HTMLInputElement | null>(null);
 
-  const isSample = !user;
+  const owned = useWallet();
+  const isSample =
+    owned.mode === 'signed-out' || (owned.mode === 'device' && owned.cards.length === 0);
 
-  // Signed in, the deck is the user's own portfolio. Signed out, it is a
-  // labelled example so the screen still shows what the app does.
+  // Signed in, the deck is the user's own portfolio. Offline, it is the wallet
+  // kept on this device. Signed out, it is a labelled example so the screen
+  // still shows what the app does.
   useEffect(() => {
+    if (owned.mode === 'device') {
+      setWallet(owned.cards.length ? owned.cards.slice(0, 6).map(toStack).reverse() : SAMPLE);
+      return;
+    }
     if (!user) { setWallet(SAMPLE); return; }
     let live = true;
     decide(user.userId, 'all')
@@ -63,7 +83,7 @@ export default function Counter() {
       })
       .catch(() => setNote('Could not reach your wallet. Try again in a moment.'));
     return () => { live = false; };
-  }, [user]);
+  }, [user, owned.mode, owned.cards]);
 
   useEffect(() => {
     const t = setInterval(() => setPromptIdx((i) => (i + 1) % PROMPTS.length), 3200);
@@ -108,13 +128,13 @@ export default function Counter() {
       .catch(() => setNote('Could not load that card.'));
   }
 
-  /** Second tap: the card's full profile lives in the Wallet tab. */
+  /** Second tap: that card's credits, deadlines and offers live in Insights. */
   function open(card: StackCard) {
-    if (!user || card.cardId < 0) {
-      setNote('Sign in to open a card.');
+    if (SAMPLE.some((s) => s.cardId === card.cardId)) {
+      setNote('These are example cards. Add yours in Wallet to open them.');
       return;
     }
-    navigate(`/cards?card=${card.cardId}`);
+    navigate(`/recommendations?card=${card.cardId}`);
   }
 
   function clear() {
@@ -180,7 +200,7 @@ export default function Counter() {
         {/* what the selected card earns, and the way through to its profile */}
         {showBasics && picked && (
           <button
-            onClick={() => navigate(`/cards?card=${picked.cardId}`)}
+            onClick={() => navigate(`/recommendations?card=${picked.cardId}`)}
             className="mb-3 w-full rounded-2xl border border-white/10 bg-white/[0.045] px-4 py-3.5 text-left
                        transition-colors hover:border-[#E64BD4]/40
                        focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#E64BD4]"
@@ -224,7 +244,7 @@ export default function Counter() {
 
         {isSample && !note && (
           <p className="mb-3 text-center text-[11.5px] font-medium text-[#6E637A]">
-            Example wallet. Sign in to see your own cards here.
+            Example wallet. Add your cards in Wallet to see them here.
           </p>
         )}
         {note && <p className="mb-3 text-center text-[12.5px] text-[#AFA2B9]">{note}</p>}
