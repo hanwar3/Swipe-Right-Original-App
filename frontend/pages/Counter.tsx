@@ -1,30 +1,40 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { Mic, X, Clock, ChevronRight } from 'lucide-react';
+import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
+import { ChevronRight, Clock, Keyboard, Mic, X } from 'lucide-react';
 import SwarmOrb, { type OrbState } from '../components/SwarmOrb';
 import CardStack, { type StackCard } from '../components/CardStack';
+import TypingPrompts from '../components/TypingPrompts';
+import VoiceSheet, { type VoicePhase } from '../components/VoiceSheet';
 import { useAuth } from '../contexts/AuthContext';
 import { useWallet, type WalletCard } from '../lib/wallet';
-import { decide, cardProfile, formatMoney, type Decision, type CardProfile } from '../lib/engine';
+import { decide, type Decision } from '../lib/engine';
+import { localDecide } from '../lib/localDecide';
+import { formatValue, useBenefitLog, useCustomBenefits } from '../lib/benefits';
+import { speak, useVoice } from '../lib/voice';
 
 /**
- * The counter screen.
+ * Ask: the screen you open at the register.
  *
- * There is no category grid. You are holding a wallet, so the app shows you a
- * wallet. The deck is the interface, not decoration:
- *   tap a card      it flips out of the deck and shows what that card earns
- *   tap it again    you land on its full profile, benefits and deadlines
- *   ask a question  the engine's winner is the card that flips out
+ *   the orb       is the voice button. Tap it and it grows into the listening
+ *                 view, swells as you talk, and says the answer back.
+ *   the line      beside it types out the kind of thing you can ask.
+ *   the deck      is your wallet. Tap a card to flip it out, tap it again to
+ *                 open it in Insights, tap anywhere else to put it back.
+ *   the field     at the bottom is for typing instead of talking.
+ *
+ * With no cards yet, the deck is a set of plain placeholders and the screen
+ * says to add your cards. Once cards are added, only those appear.
  */
 
-/** Shown before sign-in so the screen is never an empty shell. Clearly labelled. */
-const SAMPLE: StackCard[] = [
-  { cardId: -1, name: 'Wells Fargo Active Cash', issuer: 'Wells Fargo', rate: '2%', on: 'Everything' },
-  { cardId: -2, name: 'Citi Double Cash', issuer: 'Citi', rate: '2%', on: 'Everything' },
-  { cardId: -3, name: 'Discover it', issuer: 'Discover', rate: '5%', on: 'Rotating, gas' },
-  { cardId: -4, name: 'American Express Gold', issuer: 'American Express', rate: '4x', on: 'Dining, groceries' },
-  { cardId: -5, name: 'Chase Sapphire Preferred', issuer: 'Chase', rate: '5x', on: 'Travel via portal' },
+const TEMPLATE_ID = -900;
+const TEMPLATE: StackCard[] = [
+  { cardId: -901, name: 'Your everyday card', issuer: '', rate: '+', on: 'Add your cards', face: 'linear-gradient(140deg,#3B3445,#1D1924)' },
+  { cardId: -902, name: 'Your grocery card', issuer: '', rate: '+', face: 'linear-gradient(140deg,#443650,#221A2A)' },
+  { cardId: -903, name: 'Your dining card', issuer: '', rate: '+', face: 'linear-gradient(140deg,#4E3558,#261A2C)' },
+  { cardId: -904, name: 'Your gas card', issuer: '', rate: '+', face: 'linear-gradient(140deg,#583463,#2B1830)' },
 ];
+
+const isTemplate = (c: StackCard | null | undefined) => !!c && c.cardId <= TEMPLATE_ID;
 
 /** A wallet card, as the deck draws it: its best rate on the face. */
 function toStack(c: WalletCard): StackCard {
@@ -38,79 +48,78 @@ function toStack(c: WalletCard): StackCard {
   };
 }
 
-const PROMPTS = ['I’m at a gas station', 'Booking a flight', 'Groceries at Trader Joe’s', 'Dinner out'];
-
 export default function Counter() {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const owned = useWallet();
+  const log = useBenefitLog();
+  const custom = useCustomBenefits();
 
-  const [wallet, setWallet] = useState<StackCard[]>(SAMPLE);
   const [decision, setDecision] = useState<Decision | null>(null);
-  const [picked, setPicked] = useState<CardProfile | null>(null);
-  const [pickedCard, setPickedCard] = useState<StackCard | null>(null);
-  const [asking, setAsking] = useState(false);
+  const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
   const [busy, setBusy] = useState(false);
   const [draft, setDraft] = useState('');
   const [note, setNote] = useState<string | null>(null);
-  const [promptIdx, setPromptIdx] = useState(0);
+
+  const [voiceOpen, setVoiceOpen] = useState(false);
+  const [voicePhase, setVoicePhase] = useState<VoicePhase>('listening');
+  const [voiceAnswer, setVoiceAnswer] = useState('');
+  const [originRect, setOriginRect] = useState<DOMRect | null>(null);
+  const orbButtonRef = useRef<HTMLButtonElement | null>(null);
+  const deckBoxRef = useRef<HTMLDivElement | null>(null);
+  const [deckHeight, setDeckHeight] = useState<number | undefined>(undefined);
+
+  // The deck gets whatever height is left between the prompt and the typing
+  // field, and packs its cards to fit, so nothing below it is ever pushed off.
+  useLayoutEffect(() => {
+    const el = deckBoxRef.current;
+    if (!el) return;
+    const ro = new ResizeObserver(([entry]) => setDeckHeight(Math.floor(entry.contentRect.height)));
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
   const inputRef = useRef<HTMLInputElement | null>(null);
 
-  const owned = useWallet();
-  const isSample =
-    owned.mode === 'signed-out' || (owned.mode === 'device' && owned.cards.length === 0);
-
-  // Signed in, the deck is the user's own portfolio. Offline, it is the wallet
-  // kept on this device. Signed out, it is a labelled example so the screen
-  // still shows what the app does.
-  useEffect(() => {
-    if (owned.mode === 'device') {
-      setWallet(owned.cards.length ? owned.cards.slice(0, 6).map(toStack).reverse() : SAMPLE);
-      return;
-    }
-    if (!user) { setWallet(SAMPLE); return; }
-    let live = true;
-    decide(user.userId, 'all')
-      .then((d) => {
-        if (!live) return;
-        const cards = d.contenders.map((c) => ({
-          cardId: c.cardId,
-          name: c.displayName,
-          issuer: c.issuer,
-          rate: `${c.effectiveRate}%`,
-          on: 'Everything',
-        }));
-        setWallet(cards.length ? cards.slice(0, 6).reverse() : []);
-      })
-      .catch(() => setNote('Could not reach your wallet. Try again in a moment.'));
-    return () => { live = false; };
-  }, [user, owned.mode, owned.cards]);
-
-  useEffect(() => {
-    const t = setInterval(() => setPromptIdx((i) => (i + 1) % PROMPTS.length), 3200);
-    return () => clearInterval(t);
-  }, []);
+  const hasCards = owned.cards.length > 0;
+  const deck = useMemo(
+    () => (hasCards ? owned.cards.slice(0, 6).map(toStack).reverse() : TEMPLATE),
+    [hasCards, owned.cards]
+  );
 
   const winnerIndex = useMemo(() => {
     if (!decision?.winner) return null;
-    const nudged = decision.nudge?.overridesWinner ? decision.nudge.cardId : undefined;
-    const target = nudged ?? decision.winner.cardId;
-    const i = wallet.findIndex((c) => c.cardId === target);
+    const target = decision.nudge?.overridesWinner ? decision.nudge.cardId : decision.winner.cardId;
+    const i = deck.findIndex((c) => c.cardId === target);
     return i >= 0 ? i : null;
-  }, [decision, wallet]);
+  }, [decision, deck]);
 
   const orbState: OrbState = busy ? 'thinking' : decision?.nudge ? 'alert' : decision ? 'speaking' : 'idle';
+
+  /** One answer path for typing and talking. Null means there is nothing to ask yet. */
+  async function answer(question: string): Promise<Decision | null> {
+    if (!hasCards) {
+      setNote(owned.mode === 'signed-out'
+        ? 'Sign in and add your cards, and I can pick the right one.'
+        : 'Add your cards in Wallet first, and I can pick the right one.');
+      return null;
+    }
+    if (owned.mode === 'device') return localDecide(owned.cards, question);
+    if (!user) return null;
+    return decide(user.userId, question);
+  }
 
   async function ask(text: string) {
     const q = text.trim();
     if (!q) return;
-    if (!user) { setNote('Sign in and add your cards, and I can pick from your real wallet.'); return; }
     setBusy(true);
     setNote(null);
     try {
-      const d = await decide(user.userId, q);
-      setDecision(d);
-      setAsking(false);
-      setDraft('');
+      const d = await answer(q);
+      if (d) {
+        setDecision(d);
+        setDraft('');
+        inputRef.current?.blur();
+      }
     } catch {
       setNote('Could not reach your wallet just now.');
     } finally {
@@ -118,31 +127,84 @@ export default function Counter() {
     }
   }
 
-  /** First tap: the card flips out of the deck; load what it earns. */
-  function select(card: StackCard) {
-    setPickedCard(card);
-    setPicked(null);
-    if (!user || card.cardId < 0) return; // the sample deck has no real profile
-    cardProfile(user.userId, card.cardId)
-      .then((p) => setPicked(p))
-      .catch(() => setNote('Could not load that card.'));
+  // ------------------------------------------------------------------ voice
+  const voice = useVoice(async (said) => {
+    setVoicePhase('thinking');
+    try {
+      const d = await answer(said);
+      if (!d) {
+        setVoiceOpen(false);
+        return;
+      }
+      setDecision(d);
+      setVoiceAnswer(d.spoken);
+      setVoicePhase('answer');
+      speak(d.spoken);
+    } catch {
+      setVoicePhase('error');
+    }
+  });
+
+  // Recognition that ends without hearing anything, or cannot run at all.
+  useEffect(() => {
+    if (!voiceOpen) return;
+    if (voice.state === 'unsupported' || voice.state === 'denied' || voice.state === 'error') {
+      setVoicePhase(voice.state);
+    } else if (voice.state === 'idle' && voicePhase === 'listening') {
+      setVoicePhase('error');
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [voice.state]);
+
+  function openVoice() {
+    const canvas = orbButtonRef.current?.querySelector('canvas');
+    setOriginRect(canvas ? canvas.getBoundingClientRect() : null);
+    setSelectedIndex(null);
+    setVoiceAnswer('');
+    setVoicePhase('listening');
+    setVoiceOpen(true);
+    voice.start();
   }
 
-  /** Second tap: that card's credits, deadlines and offers live in Insights. */
+  function closeVoice() {
+    voice.cancel();
+    window.speechSynthesis?.cancel();
+    setVoiceOpen(false);
+  }
+
+  // -------------------------------------------------------------- selection
+  function onSelectedChange(i: number | null) {
+    setSelectedIndex(i);
+    // Putting the card back returns the whole screen to its resting state.
+    if (i === null) {
+      setDecision(null);
+      setNote(null);
+    }
+  }
+
   function open(card: StackCard) {
-    if (SAMPLE.some((s) => s.cardId === card.cardId)) {
-      setNote('These are example cards. Add yours in Wallet to open them.');
+    if (isTemplate(card)) {
+      navigate('/cards');
       return;
     }
     navigate(`/recommendations?card=${card.cardId}`);
   }
 
-  function clear() {
-    setDecision(null);
-    setPicked(null);
-    setPickedCard(null);
-    setNote(null);
-  }
+  const selectedCard = selectedIndex !== null ? deck[selectedIndex] : null;
+  const selectedWalletCard =
+    selectedCard && !isTemplate(selectedCard) ? owned.cards.find((c) => c.id === selectedCard.cardId) : undefined;
+
+  const basics = useMemo(() => {
+    if (!selectedWalletCard) return null;
+    const rates = [...(selectedWalletCard.categories || [])]
+      .sort((a, b) => (b.cashbackRate || 0) - (a.cashbackRate || 0))
+      .slice(0, 4);
+    const benefits = custom.benefitsFor(selectedWalletCard);
+    const dollarsLeft = benefits
+      .filter((b) => b.unit === '$')
+      .reduce((sum, b) => sum + Math.max(0, b.maxValue - log.used(b)), 0);
+    return { rates, credits: benefits.length, dollarsLeft };
+  }, [selectedWalletCard, custom, log]);
 
   const heroReasons = decision
     ? decision.contenders.find(
@@ -150,31 +212,54 @@ export default function Counter() {
       )?.reasons
     : undefined;
 
-  const showBasics = pickedCard !== null && !decision;
-
   return (
-    <div className="flex flex-1 flex-col overflow-hidden bg-black text-[#F3EBF8]">
-      <div className="mx-auto flex w-full max-w-md flex-1 flex-col px-5 pb-4 pt-2">
+    <div className="flex min-h-0 flex-1 flex-col overflow-hidden bg-black text-[#F3EBF8]">
+      <div className="mx-auto flex min-h-0 w-full max-w-md flex-1 flex-col px-5 pb-4 pt-3">
 
-        {/* orb + what it is saying */}
-        <div className="flex items-center gap-3">
-          <SwarmOrb size={54} count={620} state={orbState} />
+        {/* the orb is the voice button; the line beside it shows what to ask */}
+        <div className="flex items-center gap-3.5">
+          <button
+            ref={orbButtonRef}
+            onClick={openVoice}
+            aria-label="Ask by voice"
+            className="relative shrink-0 rounded-full focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#E64BD4] focus-visible:outline-offset-4"
+          >
+            <span
+              aria-hidden="true"
+              className="pointer-events-none absolute inset-2 rounded-full bg-[#E64BD4]/30 blur-lg animate-[orbhalo_3s_ease-in-out_infinite] motion-reduce:animate-none"
+            />
+            <SwarmOrb size={68} count={760} state={orbState} />
+            <span
+              aria-hidden="true"
+              className="absolute -bottom-1 -right-1 grid h-7 w-7 place-items-center rounded-full
+                         bg-[linear-gradient(160deg,#F06BDD,#B01FA0)] shadow-[0_4px_14px_rgba(230,75,212,.5)] ring-[3px] ring-black"
+            >
+              <Mic className="h-3.5 w-3.5 text-white" />
+            </span>
+          </button>
+
           <div className="min-w-0 flex-1">
             {decision ? (
-              <p className="font-serif text-[17px] leading-snug text-[#F3EBF8]">{decision.spoken}</p>
-            ) : showBasics ? (
-              <p className="text-[15px] font-semibold leading-snug text-[#DDD0E6]">
-                {picked?.displayName ?? pickedCard?.name}
-              </p>
+              <p className="font-serif text-[18px] leading-snug text-[#F3EBF8]">{decision.spoken}</p>
+            ) : busy ? (
+              <p className="text-[17px] font-semibold text-[#9B8FA6]">Checking your wallet…</p>
+            ) : selectedCard && !isTemplate(selectedCard) ? (
+              <p className="text-[17px] font-semibold leading-snug text-[#F3EBF8]">{selectedCard.name}</p>
             ) : (
-              <p className="text-[15px] font-semibold leading-snug text-[#9B8FA6]">
-                {busy ? 'Checking your wallet…' : 'What are you buying?'}
-              </p>
+              <button onClick={openVoice} className="block w-full text-left" tabIndex={-1} aria-hidden="true">
+                <span className="block min-h-[50px] text-[18px] font-semibold leading-snug">
+                  <TypingPrompts />
+                </span>
+                <span className="mt-0.5 flex items-center gap-1 text-[11.5px] font-medium text-[#6E637A]">
+                  <Mic className="h-3 w-3" /> Tap the orb and ask
+                </span>
+              </button>
             )}
           </div>
-          {(decision || pickedCard) && (
+
+          {(decision || selectedIndex !== null) && (
             <button
-              onClick={clear}
+              onClick={() => onSelectedChange(null)}
               aria-label="Clear"
               className="shrink-0 rounded-full border border-white/10 p-2 text-[#6E637A] transition-colors hover:text-[#F3EBF8]
                          focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#E64BD4]"
@@ -185,38 +270,59 @@ export default function Counter() {
         </div>
 
         {/* the deck */}
-        <div className="mt-2 flex flex-1 items-center justify-center">
-          {wallet.length === 0 ? (
-            <div className="rounded-2xl border border-dashed border-[#E64BD4]/30 p-6 text-center">
-              <p className="text-[14px] leading-relaxed text-[#9B8FA6]">
-                No cards yet. Add a few in Wallet and this becomes your deck.
-              </p>
-            </div>
-          ) : (
-            <CardStack cards={wallet} winnerIndex={winnerIndex} onSelect={select} onOpen={open} />
-          )}
+        <div ref={deckBoxRef} className="mt-1 flex min-h-0 flex-1 items-center justify-center">
+          <CardStack
+            cards={deck}
+            fitHeight={deckHeight}
+            winnerIndex={winnerIndex}
+            selected={selectedIndex}
+            onSelectedChange={onSelectedChange}
+            onOpen={open}
+            openLabel={hasCards ? 'Tap to open' : 'Tap to add yours'}
+          />
         </div>
 
-        {/* what the selected card earns, and the way through to its profile */}
-        {showBasics && picked && (
+        {/* no cards yet: say so plainly */}
+        {!hasCards && (
+          <div className="mb-3 flex items-center gap-3 rounded-2xl border border-[#E64BD4]/30 bg-[#E64BD4]/[0.07] px-4 py-3">
+            <div className="min-w-0 flex-1">
+              <p className="text-[14.5px] font-bold tracking-tight text-[#F3EBF8]">Add your cards</p>
+              <p className="mt-0.5 text-[12px] leading-snug text-[#AFA2B9]">
+                {owned.mode === 'signed-out'
+                  ? 'These are placeholders. Sign in and pick the cards you carry.'
+                  : 'These are placeholders. Pick the cards you carry.'}
+              </p>
+            </div>
+            <Link
+              to="/cards"
+              className="shrink-0 rounded-full bg-[#E64BD4] px-4 py-2 text-[13px] font-bold text-black hover:bg-[#F06BDD]"
+            >
+              Add cards
+            </Link>
+          </div>
+        )}
+
+        {/* what the flipped card earns, and the way into its insights */}
+        {basics && selectedWalletCard && !decision && (
           <button
-            onClick={() => navigate(`/recommendations?card=${picked.cardId}`)}
+            data-keep-selection
+            onClick={() => navigate(`/recommendations?card=${selectedWalletCard.id}`)}
             className="mb-3 w-full rounded-2xl border border-white/10 bg-white/[0.045] px-4 py-3.5 text-left
                        transition-colors hover:border-[#E64BD4]/40
                        focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#E64BD4]"
           >
             <div className="flex flex-wrap gap-x-4 gap-y-1.5">
-              {picked.rates.slice(0, 4).map((r, i) => (
+              {basics.rates.map((r, i) => (
                 <span key={i} className="text-[12.5px] text-[#AFA2B9]">
-                  <b className="font-mono font-bold text-[#F58EE4]">{r.rate}%</b> {r.category}
+                  <b className="font-mono font-bold text-[#F58EE4]">{r.cashbackRate}%</b> {r.category}
                 </span>
               ))}
             </div>
             <div className="mt-2.5 flex items-center justify-between gap-3 border-t border-white/[0.07] pt-2.5">
               <span className="text-[12.5px] font-semibold text-[#DDD0E6]">
-                {picked.unusedBenefitCents > 0
-                  ? `${formatMoney(picked.unusedBenefitCents)} in credits unused`
-                  : 'Benefits and deadlines'}
+                {basics.credits > 0
+                  ? `${formatValue(Math.round(basics.dollarsLeft), '$')} in credits left`
+                  : 'Insights for this card'}
               </span>
               <ChevronRight className="h-4 w-4 shrink-0 text-[#6E637A]" />
             </div>
@@ -242,60 +348,46 @@ export default function Counter() {
           </div>
         )}
 
-        {isSample && !note && (
-          <p className="mb-3 text-center text-[11.5px] font-medium text-[#6E637A]">
-            Example wallet. Add your cards in Wallet to see them here.
-          </p>
-        )}
         {note && <p className="mb-3 text-center text-[12.5px] text-[#AFA2B9]">{note}</p>}
 
-        {/* ask */}
-        <div className="mt-auto">
-          {asking ? (
-            <form
-              onSubmit={(e) => { e.preventDefault(); ask(draft); }}
-              className="flex items-center gap-2 rounded-full border border-[#E64BD4]/30 bg-white/[0.05] py-1.5 pl-4 pr-1.5"
-            >
-              <input
-                ref={inputRef}
-                value={draft}
-                onChange={(e) => setDraft(e.target.value)}
-                placeholder={PROMPTS[promptIdx]}
-                aria-label="What are you buying?"
-                className="min-w-0 flex-1 bg-transparent text-[15px] text-[#F3EBF8] placeholder:text-[#5C5468] outline-none"
-              />
-              <button
-                type="submit"
-                disabled={busy || !draft.trim()}
-                className="shrink-0 rounded-full bg-[#E64BD4] px-4 py-2 text-[13px] font-bold text-black
-                           disabled:opacity-40 focus-visible:outline focus-visible:outline-2 focus-visible:outline-white"
-              >
-                Ask
-              </button>
-            </form>
-          ) : (
-            <div className="flex items-center gap-2">
-              <button
-                onClick={() => { setAsking(true); setTimeout(() => inputRef.current?.focus(), 40); }}
-                className="min-h-[52px] flex-1 rounded-full border border-white/10 bg-white/[0.045] px-5 text-left text-[15px] font-medium text-[#6E637A]
-                           transition-colors hover:border-[#E64BD4]/40
-                           focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#E64BD4]"
-              >
-                {PROMPTS[promptIdx]}
-              </button>
-              <button
-                aria-label="Hold to speak"
-                className="grid h-[52px] w-[52px] shrink-0 place-items-center rounded-full text-white
-                           bg-[linear-gradient(160deg,#F06BDD,#B01FA0)] shadow-[0_8px_24px_rgba(230,75,212,.38)]
-                           transition-transform active:scale-95
-                           focus-visible:outline focus-visible:outline-2 focus-visible:outline-white focus-visible:outline-offset-2"
-              >
-                <Mic className="h-5 w-5" />
-              </button>
-            </div>
-          )}
-        </div>
+        {/* typing, for when talking is not an option */}
+        <form
+          onSubmit={(e) => { e.preventDefault(); ask(draft); }}
+          className="mt-auto flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.05] py-1.5 pl-4 pr-1.5
+                     focus-within:border-[#E64BD4]/50"
+        >
+          <Keyboard className="h-4 w-4 shrink-0 text-[#6E637A]" aria-hidden="true" />
+          <input
+            ref={inputRef}
+            value={draft}
+            onChange={(e) => setDraft(e.target.value)}
+            placeholder="Or type it: dinner, gas, Uber"
+            aria-label="Type what you are buying"
+            className="min-w-0 flex-1 bg-transparent py-2 text-[15px] text-[#F3EBF8] placeholder:text-[#5C5468] outline-none"
+          />
+          <button
+            type="submit"
+            disabled={busy || !draft.trim()}
+            className="shrink-0 rounded-full bg-[#E64BD4] px-4 py-2 text-[13px] font-bold text-black
+                       disabled:opacity-40 focus-visible:outline focus-visible:outline-2 focus-visible:outline-white"
+          >
+            Ask
+          </button>
+        </form>
       </div>
+
+      <VoiceSheet
+        open={voiceOpen}
+        originRect={originRect}
+        phase={voicePhase}
+        transcript={voice.transcript}
+        answer={voiceAnswer}
+        levelRef={voice.levelRef}
+        onDone={voice.stop}
+        onRetry={() => { setVoicePhase('listening'); voice.start(); }}
+        onType={() => { closeVoice(); window.setTimeout(() => inputRef.current?.focus(), 80); }}
+        onClose={closeVoice}
+      />
     </div>
   );
 }

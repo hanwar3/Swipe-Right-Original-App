@@ -201,3 +201,9 @@ body { background: #000; }
   .screen-enter { animation: none; }
   .stackcard::before { transition: none; }
 }
+
+/* The halo behind the small orb: a slow breath that invites a tap. */
+@keyframes orbhalo {
+  0%, 100% { opacity: .35; transform: scale(.88); }
+  50%      { opacity: .85; transform: scale(1.18); }
+}

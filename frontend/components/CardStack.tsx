@@ -6,6 +6,8 @@ export interface StackCard {
   issuer: string;
   rate?: string;
   on?: string;
+  /** Overrides the issuer tint, e.g. for the plain template deck. */
+  face?: string;
 }
 
 interface CardStackProps {
@@ -17,6 +19,16 @@ interface CardStackProps {
   /** Second tap on the card already facing you: open its profile. */
   onOpen?: (card: StackCard, index: number) => void;
   compact?: boolean;
+  /**
+   * Height the deck may occupy. The gap between cards tightens to fit it, so a
+   * bigger wallet or a panel underneath never pushes the rest of the screen off.
+   */
+  fitHeight?: number;
+  /** Controlled selection. Leave undefined to let the deck manage it. */
+  selected?: number | null;
+  onSelectedChange?: (index: number | null) => void;
+  /** Badge on the card facing you. */
+  openLabel?: string;
 }
 
 /** Issuer-tinted faces. The app renders CSS faces rather than hotlinking bank art. */
@@ -51,15 +63,35 @@ export default function CardStack({
   onSelect,
   onOpen,
   compact = false,
+  fitHeight,
+  selected: selectedProp,
+  onSelectedChange,
+  openLabel = 'Tap to open',
 }: CardStackProps) {
   const [hover, setHover] = useState<number | null>(null);
-  const [selected, setSelected] = useState<number | null>(null);
+  const [innerSelected, setInnerSelected] = useState<number | null>(null);
+  const controlled = selectedProp !== undefined;
+  const selected = controlled ? selectedProp : innerSelected;
+  const changeRef = useRef(onSelectedChange);
+  changeRef.current = onSelectedChange;
+  const setSelected = useCallback(
+    (i: number | null) => {
+      if (!controlled) setInnerSelected(i);
+      changeRef.current?.(i);
+    },
+    [controlled]
+  );
   const stageRef = useRef<HTMLDivElement | null>(null);
   const reduce =
     typeof window !== 'undefined' &&
     window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
 
-  const step = compact ? 62 : 78;
+  const baseH = compact ? 150 : 190;
+  const idealStep = compact ? 62 : 78;
+  const step =
+    fitHeight && cards.length > 1
+      ? Math.max(40, Math.min(idealStep, (fitHeight - baseH) / (cards.length - 1)))
+      : idealStep;
 
   // The engine's answer selects a card, same as a tap would.
   useEffect(() => {
@@ -108,6 +140,26 @@ export default function CardStack({
     };
   }, [cards.length, reduce, selected]);
 
+  useEffect(() => {
+    if (selected === null) return;
+    const onDown = (e: PointerEvent) => {
+      const t = e.target as Element | null;
+      if (!t) return;
+      if (t.closest('.stackcard') && stageRef.current?.contains(t)) return;
+      if (t.closest('[data-keep-selection]')) return;
+      setSelected(null);
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setSelected(null);
+    };
+    document.addEventListener('pointerdown', onDown);
+    document.addEventListener('keydown', onKey);
+    return () => {
+      document.removeEventListener('pointerdown', onDown);
+      document.removeEventListener('keydown', onKey);
+    };
+  }, [selected, setSelected]);
+
   function tap(card: StackCard, i: number) {
     if (selected === i) {
       onOpen?.(card, i);
@@ -122,7 +174,7 @@ export default function CardStack({
     (i: number): React.CSSProperties => {
       const n = Math.max(1, cards.length);
       const depth = n > 1 ? (n - 1 - i) / (n - 1) : 0; // 0 front, 1 back
-      const face = issuerFace(cards[i].issuer);
+      const face = cards[i].face ?? issuerFace(cards[i].issuer);
 
       // Selected: this card flips up out of the deck to face the reader.
       // Centred in the stage rather than lifted off the bottom edge, and the
@@ -182,7 +234,7 @@ export default function CardStack({
         aria-label="Your wallet"
         className="relative mx-auto"
         style={{
-          height: (cards.length - 1) * step + (compact ? 150 : 190),
+          height: (cards.length - 1) * step + baseH,
           maxWidth: 400,
           transformStyle: 'preserve-3d',
         }}
@@ -219,7 +271,7 @@ export default function CardStack({
                 </span>
                 {isSel && (
                   <span className="shrink-0 rounded-full bg-black/35 px-2 py-0.5 text-[9.5px] font-bold uppercase tracking-wider text-white/90">
-                    Tap to open
+                    {openLabel}
                   </span>
                 )}
               </span>

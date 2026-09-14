@@ -1,12 +1,17 @@
 import React, { useEffect, useRef } from 'react';
 
-export type OrbState = 'idle' | 'thinking' | 'speaking' | 'alert';
+export type OrbState = 'idle' | 'listening' | 'thinking' | 'speaking' | 'alert';
 
 interface SwarmOrbProps {
   size?: number;
   count?: number;
   state?: OrbState;
   className?: string;
+  /**
+   * Live microphone level, 0..1. Read every frame without re-rendering, so the
+   * swarm swells with the voice talking to it.
+   */
+  levelRef?: React.MutableRefObject<number>;
 }
 
 /**
@@ -25,6 +30,7 @@ interface SwarmOrbProps {
 // tuning per state: [deformation, spin, hue mix, pulse]
 const STATES: Record<OrbState, { deform: number; spin: number; warm: number; pulse: number }> = {
   idle: { deform: 1.0, spin: 0.3, warm: 0.0, pulse: 0.0 },
+  listening: { deform: 0.9, spin: 0.5, warm: 0.2, pulse: 0.0 },
   thinking: { deform: 0.45, spin: 1.15, warm: 0.15, pulse: 0.0 },
   speaking: { deform: 0.85, spin: 0.42, warm: 0.1, pulse: 1.0 },
   alert: { deform: 1.25, spin: 0.55, warm: 1.0, pulse: 0.45 },
@@ -35,7 +41,9 @@ export default function SwarmOrb({
   count = 1800,
   state = 'idle',
   className = '',
+  levelRef,
 }: SwarmOrbProps) {
+  const voiceRef = useRef(0);
   const ref = useRef<HTMLCanvasElement | null>(null);
   const stateRef = useRef<OrbState>(state);
   const eased = useRef({ deform: 1, spin: 0.3, warm: 0, pulse: 0 });
@@ -100,7 +108,12 @@ export default function SwarmOrb({
 
       spinPhase += e.spin * dt;
 
-      const breathe = 1 + e.pulse * 0.055 * Math.sin(t * 7.5);
+      // A voice swells the swarm outward; silence lets it settle back.
+      const lvlTarget = stateRef.current === 'listening' ? (levelRef?.current ?? 0) : 0;
+      voiceRef.current += (lvlTarget - voiceRef.current) * Math.min(1, dt * 12);
+      const voice = voiceRef.current;
+
+      const breathe = 1 + e.pulse * 0.055 * Math.sin(t * 7.5) + voice * 0.12;
 
       ctx!.clearRect(0, 0, W, H);
 
@@ -119,7 +132,7 @@ export default function SwarmOrb({
       const rx = Math.sin(t * 0.23) * 0.42;
       const cX = Math.cos(rx);
       const sX = Math.sin(rx);
-      const amp = e.deform;
+      const amp = e.deform * (1 + voice * 1.4);
 
       for (let i = 0; i < count; i++) {
         const px = pts[i * 3];

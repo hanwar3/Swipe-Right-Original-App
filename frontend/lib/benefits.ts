@@ -13,18 +13,50 @@ import { useEffect, useState } from 'react';
  */
 
 export type BenefitCategory =
-  | 'Travel' | 'Hotels' | 'Dining' | 'Rides' | 'Streaming' | 'Shopping' | 'Wellness';
+  | 'Travel' | 'Hotels' | 'Dining' | 'Rides' | 'Streaming' | 'Entertainment'
+  | 'Shopping' | 'Groceries' | 'Wellness' | 'Other';
+
+export const CATEGORY_OPTIONS: BenefitCategory[] = [
+  'Travel', 'Hotels', 'Dining', 'Rides', 'Streaming', 'Entertainment',
+  'Shopping', 'Groceries', 'Wellness', 'Other',
+];
+
+/**
+ * Real credits do not all reset on the calendar. Quarterly credits exist, free
+ * nights and anniversary miles follow the card's own anniversary, and Global
+ * Entry style credits come round every four years.
+ */
+export type BenefitPeriod =
+  | 'monthly' | 'quarterly' | 'semi-annually' | 'yearly' | 'anniversary' | 'every-4-years';
+
+export const PERIOD_OPTIONS: { value: BenefitPeriod; label: string }[] = [
+  { value: 'monthly', label: 'Every month' },
+  { value: 'quarterly', label: 'Every quarter' },
+  { value: 'semi-annually', label: 'Twice a year' },
+  { value: 'yearly', label: 'Every calendar year' },
+  { value: 'anniversary', label: 'On my card anniversary' },
+  { value: 'every-4-years', label: 'Every 4 years' },
+];
 
 export interface CardBenefit {
   id: string;
   name: string;
   description: string;
   type: 'statement_credit' | 'subscription';
-  period: 'monthly' | 'yearly' | 'semi-annually';
+  period: BenefitPeriod;
+  /** Dollars when unit is '$'; a number of uses (nights, visits) when 'count'. */
   maxValue: number;
   unit: '$' | 'count';
   category: BenefitCategory;
   step?: number;
+  /** Added by the user rather than shipped with the app. */
+  custom?: boolean;
+}
+
+/** "$10", "$9.99", or "2" for counted benefits like free nights. */
+export function formatValue(v: number, unit: CardBenefit['unit']): string {
+  if (unit === 'count') return String(Math.round(v));
+  return '$' + (Number.isInteger(v) ? v : v.toFixed(2));
 }
 
 const SETS: Record<string, CardBenefit[]> = {
@@ -95,17 +127,33 @@ export function benefitsForCard(card: { id: number; name: string; issuer?: strin
   }
 }
 
-/** When a benefit's current window closes. Amex semi-annual credits run Jan-Jun and Jul-Dec. */
-export function periodEnds(period: CardBenefit['period'], now = new Date()): Date {
+/**
+ * When a benefit's current window closes. Amex semi-annual credits run Jan-Jun
+ * and Jul-Dec. Returns null when the date depends on something the app does not
+ * know yet, such as the card's anniversary, so it is never shown as a countdown
+ * it cannot back up.
+ */
+export function periodEnds(period: BenefitPeriod, now = new Date()): Date | null {
   const y = now.getFullYear();
   const m = now.getMonth();
-  if (period === 'monthly') return new Date(y, m + 1, 0, 23, 59, 59);
-  if (period === 'semi-annually') return m < 6 ? new Date(y, 5, 30, 23, 59, 59) : new Date(y, 11, 31, 23, 59, 59);
-  return new Date(y, 11, 31, 23, 59, 59);
+  switch (period) {
+    case 'monthly': return new Date(y, m + 1, 0, 23, 59, 59);
+    case 'quarterly': return new Date(y, Math.floor(m / 3) * 3 + 3, 0, 23, 59, 59);
+    case 'semi-annually': return m < 6 ? new Date(y, 5, 30, 23, 59, 59) : new Date(y, 11, 31, 23, 59, 59);
+    case 'yearly': return new Date(y, 11, 31, 23, 59, 59);
+    default: return null;
+  }
 }
 
 export function daysUntil(d: Date, now = new Date()): number {
   return Math.max(0, Math.ceil((d.getTime() - now.getTime()) / 86400000));
+}
+
+export function resetLabel(period: BenefitPeriod, daysLeft: number | null): string {
+  if (period === 'anniversary') return 'resets on your card anniversary';
+  if (period === 'every-4-years') return 'renews every 4 years';
+  if (daysLeft === null) return '';
+  return daysLeft === 0 ? 'resets today' : `resets in ${daysLeft} day${daysLeft === 1 ? '' : 's'}`;
 }
 
 // ---------------------------------------------------------------------------
@@ -169,4 +217,69 @@ export function useBenefitLog() {
   }
 
   return { used, setUsed, offerRedeemed, offerSavings, markOfferUsed, reset };
+}
+
+// ---------------------------------------------------------------------------
+// Credits the app does not ship, and ones that do not apply.
+//
+// The shipped list can never cover every card, and issuers change their
+// credits more often than an app ships. So the user can add any credit to any
+// card in their wallet, and hide a shipped one that no longer applies instead
+// of having it inflate "left to use" forever.
+// ---------------------------------------------------------------------------
+
+const CUSTOM_KEY = 'swiperight_custom_benefits';
+const HIDDEN_KEY = 'swiperight_hidden_benefits';
+
+export interface NewBenefit {
+  name: string;
+  maxValue: number;
+  unit: CardBenefit['unit'];
+  period: BenefitPeriod;
+  category: BenefitCategory;
+}
+
+export function useCustomBenefits() {
+  const [byCard, setByCard] = usePersisted<Record<string, CardBenefit[]>>(CUSTOM_KEY, {});
+  const [hidden, setHidden] = usePersisted<string[]>(HIDDEN_KEY, []);
+
+  /** Shipped credits the user has not hidden, then the ones they added. */
+  function benefitsFor(card: { id: number; name: string; issuer?: string }): CardBenefit[] {
+    const shipped = benefitsForCard(card).filter((b) => !hidden.includes(b.id));
+    return [...shipped, ...(byCard[String(card.id)] ?? [])];
+  }
+
+  function hiddenFor(card: { id: number; name: string; issuer?: string }): CardBenefit[] {
+    return benefitsForCard(card).filter((b) => hidden.includes(b.id));
+  }
+
+  function add(cardId: number, b: NewBenefit) {
+    const benefit: CardBenefit = {
+      id: `custom_${cardId}_${Date.now().toString(36)}`,
+      name: b.name.trim(),
+      description: 'Added by you.',
+      type: 'statement_credit',
+      period: b.period,
+      maxValue: Math.max(0, b.maxValue),
+      unit: b.unit,
+      category: b.category,
+      step: b.unit === 'count' ? 1 : undefined,
+      custom: true,
+    };
+    setByCard((p) => ({ ...p, [cardId]: [...(p[String(cardId)] ?? []), benefit] }));
+  }
+
+  function remove(cardId: number, benefitId: string) {
+    setByCard((p) => ({ ...p, [cardId]: (p[String(cardId)] ?? []).filter((b) => b.id !== benefitId) }));
+  }
+
+  function hide(benefitId: string) {
+    setHidden((p) => (p.includes(benefitId) ? p : [...p, benefitId]));
+  }
+
+  function restore(benefitId: string) {
+    setHidden((p) => p.filter((id) => id !== benefitId));
+  }
+
+  return { benefitsFor, hiddenFor, add, remove, hide, restore };
 }
