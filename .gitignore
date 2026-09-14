@@ -11,6 +11,10 @@ encore-local.secrets.json
 backend/secrets.local.json
 backend/encore-local.secrets.json
 *.secrets.json
+.secrets.local.cue
+
+# local toolchains (x64 Node for Encore's runtime on ARM64)
+.tools/
 
 # build artifacts
 backend/tsconfig.tsbuildinfo

@@ -18,7 +18,9 @@ over-complicated competitors it is positioned against.
 - All work is on branch **`feat/decision-engine`**, pushed, **not merged to `main`, not deployed**.
 - `main` is written to by Leap (leap.new), which is why work happens on a branch.
 - Stack: Encore.dev TypeScript backend (`backend/`: services `auth`, `cards`, `ai`, `offers`; Postgres) and Vite + React + Tailwind v4 frontend (`frontend/`).
-- Run the frontend: `npm --prefix frontend run dev` (port 5173). Typecheck: `npm --prefix frontend run typecheck`, and `npx tsc --noEmit -p backend/tsconfig.json`.
+- Run the frontend: `npm --prefix frontend run dev` (port 5173). Typecheck: `npm --prefix frontend run typecheck`, and `npx tsc --noEmit -p backend/tsconfig.json` (currently 2 errors, both inside `node_modules/encore.dev/api/node_http.ts`: encore.dev 1.58.5 clashes with `@types/node` 26; none in our code).
+- Run the backend: `scripts\run-backend.cmd` from **your own terminal** (API on port 4000, dev dashboard on 9400). First time: `encore auth login`. See "Running the backend on this PC".
+- Smoke test the running backend: `node scripts/smoke-backend.mjs` (38 checks: auth, portfolio, engine, profile, offer inbox).
 
 ## The three tabs (Haider corrected these once; do not drift)
 
@@ -59,7 +61,25 @@ No category buttons on Ask: Haider described card *purposes*, he never asked for
 
 **Verified in the browser (375x812, offline/device mode):** template deck and prompt; tap-off and Escape deselect; orb growing into the voice view; blocked-microphone message; typed question flipping the right card; Wallet add/remove; Insights with 4 cards (categories ordered by money left, collapsing cards, custom counted credit, hiding a credit updating totals).
 
-**Never executed:** the entire backend. Encore will not start on this PC (see blockers), so `decide`, `profile`, all `/offers/*`, and migrations 8 and 9 are only typechecked. Real speech recognition was not testable (the browser pane blocks the mic).
+**Verified against a real Postgres (2026-09-14, `scripts/smoke-backend.mjs`, 38 checks):** all nine cards migrations apply cleanly to empty databases; register; portfolio add and list; `decide` for gas, groceries, dining, flights, a named merchant and unlisted purchases; card profile; inbox address and per-card addresses; last four; ingest by last four, by per-card address, ambiguous mail held as pending, a re-forward de-duplicated, mail without offers logged as unparsed, a wrong secret rejected; pending plus one-tap attribution; the offers list; `ai/chat` falling back to the engine's sentence without a Gemini key.
+
+**Bugs that first real run found, fixed in the same change:**
+- `GET /offers/pending` and `GET /cards/merchant-offers/:userId` returned 500 as soon as an offer had an end date (DATE columns arrive as strings, not Date objects).
+- The engine never read the `other` base rate that 69 card rows use, so Costco or any unlisted purchase got no card and the sentence "You don't have any cards in your portfolio yet".
+- Expired rotating quarters still counted: Freedom Flex's 5% gas (ended 2024-12-31) beat Blue Cash Preferred's real 3%. `decide` and `profile` now skip categories whose `valid_until` has passed.
+- Offers were matched against the normalised category ("dining") instead of what was said ("Starbucks"), so they never applied. They now add to the card's own rate (they are statement credits on top), respect the minimum spend, and are capped by "up to $X" (stored in `maximum_cashback`).
+- The parser stored "Spend $50, get $10 back" as "Spend $50,, get $10 back".
+
+**Still not verified:** real speech recognition (the browser pane blocks the mic); the frontend against the live backend; Gemini phrasing (no key locally); real issuer mail through a mail provider.
+
+## Engine gaps seen while testing (not fixed)
+
+- The spoken sentence does not say when the winning offer still has to be activated ("13% back" assumes you activate the Starbucks offer); only the reasons do.
+- No card-network acceptance: Costco in-store takes only Visa, yet the engine can name an Amex or Mastercard there. Ties (four cards at 1%) are broken arbitrarily.
+- A user-chosen category (e.g. Citi Custom Cash's top category) is not held to that card's cap.
+- `card_benefits` is seeded for only a few cards (none in the test wallet), so expiring-credit nudges never fired in testing.
+- Catalogue data is stale in places: rotating quarters from 2024, duplicate "Chase Sapphire Preferred" entries.
+- A non-UUID `userId` makes `decide` return 500. This goes away once userId comes from the auth token.
 
 ## SECURITY: critical, unfixed. Fix before any real user signs up.
 
@@ -76,17 +96,27 @@ Pre-existing (from before this work) and making the above trivial:
 
 Also: a **GitHub personal access token is embedded in the local git remote URL** (`.git/config`). Rotate it and switch the remote to `https://github.com/hanwar3/Swipe-Right-Original-App.git` with `gh auth setup-git`.
 
+## Running the backend on this PC
+
+It runs (Encore CLI 1.58.5, Docker Desktop). Four things were in the way; `scripts\run-backend.cmd` handles the first two:
+
+1. **Never start Encore from a Claude session.** The Claude desktop app is an MSIX package, and Windows redirects AppData writes of every process it launches into `%LOCALAPPDATA%\Packages\Claude_pzs8sxrjxfjjc\LocalCache\Local`. Encore's daemon socket cannot work there, so the daemon dies with `bind: An invalid argument was supplied` or `CreateFile ...encored.sock: The file cannot be accessed by the system`. That was the real cause of the old "Encore will not start" blocker; the Encore version never mattered. A Claude session can open a separate Windows Terminal window (`wt.exe`), which runs outside the redirection, and then use the API over HTTP.
+2. **x64 Node.** Encore's native runtime is x64 and this PC is ARM64. The script puts `.tools\node-x64` first on PATH and restarts the daemon so the app process inherits it.
+3. **`encore auth login`, once.** The app is linked to Encore Cloud, and `encore run` will not start until it has fetched development secrets. Local overrides go in `backend\.secrets.local.cue` (gitignored), e.g. `OfferInboxSecret: "local-smoke-test-secret"` for the smoke test.
+4. **An old local database.** The unlinked `default` namespace holds a database from May whose migration table says version 9 but whose `cards` table has no `type` column, so `/cards` fails there. A linked run gets fresh databases; otherwise use `--namespace smoke` or `encore db reset`.
+
+On first run Encore also bumped `encore.dev` to ^1.58.5 and regenerated `bun.lock`, which had drifted from package.json (bcryptjs 3, @types/node 26).
+
 ## Blockers
 
-- **Encore daemon on this PC:** `listen unix ...\encored.sock: bind: An invalid argument was supplied.` on Encore **1.57.5**. A stale socket file was removed; the bind still fails. The vendor fix is the **1.58.4** security update via their installer (Haider has to run it): `powershell -Command "iwr https://encore.dev/install.ps1 -useb | iex"`. Docker Desktop must be running.
-- **Deploying:** the app is linked to Encore Cloud app `swiperight-credit-card-app-x4n2`. Secrets needed: `GeminiApiKey`, `RewardsCCApiKey`, `OfferInboxSecret`. Recommended path: deploy to a **private test environment** first (test data only). That is also the fastest way to run the backend at all.
+- **Deploying:** the app is linked to Encore Cloud app `swiperight-credit-card-app-x4n2`. Secrets needed: `GeminiApiKey`, `RewardsCCApiKey`, `OfferInboxSecret`. The backend now runs locally, so there is no need to deploy just to run it. Do not deploy anywhere reachable until the security fix lands; then a **private test environment** first (test data only).
 - **Offers email:** needs a real inbound domain (`INBOX_DOMAIN` in `backend/offers/inbox.ts` is a placeholder) and a Mailgun/Postmark route to `POST /offers/ingest` with header `X-Inbox-Secret`.
 - **21st.dev MCP:** not connected; needs `API_KEY_21ST` set in an interactive terminal.
 
 ## Next steps, in order
 
-1. Get the backend running (Encore upgrade locally, or a private Encore Cloud test deploy) and fix whatever the real database exposes.
-2. Security fix plan above.
+1. ~~Get the backend running and fix whatever the real database exposes.~~ Done 2026-09-14 (see "Verified vs not").
+2. **Security fix plan above.** It can now be tested locally; `scripts/smoke-backend.mjs` will need to send the token once endpoints require auth.
 3. Merge `feat/decision-engine` to `main`, deploy to test, then production.
 4. Mail provider + domain for offers; tune parsers against real issuer emails.
 5. Public catalogue scrape (Apify) for "every card on the market".
