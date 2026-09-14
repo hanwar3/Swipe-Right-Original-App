@@ -272,12 +272,12 @@ export const ingest = api<InboundEmail, IngestResponse>(
       const res = await cardsDB.queryAll<{ id: number }>`
         INSERT INTO merchant_offers
           (user_id, card_id, merchant_name, offer_description, cashback_rate,
-           cashback_amount, minimum_spend, offer_type, end_date, is_activated,
+           cashback_amount, minimum_spend, maximum_cashback, offer_type, end_date, is_activated,
            source, source_ingest_id, confidence, pending_issuer, pending_last_four)
         VALUES
           (${userId}, ${cardId}, ${o.merchantName}, ${o.offerDescription},
            ${o.cashbackRate ?? null}, ${o.cashbackAmountCents ?? null},
-           ${o.minimumSpendCents ?? null}, 'cashback', ${o.endDate ?? null}, FALSE,
+           ${o.minimumSpendCents ?? null}, ${o.maximumCashbackCents ?? null}, 'cashback', ${o.endDate ?? null}, FALSE,
            'email', ${ingestId}, ${o.confidence},
            ${cardId === null ? issuer : null}, ${cardId === null ? (lastFour ?? null) : null})
         ON CONFLICT (user_id, COALESCE(card_id, -1), LOWER(merchant_name), COALESCE(end_date, DATE '2099-12-31'))
@@ -286,6 +286,7 @@ export const ingest = api<InboundEmail, IngestResponse>(
           cashback_rate     = EXCLUDED.cashback_rate,
           cashback_amount   = EXCLUDED.cashback_amount,
           minimum_spend     = EXCLUDED.minimum_spend,
+          maximum_cashback  = EXCLUDED.maximum_cashback,
           confidence        = EXCLUDED.confidence,
           source_ingest_id  = EXCLUDED.source_ingest_id,
           updated_at        = NOW()
@@ -343,7 +344,8 @@ export const pendingOffers = api<{ userId: string }, {
         offerDescription: r.offer_description,
         issuer: r.pending_issuer ?? undefined,
         lastFour: r.pending_last_four ?? undefined,
-        endDate: r.end_date ? r.end_date.toISOString().split("T")[0] : undefined,
+        // DATE columns come back from the driver as strings, not Date objects.
+        endDate: r.end_date ? new Date(r.end_date).toISOString().split("T")[0] : undefined,
       })),
     };
   }

@@ -23,6 +23,8 @@ export interface ParsedOffer {
   cashbackRate?: number;
   cashbackAmountCents?: number;
   minimumSpendCents?: number;
+  /** The most a percentage offer pays out ("up to $5"). */
+  maximumCashbackCents?: number;
   endDate?: string;
   /** 0..1. Below NAME_CONFIDENCE_FLOOR the row is written but flagged. */
   confidence: number;
@@ -158,7 +160,7 @@ export function parseTerms(block: string): Omit<ParsedOffer, "merchantName" | "c
   const t = block.replace(/\s+/g, " ").trim();
 
   // "Spend $50, get $10 back" / "Spend $50 or more, earn $10 back"
-  let m = /spend\s+\$?\s?(\d[\d,]*(?:\.\d{2})?)[^.$%]{0,40}?(?:get|earn|receive)\s+\$\s?(\d[\d,]*(?:\.\d{2})?)/i.exec(t);
+  let m = /spend\s+\$?\s?(\d+(?:,\d{3})*(?:\.\d{2})?)[^.$%]{0,40}?(?:get|earn|receive)\s+\$\s?(\d+(?:,\d{3})*(?:\.\d{2})?)/i.exec(t);
   if (m) {
     return {
       offerDescription: `Spend $${m[1]}, get $${m[2]} back`,
@@ -169,7 +171,7 @@ export function parseTerms(block: string): Omit<ParsedOffer, "merchantName" | "c
   }
 
   // "Get $10 back on a purchase of $50 or more"
-  m = /(?:get|earn|receive)\s+\$\s?(\d[\d,]*(?:\.\d{2})?)\s+back[^.$%]{0,40}?\$\s?(\d[\d,]*(?:\.\d{2})?)/i.exec(t);
+  m = /(?:get|earn|receive)\s+\$\s?(\d+(?:,\d{3})*(?:\.\d{2})?)\s+back[^.$%]{0,40}?\$\s?(\d+(?:,\d{3})*(?:\.\d{2})?)/i.exec(t);
   if (m) {
     return {
       offerDescription: `Get $${m[1]} back on $${m[2]} or more`,
@@ -183,16 +185,17 @@ export function parseTerms(block: string): Omit<ParsedOffer, "merchantName" | "c
   m = /(\d{1,2}(?:\.\d)?)\s?%\s*(?:cash\s*)?back/i.exec(t);
   if (m) {
     const rate = parseFloat(m[1]);
-    const cap = /up\s+to\s+\$\s?(\d[\d,]*(?:\.\d{2})?)/i.exec(t);
+    const cap = /up\s+to\s+\$\s?(\d+(?:,\d{3})*(?:\.\d{2})?)/i.exec(t);
     return {
       offerDescription: cap ? `${rate}% back, up to $${cap[1]}` : `${rate}% back`,
       cashbackRate: rate,
+      maximumCashbackCents: cap ? money(cap[1]) : undefined,
       endDate: findExpiry(t),
     };
   }
 
   // "$25 statement credit"
-  m = /\$\s?(\d[\d,]*(?:\.\d{2})?)\s+statement\s+credit/i.exec(t);
+  m = /\$\s?(\d+(?:,\d{3})*(?:\.\d{2})?)\s+statement\s+credit/i.exec(t);
   if (m) {
     return {
       offerDescription: `$${m[1]} statement credit`,

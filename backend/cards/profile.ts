@@ -126,6 +126,7 @@ export const profile = api<ProfileParams, CardProfileResponse>(
        AND ucs.period_start <= CURRENT_DATE
        AND ucs.period_end >= CURRENT_DATE
       WHERE cc.card_id = ${cardId}
+        AND (cc.valid_until IS NULL OR cc.valid_until >= CURRENT_DATE)
       ORDER BY cc.cashback_rate DESC
     `;
 

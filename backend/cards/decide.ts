@@ -95,6 +95,14 @@ function money(cents: number): string {
   return "$" + (cents / 100).toFixed(cents % 100 === 0 ? 0 : 2);
 }
 
+/** Whole-phrase containment, so "gas" does not match "Las Vegas". */
+function mentions(haystack: string, needle: string): boolean {
+  const n = (needle || "").trim().toLowerCase();
+  if (n.length < 3) return false;
+  const escaped = n.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  return new RegExp(`(^|[^a-z0-9])${escaped}($|[^a-z0-9])`).test((haystack || "").toLowerCase());
+}
+
 // ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
@@ -177,8 +185,9 @@ export async function runDecision(
     const categoryKey = normalizeCategory(categoryArg);
     const amountCents = amountArg && amountArg > 0 ? amountArg : undefined;
 
-    // Categories that can satisfy this query, best match first.
-    const applicable = [categoryKey, ...(CATEGORY_PARENTS[categoryKey] || []), "all"];
+    // Categories that can satisfy this query, best match first. "all" is a flat
+    // rate on everything; "other" is what a bonus card earns everywhere else.
+    const applicable = [categoryKey, ...(CATEGORY_PARENTS[categoryKey] || []), "all", "other"];
 
     // --- 1. Portfolio + every rate that could apply -------------------------
     const rows = await cardsDB.queryAll<{
@@ -194,13 +203,22 @@ export async function runDecision(
       WHERE up.user_id = ${userId}
         AND up.is_active = TRUE
         AND cc.category_key = ANY(${applicable})
+        -- a rotating quarter that has ended earns nothing
+        AND (cc.valid_until IS NULL OR cc.valid_until >= CURRENT_DATE)
     `;
 
     if (rows.length === 0) {
-      return {
-        categoryKey, contenders: [], expiring: [],
-        spoken: "You don't have any cards in your portfolio yet. Add a few and I can start picking for you.",
-      };
+      // No rate applies, which is not the same as holding no cards.
+      const held = await cardsDB.queryRow<{ n: number }>`
+        SELECT COUNT(*)::int AS n FROM user_portfolios
+        WHERE user_id = ${userId} AND is_active = TRUE
+      `;
+      if (!held?.n) {
+        return {
+          categoryKey, contenders: [], expiring: [],
+          spoken: "You don't have any cards in your portfolio yet. Add a few and I can start picking for you.",
+        };
+      }
     }
 
     // --- 2. User-chosen categories override the card's default --------------
@@ -232,21 +250,26 @@ export async function runDecision(
     for (const s of spendRows) spent.set(`${s.card_id}:${s.category_key}`, s.spent_amount);
 
     // --- 4. Merchant offers -------------------------------------------------
-    const offerRows = await cardsDB.queryAll<{
+    // An offer belongs to a merchant, so match it against what was actually
+    // said ("I'm at Starbucks"), not the category that normalised to ("dining").
+    const said = (categoryArg || "").trim().toLowerCase();
+    const liveOffers = await cardsDB.queryAll<{
       card_id: number; merchant_name: string; offer_description: string;
       cashback_rate: string | null; cashback_amount: number | null;
-      minimum_spend: number | null; is_activated: boolean;
+      minimum_spend: number | null; maximum_cashback: number | null; is_activated: boolean;
     }>`
       SELECT card_id, merchant_name, offer_description, cashback_rate,
-             cashback_amount, minimum_spend, is_activated
+             cashback_amount, minimum_spend, maximum_cashback, is_activated
       FROM merchant_offers
       WHERE user_id = ${userId}
+        AND card_id IS NOT NULL
         AND is_used = FALSE
         AND (end_date IS NULL OR end_date >= CURRENT_DATE)
-        AND (LOWER(merchant_name) LIKE ${"%" + categoryKey + "%"}
-             OR LOWER(offer_description) LIKE ${"%" + categoryKey + "%"})
       ORDER BY is_activated DESC
     `;
+    const offerRows = liveOffers.filter(
+      (o) => mentions(said, o.merchant_name) || mentions(o.merchant_name, said)
+    );
 
     // --- 5. Build one contender per card ------------------------------------
     const byCard = new Map<number, Contender>();
@@ -289,6 +312,8 @@ export async function runDecision(
         reasons.unshift(`${candidateRate}% rotating category, active now`);
       } else if (r.category_key === "all" && specificity > 0) {
         reasons.unshift(`Flat ${candidateRate}% on everything`);
+      } else if (r.category_key === "other" && specificity > 0) {
+        reasons.unshift(`${candidateRate}% base rate, no bonus here`);
       } else {
         reasons.unshift(`${candidateRate}% on ${candidateKey}`);
       }
@@ -310,27 +335,44 @@ export async function runDecision(
       });
     }
 
-    // --- 6. Merchant offers can beat the category rate ----------------------
+    // --- 6. Merchant offers pay on top of the card's own rate ---------------
+    // A card-linked offer is a statement credit in addition to the normal earn,
+    // so it adds to the rate instead of replacing it. Best offer per card only.
+    const bestOffer = new Map<number, { rate: number; offer: (typeof offerRows)[number] }>();
     for (const o of offerRows) {
-      const c = byCard.get(o.card_id);
-      if (!c) continue; // offer on a card they don't hold
+      if (!byCard.has(o.card_id)) continue; // offer on a card they don't hold
+      const minimum = o.minimum_spend || 0;
+      if (amountCents && amountCents < minimum) continue; // this purchase doesn't qualify
 
       let offerRate: number | undefined;
       if (o.cashback_rate) {
         offerRate = parseFloat(o.cashback_rate);
-      } else if (o.cashback_amount && o.minimum_spend && o.minimum_spend > 0) {
-        offerRate = (o.cashback_amount / o.minimum_spend) * 100;
+        // "10% back, up to $5" is worth less than 10% on a big purchase.
+        if (amountCents && o.maximum_cashback) {
+          offerRate = Math.min(offerRate, (o.maximum_cashback / amountCents) * 100);
+        }
+      } else if (o.cashback_amount) {
+        // A flat credit, spread over the purchase (or the minimum, when the amount is unknown).
+        const basis = amountCents || minimum;
+        if (basis > 0) offerRate = (o.cashback_amount / basis) * 100;
       }
+      if (!offerRate) continue;
 
-      if (offerRate && offerRate > c.effectiveRate) {
-        c.effectiveRate = Math.round(offerRate * 100) / 100;
-        c.offerApplied = o.offer_description;
-        c.reasons.unshift(
-          o.is_activated
-            ? `Activated offer at ${o.merchant_name} beats the category rate`
-            : `Offer at ${o.merchant_name} — activate it first`
-        );
-      }
+      const prev = bestOffer.get(o.card_id);
+      if (!prev || offerRate > prev.rate) bestOffer.set(o.card_id, { rate: offerRate, offer: o });
+    }
+
+    for (const [cardId, { rate, offer }] of bestOffer) {
+      const c = byCard.get(cardId)!;
+      const bonus = Math.round(rate * 100) / 100;
+      const condition = !amountCents && offer.minimum_spend ? ` on ${money(offer.minimum_spend)} or more` : "";
+      c.effectiveRate = Math.round((c.effectiveRate + rate) * 100) / 100;
+      c.offerApplied = offer.offer_description;
+      c.reasons.unshift(
+        offer.is_activated
+          ? `+${bonus}% from your activated ${offer.merchant_name} offer${condition}`
+          : `+${bonus}% from a ${offer.merchant_name} offer${condition} — activate it first`
+      );
     }
 
     const contenders = [...byCard.values()].sort((a, b) => b.effectiveRate - a.effectiveRate);
