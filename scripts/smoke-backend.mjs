@@ -158,9 +158,10 @@ check("Target $20: below the $50 minimum, no offer applied", !tSmall.contenders?
 const tBig = await decideAt("Target", 6000);
 check("Target $60: $10 credit on Flex counts", tBig.winner?.cardId === CARDS.flex && tBig.winner.offerApplied === "Spend $50, get $10 back", `winner=${brief(tBig.winner)} reason="${tBig.winner?.reasons?.[0]}"`);
 
-// --- voice path: no Gemini key locally, so it must fall back to the engine's sentence ---
+// --- voice path: Gemini phrases the engine's decision when GeminiApiKey is set, else the engine's own sentence ---
 const chat = await call("POST", "/ai/chat", { message: "I'm buying gas", userId, amountCents: 6000 });
-check("ai/chat falls back to the deterministic answer without a key", chat.status === 200 && typeof chat.json.response === "string",
+check(`ai/chat answers (${chat.json.fallback === false ? "phrased by Gemini" : "engine sentence, no model reply"})`,
+  chat.status === 200 && typeof chat.json.response === "string" && /Blue Cash Preferred/.test(chat.json.response),
   `${chat.status} fallback=${chat.json.fallback} response="${chat.json.response ?? JSON.stringify(chat.json).slice(0, 200)}"`);
 
 console.log(`\n${failures === 0 ? "ALL PASSED" : `${failures} FAILED`}  (user ${userId})`);

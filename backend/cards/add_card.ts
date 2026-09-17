@@ -5,13 +5,11 @@ import type { Card, CardCategory } from "./list";
 export interface AddCardRequest {
   name: string;
   issuer?: string;
-  useExternalApi?: boolean;
 }
 
 export interface AddCardResponse {
   card: Card;
   isNew: boolean;
-  fromExternalApi: boolean;
 }
 
 // Adds a card to the database or returns existing card with updated image.
@@ -58,51 +56,25 @@ export const addCard = api<AddCardRequest, AddCardResponse>(
         categories
       };
 
-      return { card, isNew: false, fromExternalApi: false };
+      return { card, isNew: false };
     }
 
-    let cardData: any = null;
-    let fromExternalApi = false;
-
-    // Try to fetch from external API if requested
-    if (req.useExternalApi) {
-      try {
-        const externalResponse = await fetch('http://localhost:4000/cards/fetch-external', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ cardName })
-        });
-
-        if (externalResponse.ok) {
-          const externalData = await externalResponse.json() as any;
-          if (externalData.found && externalData.cardData) {
-            cardData = externalData.cardData;
-            fromExternalApi = true;
-          }
-        }
-      } catch (error) {
-        console.error('Failed to fetch from external API:', error);
-      }
-    }
-
-    // If no external data, use manual inference
-    if (!cardData) {
-      const { issuer, network, imageUrl } = await inferCardDetails(cardName, req.issuer);
-      cardData = {
-        name: cardName,
-        issuer,
-        network,
-        imageUrl,
-        annualFee: 0,
-        categories: [{
-          category: 'Other',
-          cashbackRate: 1.0,
-          isRotating: false
-        }],
-        features: [],
-        creditRange: 'Good to Excellent'
-      };
-    }
+    // A card the catalogue lacks starts at a flat 1% until its real rates are added.
+    const { issuer, network, imageUrl } = await inferCardDetails(cardName, req.issuer);
+    const cardData: any = {
+      name: cardName,
+      issuer,
+      network,
+      imageUrl,
+      annualFee: 0,
+      categories: [{
+        category: 'Other',
+        cashbackRate: 1.0,
+        isRotating: false
+      }],
+      features: [],
+      creditRange: 'Good to Excellent'
+    };
 
     // Create new card
     const newCard = await cardsDB.queryRow`
@@ -132,12 +104,14 @@ export const addCard = api<AddCardRequest, AddCardResponse>(
     const categories: CardCategory[] = [];
     if (cardData.categories && cardData.categories.length > 0) {
       for (const cat of cardData.categories) {
+        // category_key is what the decision engine matches on; without it the card never gets picked.
         await cardsDB.exec`
-          INSERT INTO card_categories (card_id, category, cashback_rate, is_rotating, valid_until)
+          INSERT INTO card_categories (card_id, category, category_key, cashback_rate, is_rotating, valid_until)
           VALUES (
-            ${newCard.id}, 
-            ${cat.category}, 
-            ${cat.cashbackRate || 1.0}, 
+            ${newCard.id},
+            ${cat.category},
+            ${cat.category.toLowerCase().replace(/\s+/g, '_')},
+            ${cat.cashbackRate || 1.0},
             ${cat.isRotating || false},
             ${cat.validUntil ? new Date(cat.validUntil) : null}
           )
@@ -154,8 +128,8 @@ export const addCard = api<AddCardRequest, AddCardResponse>(
     } else {
       // Add default category
       await cardsDB.exec`
-        INSERT INTO card_categories (card_id, category, cashback_rate, is_rotating)
-        VALUES (${newCard.id}, 'Other', 1.0, FALSE)
+        INSERT INTO card_categories (card_id, category, category_key, cashback_rate, is_rotating)
+        VALUES (${newCard.id}, 'Other', 'other', 1.0, FALSE)
       `;
       
       categories.push({
@@ -177,7 +151,7 @@ export const addCard = api<AddCardRequest, AddCardResponse>(
       categories
     };
 
-    return { card, isNew: true, fromExternalApi };
+    return { card, isNew: true };
   }
 );
 

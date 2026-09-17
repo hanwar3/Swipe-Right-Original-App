@@ -231,7 +231,6 @@ import {
     getCardDetails as api_cards_comprehensive_getCardDetails,
     getComprehensiveCards as api_cards_comprehensive_getComprehensiveCards
 } from "~backend/cards/comprehensive";
-import { fetchCardData as api_cards_external_api_fetchCardData } from "~backend/cards/external_api";
 import { list as api_cards_list_list } from "~backend/cards/list";
 import {
     activateMerchantOffer as api_cards_merchant_offers_activateMerchantOffer,
@@ -259,7 +258,6 @@ export namespace cards {
             this.activateMerchantOffer = this.activateMerchantOffer.bind(this)
             this.addCard = this.addCard.bind(this)
             this.addToPortfolio = this.addToPortfolio.bind(this)
-            this.fetchCardData = this.fetchCardData.bind(this)
             this.getCardDetails = this.getCardDetails.bind(this)
             this.getComprehensiveCards = this.getComprehensiveCards.bind(this)
             this.getRelevantOffers = this.getRelevantOffers.bind(this)
@@ -306,15 +304,6 @@ export namespace cards {
             // Now make the actual call to the API
             const resp = await this.baseClient.callTypedAPI(`/cards/portfolio/${encodeURIComponent(params.userId)}/add`, {method: "POST", body: JSON.stringify(body)})
             return JSON.parse(await resp.text(), dateReviver) as ResponseType<typeof api_cards_portfolio_addToPortfolio>
-        }
-
-        /**
-         * Fetches card data from RewardsCC API.
-         */
-        public async fetchCardData(params: RequestType<typeof api_cards_external_api_fetchCardData>): Promise<ResponseType<typeof api_cards_external_api_fetchCardData>> {
-            // Now make the actual call to the API
-            const resp = await this.baseClient.callTypedAPI(`/cards/fetch-external`, {method: "POST", body: JSON.stringify(params)})
-            return JSON.parse(await resp.text(), dateReviver) as ResponseType<typeof api_cards_external_api_fetchCardData>
         }
 
         /**

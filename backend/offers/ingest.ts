@@ -1,6 +1,7 @@
 import { api, APIError, Header } from "encore.dev/api";
 import { secret } from "encore.dev/config";
 import { cardsDB } from "../cards/db";
+import { generateText } from "../lib/gemini";
 import {
   detectIssuer,
   findLastFour,
@@ -95,26 +96,20 @@ Return ONLY a JSON array. Each element:
 
 Rules:
 - Copy merchant names exactly as they appear. Do not expand, correct or guess them.
+- cashbackRate is a percent as written: "10% back" or "10 percent back" is 10, never 0.1.
 - Money in cents. $10 is 1000.
 - Only include an offer if the email actually states its terms.
 - If there are no offers, return [].
 - No prose, no code fences, just the array.`;
 
+  const raw = await generateText(key, [{ text: instruction }, { text: text.slice(0, 24000) }], {
+    temperature: 0,
+    maxOutputTokens: 2048,
+    thinkingLevel: "low",
+  });
+  if (!raw) return [];
+
   try {
-    const res = await fetch(
-      "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent",
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json", "X-goog-api-key": key },
-        body: JSON.stringify({
-          contents: [{ parts: [{ text: instruction }, { text: text.slice(0, 24000) }] }],
-          generationConfig: { temperature: 0, maxOutputTokens: 2048 },
-        }),
-      }
-    );
-    if (!res.ok) return [];
-    const data = (await res.json()) as any;
-    const raw = data.candidates?.[0]?.content?.parts?.[0]?.text ?? "";
     const json = raw.replace(/```json|```/g, "").trim();
     const arr = JSON.parse(json);
     if (!Array.isArray(arr)) return [];

@@ -1,6 +1,7 @@
 import { api } from "encore.dev/api";
 import { secret } from "encore.dev/config";
 import { runDecision, normalizeCategory, type DecideResponse } from "../cards/decide";
+import { generateText } from "../lib/gemini";
 
 const geminiApiKey = secret("GeminiApiKey");
 
@@ -57,34 +58,15 @@ async function phrase(decision: DecideResponse, message: string): Promise<string
     return null; // secret not configured — caller falls back
   }
 
-  try {
-    const res = await fetch(
-      "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent",
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json", "X-goog-api-key": key },
-        body: JSON.stringify({
-          contents: [
-            {
-              parts: [
-                { text: SYSTEM_RULES },
-                { text: `DECISION:\n${JSON.stringify(decision, null, 2)}` },
-                { text: `The user said: "${message}"\n\nSay the answer.` },
-              ],
-            },
-          ],
-          generationConfig: { temperature: 0.4, maxOutputTokens: 160 },
-        }),
-      }
-    );
-
-    if (!res.ok) return null;
-    const data = (await res.json()) as any;
-    const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
-    return typeof text === "string" && text.trim() ? text.trim() : null;
-  } catch {
-    return null;
-  }
+  return generateText(
+    key,
+    [
+      { text: SYSTEM_RULES },
+      { text: `DECISION:\n${JSON.stringify(decision, null, 2)}` },
+      { text: `The user said: "${message}"\n\nSay the answer.` },
+    ],
+    { temperature: 0.4, maxOutputTokens: 160, thinkingLevel: "minimal" }
+  );
 }
 
 export const chat = api<ChatRequest, ChatResponse>(

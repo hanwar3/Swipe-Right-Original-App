@@ -27,7 +27,7 @@ over-complicated competitors it is positioned against.
 | Tab | Route | Job |
 |---|---|---|
 | **Ask** | `/` | The deck of the user's cards. Tap flips a card out; tap again opens it in Insights; tap anywhere else puts it back. The orb (top-left, mic badge) is the voice button; beside it "What are you buying?" types out example questions. Typing field at the bottom. |
-| **Wallet** | `/cards` | **Every** card, as data-carrying card faces. Where the portfolio is built (add/remove). "Add a card to the catalogue" form with RewardsCC lookup. |
+| **Wallet** | `/cards` | **Every** card, as data-carrying card faces. Where the portfolio is built (add/remove). "Add a card to the catalogue" form (a new card starts at a flat 1%). |
 | **Insights** | `/recommendations` | **Only** the user's portfolio: credits used vs. left, reset deadlines, expiring credits, merchant offers. Category filters come from the benefits those cards carry, never a fixed list. |
 
 No category buttons on Ask: Haider described card *purposes*, he never asked for them as UI.
@@ -43,6 +43,7 @@ No category buttons on Ask: Haider described card *purposes*, he never asked for
 ## Architecture decisions
 
 - **The engine decides, the LLM only phrases.** `backend/cards/decide.ts` ranks deterministically and returns a correct `spoken` sentence; `backend/ai/chat.ts` gives Gemini the finished decision and forbids changing any card, rate or figure. This replaced three disconnected recommendation paths.
+- **Gemini lives in one file:** `backend/lib/gemini.ts` names the model (`gemini-3.6-flash`) for both callers, voice phrasing (thinking `minimal`) and mail offer extraction (thinking `low`). The old `gemini-2.0-flash` was retired and every call had silently fallen back; failures and token-limit cut-offs are now logged and fall back to the engine's sentence. Newer Flash models think by default and burn `maxOutputTokens` on it, so keep the thinking level set.
 - **One source for cards and portfolio:** `frontend/lib/wallet.ts` (`useCatalogue`, `useWallet`). Modes: `account` (server portfolio), `device` (server unreachable: wallet kept in localStorage so the app works at a register with no signal), `signed-out` (browse only).
 - **Offline answers:** `frontend/lib/localDecide.ts` ranks device-wallet cards on headline rates and says so.
 - **Benefits and usage:** `frontend/lib/benefits.ts`. Shipped benefit sets per card family, matched by card name. Usage, custom credits and hidden credits persist in localStorage (`swiperight_logged_credit_savings`, `swiperight_logged_subscription_savings`, `swiperight_logged_merchant_redeemed`, `swiperight_logged_merchant_savings`, `swiperight_custom_benefits`, `swiperight_hidden_benefits`, `swiperight_device_wallet`). Supports dollars or counted uses; monthly, quarterly, semi-annual, yearly, anniversary, every 4 years.
@@ -52,7 +53,8 @@ No category buttons on Ask: Haider described card *purposes*, he never asked for
 
 ## Data sourcing strategy (agreed)
 
-- Tier 0 public card catalogue (planned: Apify scrape of issuer pages, quarterly): covers "which card for gas" at ~$0.
+- Tier 0 public card catalogue (planned: Apify scrape of issuer pages, quarterly): covers "which card for gas" at ~$0, including each quarter's rotating 5% categories.
+- **RewardsCC removed (2026-09-17).** The integration called `api.rewardscc.com`, a domain that does not exist, so it never returned data. The real RewardsCC is a paid RapidAPI product (plans up to $499/month) that sells public card terms only: it does carry quarterly bonus dates, but no per-user benefit usage, targeted offers or activation state. Do not re-add it; Tier 0 covers the same public data.
 - Tier 1 two taps a quarter (rotating category, rough spend).
 - Tier 2 forwarded offer emails: built, needs a mail provider.
 - Tier 3 aggregator (Plaid ~$1.50/user/month) for real spend and caps, behind a paid plan. Nobody contracts with issuers directly.
@@ -70,7 +72,9 @@ No category buttons on Ask: Haider described card *purposes*, he never asked for
 - Offers were matched against the normalised category ("dining") instead of what was said ("Starbucks"), so they never applied. They now add to the card's own rate (they are statement credits on top), respect the minimum spend, and are capped by "up to $X" (stored in `maximum_cashback`).
 - The parser stored "Spend $50, get $10 back" as "Spend $50,, get $10 back".
 
-**Still not verified:** real speech recognition (the browser pane blocks the mic); the frontend against the live backend; Gemini phrasing (no key locally); real issuer mail through a mail provider.
+**Verified 2026-09-17:** Gemini phrasing end to end (`ai/chat` returns `fallback=false` with the engine's card and rate), with `GeminiApiKey` in `backend/.secrets.local.cue`.
+
+**Still not verified:** real speech recognition (the browser pane blocks the mic); the frontend against the live backend; model-based offer extraction inside `ingest` (the model call was tested directly, not through a real unparseable email); real issuer mail through a mail provider.
 
 ## Engine gaps seen while testing (not fixed)
 
@@ -109,7 +113,7 @@ On first run Encore also bumped `encore.dev` to ^1.58.5 and regenerated `bun.loc
 
 ## Blockers
 
-- **Deploying:** the app is linked to Encore Cloud app `swiperight-credit-card-app-x4n2`. Secrets needed: `GeminiApiKey`, `RewardsCCApiKey`, `OfferInboxSecret`. The backend now runs locally, so there is no need to deploy just to run it. Do not deploy anywhere reachable until the security fix lands; then a **private test environment** first (test data only).
+- **Deploying:** the app is linked to Encore Cloud app `swiperight-credit-card-app-x4n2`. Secrets needed: `GeminiApiKey`, `OfferInboxSecret`. The backend now runs locally, so there is no need to deploy just to run it. Do not deploy anywhere reachable until the security fix lands; then a **private test environment** first (test data only).
 - **Offers email:** needs a real inbound domain (`INBOX_DOMAIN` in `backend/offers/inbox.ts` is a placeholder) and a Mailgun/Postmark route to `POST /offers/ingest` with header `X-Inbox-Secret`.
 - **21st.dev MCP:** not connected; needs `API_KEY_21ST` set in an interactive terminal.
 

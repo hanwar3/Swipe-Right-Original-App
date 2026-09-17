@@ -33,7 +33,6 @@ export default function Cards() {
 
   const [newName, setNewName] = useState('');
   const [newIssuer, setNewIssuer] = useState('');
-  const [useLookup, setUseLookup] = useState(true);
 
   // Card detail used to live here; it belongs to Insights now. Old links still work.
   const legacyCard = searchParams.get('card');
@@ -71,7 +70,7 @@ export default function Cards() {
   }, [pool, query, issuer, scope, wallet]);
 
   const addCardMutation = useMutation({
-    mutationFn: (data: { name: string; issuer?: string; useExternalApi?: boolean }) =>
+    mutationFn: (data: { name: string; issuer?: string }) =>
       backend.cards.addCard(data),
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['cards', 'catalogue'] });
@@ -80,7 +79,7 @@ export default function Cards() {
       toast({
         title: data.isNew ? 'Card added' : 'Already listed',
         description: data.isNew
-          ? `${data.card.name} is in the catalogue now${data.fromExternalApi ? ', with details from RewardsCC' : ''}.`
+          ? `${data.card.name} is in the catalogue now.`
           : `${data.card.name} was already in the catalogue.`,
       });
     },
@@ -250,13 +249,13 @@ export default function Cards() {
       <section className="mt-8 rounded-2xl border border-white/10 bg-white/[0.035] p-4">
         <h2 className="text-[15px] font-bold tracking-tight text-[#F3EBF8]">Can't find your card?</h2>
         <p className="mt-1 text-[12.5px] leading-relaxed text-[#9B8FA6]">
-          Add it to the catalogue. With lookup on, its rates are filled in from RewardsCC.
+          Add it to the catalogue. It starts at a flat 1% until its real rates are added.
         </p>
         <form
           onSubmit={(e) => {
             e.preventDefault();
             if (!newName.trim()) return;
-            addCardMutation.mutate({ name: newName.trim(), issuer: newIssuer.trim() || undefined, useExternalApi: useLookup });
+            addCardMutation.mutate({ name: newName.trim(), issuer: newIssuer.trim() || undefined });
           }}
           className="mt-3 flex flex-col gap-2.5"
         >
@@ -277,10 +276,6 @@ export default function Cards() {
               placeholder="Wells Fargo"
               className="rounded-lg border border-white/10 bg-black/40 px-3 py-2.5 text-[13.5px] text-[#F3EBF8] placeholder:text-[#4A4453] outline-none focus:border-[#E64BD4]/60"
             />
-          </label>
-          <label className="flex items-center gap-2 text-[12.5px] text-[#DDD0E6]">
-            <input type="checkbox" checked={useLookup} onChange={(e) => setUseLookup(e.target.checked)} className="accent-[#E64BD4]" />
-            Look up rates from RewardsCC
           </label>
           <button
             type="submit"
