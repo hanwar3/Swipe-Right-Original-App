@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { CreditCard, Sparkles, Target } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import { CreditCard, Sparkles, Target, UserRound } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import AuthModal from './AuthModal';
 import UserMenu from './UserMenu';
@@ -37,40 +36,32 @@ export default function Layout({ children }: LayoutProps) {
   return (
     <div className="min-h-[100dvh] flex flex-col bg-black text-[#F3EBF8]">
       <header className="sticky top-0 z-50 bg-black/85 backdrop-blur-md border-b border-white/[0.07]">
-        <div className="max-w-md mx-auto px-5">
-          <div className="flex items-center justify-between h-14">
-            <Link to="/" className="min-w-0 group">
-              <h1 className="text-[17px] font-extrabold tracking-tight leading-none">
+        <div className="max-w-md mx-auto px-4">
+          <div className="flex items-center justify-between gap-3 h-[62px]">
+            <Link to="/" className="min-w-0" aria-label="SwipeRight home">
+              <span className="block font-display text-[21px] font-semibold leading-none tracking-[-0.005em]">
                 Swipe<span className="text-[#E64BD4]">Right</span>
-              </h1>
-              <p className="text-[10.5px] text-[#6E637A] leading-none mt-1 truncate">
-                Max out your cash back, not your card limit
-              </p>
+              </span>
+              <span className="mt-[5px] block truncate text-[11.5px] font-medium leading-none text-[#A99DB3]">
+                Max Out Your Cash Back, Not Your Credit Card
+              </span>
             </Link>
 
-            <div className="flex items-center gap-2 shrink-0">
+            {/* One account control: signing up happens inside the sign-in sheet. */}
+            <div className="shrink-0">
               {isLoading ? (
-                <div className="w-8 h-8 rounded-full bg-white/10 animate-pulse" />
+                <div className="h-[38px] w-[38px] rounded-full bg-white/10 animate-pulse" />
               ) : user ? (
                 <UserMenu />
               ) : (
-                <>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => openAuthModal('signin')}
-                    className="text-[#9B8FA6] hover:text-[#F3EBF8] hover:bg-white/5 text-xs font-semibold"
-                  >
-                    Sign in
-                  </Button>
-                  <Button
-                    size="sm"
-                    onClick={() => openAuthModal('signup')}
-                    className="bg-[#E64BD4] hover:bg-[#F06BDD] text-black text-xs font-bold"
-                  >
-                    Start
-                  </Button>
-                </>
+                <button
+                  type="button"
+                  onClick={() => openAuthModal('signin')}
+                  aria-label="Sign in"
+                  className="grid h-[38px] w-[38px] place-items-center rounded-full border border-white/[0.14] bg-white/[0.04] text-[#F3EBF8] transition hover:bg-white/[0.09] active:scale-[0.96] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#E64BD4]/60"
+                >
+                  <UserRound className="h-[18px] w-[18px]" strokeWidth={1.75} />
+                </button>
               )}
             </div>
           </div>

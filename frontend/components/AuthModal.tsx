@@ -1,10 +1,9 @@
 import React, { useState } from 'react';
-import { X, Mail, Lock, User, Eye, EyeOff, Sparkles } from 'lucide-react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Mail, Lock, Eye, EyeOff } from 'lucide-react';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Separator } from '@/components/ui/separator';
 import { useToast } from '@/components/ui/use-toast';
 import { useAuth } from '../contexts/AuthContext';
 
@@ -14,18 +13,47 @@ interface AuthModalProps {
   initialMode?: 'signin' | 'signup';
 }
 
+type Mode = 'signin' | 'signup' | 'forgot';
+
+const COPY: Record<Mode, { title: string; description: string; submit: string; busy: string }> = {
+  signin: {
+    title: 'Sign in',
+    description: 'Welcome back. Your cards are saved to your account.',
+    submit: 'Sign in',
+    busy: 'Signing in',
+  },
+  signup: {
+    title: 'Create your account',
+    description: 'Save your cards so they are there on every device.',
+    submit: 'Create account',
+    busy: 'Creating account',
+  },
+  forgot: {
+    title: 'Reset your password',
+    description: 'Enter your email and we will send you a reset link.',
+    submit: 'Send reset link',
+    busy: 'Sending link',
+  },
+};
+
+const inputClass =
+  'h-11 rounded-xl border-white/[0.1] bg-white/[0.03] pl-10 text-[15px] text-[#F3EBF8] placeholder:text-[#8A7E95] focus-visible:border-[#E64BD4]/60 focus-visible:ring-[#E64BD4]/25';
+const labelClass = 'text-[13px] font-medium text-[#DDD0E6]';
+const iconClass = 'pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-[#8A7E95]';
+const linkClass = 'font-semibold text-[#E64BD4] hover:text-[#F06BDD]';
+
 export default function AuthModal({ isOpen, onClose, initialMode = 'signin' }: AuthModalProps) {
-  const [mode, setMode] = useState<'signin' | 'signup' | 'forgot'>(initialMode);
+  const [mode, setMode] = useState<Mode>(initialMode);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [authAlert, setAuthAlert] = useState<string | null>(null);
-  
+
   const { login, register, forgotPassword } = useAuth();
   const { toast } = useToast();
+  const copy = COPY[mode];
 
   const resetForm = () => {
     setEmail('');
@@ -33,13 +61,11 @@ export default function AuthModal({ isOpen, onClose, initialMode = 'signin' }: A
     setFirstName('');
     setLastName('');
     setShowPassword(false);
-    setAuthAlert(null);
   };
 
   const handleClose = () => {
     resetForm();
     setMode('signin');
-    setAuthAlert(null);
     onClose();
   };
 
@@ -50,107 +76,74 @@ export default function AuthModal({ isOpen, onClose, initialMode = 'signin' }: A
     try {
       if (mode === 'signin') {
         await login(email, password);
-        toast({
-          title: "Welcome back!",
-          description: "You have successfully signed in.",
-        });
+        toast({ title: 'Welcome back', description: 'You are signed in.' });
         handleClose();
       } else if (mode === 'signup') {
         await register(email, password, firstName, lastName);
-        toast({
-          title: "Account created!",
-          description: "Welcome to SwipeRight!",
-        });
+        toast({ title: 'Account created', description: 'Welcome to SwipeRight.' });
         handleClose();
-      } else if (mode === 'forgot') {
+      } else {
         await forgotPassword(email);
-        toast({
-          title: "Reset link sent",
-          description: "Check your email for password reset instructions.",
-        });
+        toast({ title: 'Reset link sent', description: 'Check your email for the link.' });
         setMode('signin');
       }
     } catch (error: any) {
-      toast({
-        title: "Error",
-        description: error.message,
-        variant: "destructive",
-      });
+      toast({ title: 'That did not work', description: error.message, variant: 'destructive' });
     } finally {
       setIsLoading(false);
     }
   };
 
-  const handleGoogleSignIn = async () => {
-    setAuthAlert("Google Sign-In is coming soon to SwipeRight! For now, please use the Email registration or sign-in form above to access your dynamic, privacy-first wallet. It is fully functional and secure!");
-    toast({
-      title: "Coming Soon",
-      description: "Google sign-in is coming soon!",
-    });
-  };
-
-  const handleAppleSignIn = async () => {
-    setAuthAlert("Apple Sign-In is coming soon to SwipeRight! For now, please use the Email registration or sign-in form above to access your dynamic, privacy-first wallet. It is fully functional and secure!");
-    toast({
-      title: "Coming Soon",
-      description: "Apple sign-in is coming soon!",
-    });
-  };
-
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
-      <DialogContent className="sm:max-w-md">
-        <DialogHeader>
-          <DialogTitle className="text-center text-xl font-bold">
-            SwipeRight - {mode === 'signin' ? 'Sign In' : mode === 'signup' ? 'Create Account' : 'Reset Password'}
+      <DialogContent className="gap-5 rounded-3xl border-white/[0.08] bg-[#0E0A11] p-6 sm:max-w-sm">
+        <DialogHeader className="text-left">
+          <DialogTitle className="text-[22px] font-bold leading-tight tracking-[-0.01em] text-[#F3EBF8]">
+            {copy.title}
           </DialogTitle>
+          <DialogDescription className="text-[13.5px] text-[#A99DB3]">{copy.description}</DialogDescription>
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4">
           {mode === 'signup' && (
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-2">
-                <Label htmlFor="firstName">First Name</Label>
-                <div className="relative">
-                  <User className="absolute left-3 top-1/2 transform -translate-y-1/2 text-[#6E637A] h-4 w-4" />
-                  <Input
-                    id="firstName"
-                    type="text"
-                    placeholder="John"
-                    value={firstName}
-                    onChange={(e) => setFirstName(e.target.value)}
-                    className="pl-10"
-                  />
-                </div>
+                <Label htmlFor="firstName" className={labelClass}>First name</Label>
+                <Input
+                  id="firstName"
+                  type="text"
+                  autoComplete="given-name"
+                  value={firstName}
+                  onChange={(e) => setFirstName(e.target.value)}
+                  className={`${inputClass} pl-3.5`}
+                />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="lastName">Last Name</Label>
-                <div className="relative">
-                  <User className="absolute left-3 top-1/2 transform -translate-y-1/2 text-[#6E637A] h-4 w-4" />
-                  <Input
-                    id="lastName"
-                    type="text"
-                    placeholder="Doe"
-                    value={lastName}
-                    onChange={(e) => setLastName(e.target.value)}
-                    className="pl-10"
-                  />
-                </div>
+                <Label htmlFor="lastName" className={labelClass}>Last name</Label>
+                <Input
+                  id="lastName"
+                  type="text"
+                  autoComplete="family-name"
+                  value={lastName}
+                  onChange={(e) => setLastName(e.target.value)}
+                  className={`${inputClass} pl-3.5`}
+                />
               </div>
             </div>
           )}
 
           <div className="space-y-2">
-            <Label htmlFor="email">Email</Label>
+            <Label htmlFor="email" className={labelClass}>Email</Label>
             <div className="relative">
-              <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 text-[#6E637A] h-4 w-4" />
+              <Mail className={iconClass} />
               <Input
                 id="email"
                 type="email"
-                placeholder="john@example.com"
+                autoComplete="email"
+                placeholder="you@email.com"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="pl-10"
+                className={inputClass}
                 required
               />
             </div>
@@ -158,22 +151,30 @@ export default function AuthModal({ isOpen, onClose, initialMode = 'signin' }: A
 
           {mode !== 'forgot' && (
             <div className="space-y-2">
-              <Label htmlFor="password">Password</Label>
+              <div className="flex items-baseline justify-between">
+                <Label htmlFor="password" className={labelClass}>Password</Label>
+                {mode === 'signin' && (
+                  <button type="button" onClick={() => setMode('forgot')} className={`text-[12.5px] ${linkClass}`}>
+                    Forgot password?
+                  </button>
+                )}
+              </div>
               <div className="relative">
-                <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-[#6E637A] h-4 w-4" />
+                <Lock className={iconClass} />
                 <Input
                   id="password"
                   type={showPassword ? 'text' : 'password'}
-                  placeholder="••••••••"
+                  autoComplete={mode === 'signup' ? 'new-password' : 'current-password'}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="pl-10 pr-10"
+                  className={`${inputClass} pr-11`}
                   required
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 transform -translate-y-1/2 text-[#6E637A] hover:text-[#9B8FA6]"
+                  aria-label={showPassword ? 'Hide password' : 'Show password'}
+                  className="absolute right-1.5 top-1/2 grid h-8 w-8 -translate-y-1/2 place-items-center rounded-lg text-[#8A7E95] hover:text-[#DDD0E6]"
                 >
                   {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                 </button>
@@ -183,125 +184,29 @@ export default function AuthModal({ isOpen, onClose, initialMode = 'signin' }: A
 
           <Button
             type="submit"
-            className="w-full bg-fuchsia-500 hover:bg-fuchsia-600"
             disabled={isLoading}
+            className="h-11 w-full rounded-full bg-[#E64BD4] text-[15px] font-semibold text-[#14000F] transition hover:bg-[#F06BDD] active:scale-[0.98] disabled:opacity-60"
           >
-            {isLoading ? 'Loading...' : mode === 'signin' ? 'Sign In' : mode === 'signup' ? 'Create Account' : 'Send Reset Link'}
+            {isLoading ? copy.busy : copy.submit}
           </Button>
 
-          {mode === 'signin' && (
-            <div className="text-center">
-              <button
-                type="button"
-                onClick={() => setMode('forgot')}
-                className="text-sm text-fuchsia-400 hover:text-fuchsia-400"
-              >
-                Forgot Password?
-              </button>
-            </div>
-          )}
-
-          {mode !== 'forgot' && (
-            <>
-              <div className="relative">
-                <div className="absolute inset-0 flex items-center">
-                  <Separator className="w-full" />
-                </div>
-                <div className="relative flex justify-center text-xs uppercase">
-                  <span className="bg-white/5 px-2 text-[#6E637A]">or continue with</span>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={handleGoogleSignIn}
-                  className="w-full"
-                >
-                  <svg className="h-4 w-4 mr-2" viewBox="0 0 24 24">
-                    <path
-                      fill="currentColor"
-                      d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
-                    />
-                    <path
-                      fill="currentColor"
-                      d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
-                    />
-                    <path
-                      fill="currentColor"
-                      d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"
-                    />
-                    <path
-                      fill="currentColor"
-                      d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
-                    />
-                  </svg>
-                  Google
-                </Button>
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={handleAppleSignIn}
-                  className="w-full"
-                >
-                  <svg className="h-4 w-4 mr-2" viewBox="0 0 24 24" fill="currentColor">
-                    <path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.81-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/>
-                  </svg>
-                  Apple
-                </Button>
-              </div>
-
-              {authAlert && (
-                <div className="bg-orange-50 border border-orange-200/60 p-3 rounded-xl space-y-1 text-orange-950 mt-2 animate-in fade-in slide-in-from-top-1 duration-200">
-                  <div className="flex items-center space-x-1 text-xs font-bold text-orange-850">
-                    <Sparkles className="h-3.5 w-3.5 text-orange-500 fill-orange-500/20" />
-                    <span>Coming Soon to Mobile!</span>
-                  </div>
-                  <p className="text-[10px] leading-normal font-semibold text-orange-700">
-                    {authAlert}
-                  </p>
-                </div>
-              )}
-            </>
-          )}
-
-          <div className="text-center text-sm">
+          <p className="text-center text-[13.5px] text-[#A99DB3]">
             {mode === 'signin' ? (
-              <span className="text-[#9B8FA6]">
-                Don't have an account?{' '}
-                <button
-                  type="button"
-                  onClick={() => { setMode('signup'); setAuthAlert(null); }}
-                  className="text-fuchsia-400 hover:text-fuchsia-400 font-medium"
-                >
-                  Create one
+              <>
+                New to SwipeRight?{' '}
+                <button type="button" onClick={() => setMode('signup')} className={linkClass}>
+                  Create an account
                 </button>
-              </span>
-            ) : mode === 'signup' ? (
-              <span className="text-[#9B8FA6]">
-                Already have an account?{' '}
-                <button
-                  type="button"
-                  onClick={() => { setMode('signin'); setAuthAlert(null); }}
-                  className="text-fuchsia-400 hover:text-fuchsia-400 font-medium"
-                >
-                  Sign in
-                </button>
-              </span>
+              </>
             ) : (
-              <span className="text-[#9B8FA6]">
-                Remember your password?{' '}
-                <button
-                  type="button"
-                  onClick={() => { setMode('signin'); setAuthAlert(null); }}
-                  className="text-fuchsia-400 hover:text-fuchsia-400 font-medium"
-                >
+              <>
+                {mode === 'signup' ? 'Already have an account?' : 'Remember it after all?'}{' '}
+                <button type="button" onClick={() => setMode('signin')} className={linkClass}>
                   Sign in
                 </button>
-              </span>
+              </>
             )}
-          </div>
+          </p>
         </form>
       </DialogContent>
     </Dialog>

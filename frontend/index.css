@@ -5,6 +5,13 @@
 
 @custom-variant dark (&:is(.dark *));
 
+/* Type: Satoshi for the interface, Clash Display for the wordmark only.
+   Both load from Fontshare's CDN in index.html. */
+@theme {
+  --font-sans: "Satoshi", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-display: "Clash Display", "Satoshi", ui-sans-serif, system-ui, sans-serif;
+}
+
 @utility container {
   margin-inline: auto;
   padding-inline: 1rem;
@@ -128,7 +135,7 @@
     @apply border-border outline-ring/50;
   }
   body {
-    @apply bg-background text-foreground;
+    @apply bg-background text-foreground antialiased;
   }
 }
 
