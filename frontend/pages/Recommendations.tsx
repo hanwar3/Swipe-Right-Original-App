@@ -6,6 +6,7 @@ import backend from '~backend/client';
 import { issuerFace } from '../components/CardStack';
 import OfferInboxView from '../components/OfferInbox';
 import OfferMatching from '../components/OfferMatching';
+import PortalCard from '../components/PortalCard';
 import { useAuth } from '../contexts/AuthContext';
 import { useWallet, type WalletCard } from '../lib/wallet';
 import {
@@ -263,6 +264,18 @@ export default function Recommendations() {
 
             {open && (
               <div className="flex flex-col gap-2.5 px-3.5 pb-3.5">
+                {/* What the issuer itself says about this card: the offers targeted
+                    at you, which of them still need adding, and how much of each
+                    credit is already spent. */}
+                {wallet.mode === 'account' && user && card.id > 0 && (
+                  <PortalCard
+                    userId={user.userId}
+                    cardId={card.id}
+                    cardName={card.nickname || card.name}
+                    issuer={card.issuer}
+                  />
+                )}
+
                 {cardRows.length === 0 && (
                   <p className="text-[12.5px] text-[#6E637A]">
                     {category ? `No ${category.toLowerCase()} credits on this card.` : 'No credits tracked for this card yet. Add one below.'}

@@ -264,6 +264,8 @@ export async function runDecision(
       WHERE user_id = ${userId}
         AND card_id IS NOT NULL
         AND is_used = FALSE
+        -- an offer the portal stopped showing must not swing a recommendation
+        AND disappeared_at IS NULL
         AND (end_date IS NULL OR end_date >= CURRENT_DATE)
       ORDER BY is_activated DESC
     `;

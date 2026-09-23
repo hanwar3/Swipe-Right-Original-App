@@ -56,6 +56,7 @@ export const getUserMerchantOffers = api<{ userId: string }, UserMerchantOffersR
       FROM merchant_offers mo
       JOIN cards c ON mo.card_id = c.id
       WHERE mo.user_id = ${params.userId}
+        AND mo.disappeared_at IS NULL
         AND (mo.end_date IS NULL OR mo.end_date >= CURRENT_DATE)
         AND mo.is_used = FALSE
       ORDER BY mo.is_activated DESC, mo.end_date ASC, mo.cashback_rate DESC
@@ -210,6 +211,7 @@ export const getRelevantOffers = api<{ userId: string; category: string }, UserM
       FROM merchant_offers mo
       JOIN cards c ON mo.card_id = c.id
       WHERE mo.user_id = ${userId}
+        AND mo.disappeared_at IS NULL
         AND (mo.end_date IS NULL OR mo.end_date >= CURRENT_DATE)
         AND mo.is_used = FALSE
         AND (

@@ -129,6 +129,29 @@ export function rotateOfferInbox(userId: string) {
   return postJSON<{ address: string }>('/offers/inbox/rotate', { userId });
 }
 
+// ---------------------------------------------------------------------------
+// Offers and credits from the issuer's own portal
+// ---------------------------------------------------------------------------
+
+export type { PasteResponse as PortalPasteResult, StatusResponse as PortalStatus } from '~backend/offers/portal';
+import type { PasteResponse, StatusResponse } from '~backend/offers/portal';
+
+/**
+ * Hand the backend a portal page the cardholder copied.
+ *
+ * Targeted offers and credit usage exist only behind the issuer's login, so
+ * this is the honest way in until the browser extension lands: the user copies
+ * the page they are already looking at, and the parser reads it.
+ */
+export function portalPaste(userId: string, cardId: number, text: string) {
+  return postJSON<PasteResponse>('/portal/paste', { userId, cardId, text });
+}
+
+/** When this card last told us anything, and how many offers still need adding. */
+export function portalStatus(userId: string, cardId: number) {
+  return getJSON<StatusResponse>('/portal/status', { userId, cardId });
+}
+
 export function formatMoney(cents: number): string {
   return '$' + (cents / 100).toFixed(cents % 100 === 0 ? 0 : 2);
 }

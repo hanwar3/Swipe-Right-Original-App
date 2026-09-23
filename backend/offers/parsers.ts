@@ -90,6 +90,22 @@ const MONTHS: Record<string, number> = {
   jul: 6, aug: 7, sep: 8, oct: 9, nov: 10, dec: 11,
 };
 
+const MONTH_NAMES = [
+  "january", "february", "march", "april", "may", "june",
+  "july", "august", "september", "october", "november", "december",
+];
+
+/**
+ * A word is a month only if it IS one. Matching on the first three letters
+ * turned "Blue Apron 15% cash back" into April 15, and "Maybelline 5" into May.
+ */
+function monthFromWord(word: string): number | undefined {
+  const w = word.toLowerCase().replace(/\.$/, "");
+  if (w.length === 3 || w === "sept") return MONTHS[w.slice(0, 3)];
+  const full = MONTH_NAMES.indexOf(w);
+  return full >= 0 ? full : undefined;
+}
+
 /** "expires December 31, 2026" / "valid through 12/31/26" / "by Dec 31" */
 export function findExpiry(text: string, now = new Date()): string | undefined {
   const near = /(?:expires?|valid\s+through|valid\s+until|use\s+by|ends?|through)\s*:?\s*([^\n.;]{3,40})/i;
@@ -98,7 +114,7 @@ export function findExpiry(text: string, now = new Date()): string | undefined {
 
   const named = /\b([a-z]{3,9})\.?\s+(\d{1,2})(?:,?\s*(\d{4}))?/i.exec(scope);
   if (named) {
-    const mon = MONTHS[named[1].slice(0, 3).toLowerCase()];
+    const mon = monthFromWord(named[1]);
     if (mon !== undefined) {
       const day = parseInt(named[2], 10);
       let year = named[3] ? parseInt(named[3], 10) : now.getUTCFullYear();

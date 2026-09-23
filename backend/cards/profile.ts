@@ -35,6 +35,12 @@ export interface BenefitRow {
   period: string;
   daysLeft: number;
   categoryKey?: string;
+  /** The figure came off the issuer's portal rather than a manual tap. */
+  fromPortal?: boolean;
+  /** When the portal last said so, for "checked 2 days ago". */
+  checkedAt?: string;
+  /** The portal's own reset date, which anniversary credits need. */
+  resetsOn?: string;
 }
 
 export interface OfferRow {
@@ -47,6 +53,10 @@ export interface OfferRow {
   isActivated: boolean;
   endDate?: string;
   daysLeft?: number;
+  /** 'portal' when read off the issuer's own page, 'email' from a forward. */
+  source?: string;
+  /** When a sync last saw it, so the UI can say how fresh the list is. */
+  seenAt?: string;
 }
 
 export interface CardProfileResponse {
@@ -149,20 +159,25 @@ export const profile = api<ProfileParams, CardProfileResponse>(
     const benefitRows = await cardsDB.queryAll<{
       id: number; name: string; description: string | null; value_amount: number;
       period: string; category_key: string | null; used_amount: number | null;
+      usage_source: string | null; as_of: Date | null; ends_on: Date | null;
     }>`
       SELECT b.id, b.name, b.description, b.value_amount, b.period, b.category_key,
-             u.used_amount
+             u.used_amount, u.source AS usage_source, u.as_of, u.ends_on
       FROM card_benefits b
       LEFT JOIN user_benefit_usage u
         ON u.benefit_id = b.id AND u.user_id = ${userId}
        AND u.period_start <= CURRENT_DATE AND u.period_end >= CURRENT_DATE
       WHERE b.card_id = ${cardId}
+        -- catalogue rows belong to everyone; a user_id row is this cardholder's own,
+        -- which is how a credit read off their portal appears here.
+        AND (b.user_id IS NULL OR b.user_id = ${userId})
       ORDER BY b.value_amount DESC
     `;
 
     const benefits: BenefitRow[] = benefitRows.map((b) => {
       const used = b.used_amount ?? 0;
-      const end = periodEnd(b.period, now);
+      // The portal's own "good through" beats a date computed from a period name.
+      const end = b.ends_on ? new Date(b.ends_on) : periodEnd(b.period, now);
       return {
         benefitId: b.id,
         name: b.name,
@@ -173,6 +188,9 @@ export const profile = api<ProfileParams, CardProfileResponse>(
         period: b.period,
         daysLeft: Math.max(0, Math.ceil((end.getTime() - now.getTime()) / dayMs)),
         categoryKey: b.category_key ?? undefined,
+        fromPortal: b.usage_source === "portal",
+        checkedAt: b.as_of ? b.as_of.toISOString() : undefined,
+        resetsOn: b.ends_on ? new Date(b.ends_on).toISOString().split("T")[0] : undefined,
       };
     });
 
@@ -181,15 +199,18 @@ export const profile = api<ProfileParams, CardProfileResponse>(
       id: number; merchant_name: string; offer_description: string;
       cashback_rate: string | null; cashback_amount: number | null;
       minimum_spend: number | null; is_activated: boolean; end_date: Date | null;
+      source: string | null; last_seen_at: Date | null;
     }>`
       SELECT id, merchant_name, offer_description, cashback_rate, cashback_amount,
-             minimum_spend, is_activated, end_date
+             minimum_spend, is_activated, end_date, source, last_seen_at
       FROM merchant_offers
       WHERE user_id = ${userId}
         AND card_id = ${cardId}
         AND is_used = FALSE
+        -- an offer the portal stopped showing is gone, even if its date has not passed
+        AND disappeared_at IS NULL
         AND (end_date IS NULL OR end_date >= CURRENT_DATE)
-      ORDER BY is_activated DESC, end_date ASC NULLS LAST
+      ORDER BY is_activated ASC, end_date ASC NULLS LAST
     `;
 
     const offers: OfferRow[] = offerRows.map((o) => {
@@ -204,6 +225,8 @@ export const profile = api<ProfileParams, CardProfileResponse>(
         isActivated: o.is_activated,
         endDate: end ? end.toISOString().split("T")[0] : undefined,
         daysLeft: end ? Math.max(0, Math.ceil((end.getTime() - now.getTime()) / dayMs)) : undefined,
+        source: o.source ?? undefined,
+        seenAt: o.last_seen_at ? o.last_seen_at.toISOString() : undefined,
       };
     });
 

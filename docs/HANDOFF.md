@@ -28,7 +28,7 @@ over-complicated competitors it is positioned against.
 |---|---|---|
 | **Ask** | `/` | The deck of the user's cards. Tap flips a card out; tap again opens it in Insights; tap anywhere else puts it back. The orb (top-left, mic badge) is the voice button; beside it "What are you buying?" types out example questions. Typing field at the bottom. |
 | **Wallet** | `/cards` | **Every** card, as data-carrying card faces. Where the portfolio is built (add/remove). "Add a card to the catalogue" form (a new card starts at a flat 1%). |
-| **Insights** | `/recommendations` | **Only** the user's portfolio: credits used vs. left, reset deadlines, expiring credits, merchant offers. Category filters come from the benefits those cards carry, never a fixed list. |
+| **Insights** | `/recommendations` | **Only** the user's portfolio: credits used vs. left, reset deadlines, expiring credits, merchant offers. Category filters come from the benefits those cards carry, never a fixed list. Each card also carries a "From your \<issuer\> portal" block (`components/PortalCard.tsx`): the offers targeted at that card, which of them still need adding in the portal, and each credit's real usage. |
 
 No category buttons on Ask: Haider described card *purposes*, he never asked for them as UI.
 
@@ -57,6 +57,7 @@ No category buttons on Ask: Haider described card *purposes*, he never asked for
 - **RewardsCC removed (2026-09-17).** The integration called `api.rewardscc.com`, a domain that does not exist, so it never returned data. The real RewardsCC is a paid RapidAPI product (plans up to $499/month) that sells public card terms only: it does carry quarterly bonus dates, but no per-user benefit usage, targeted offers or activation state. Do not re-add it; Tier 0 covers the same public data.
 - Tier 1 two taps a quarter (rotating category, rough spend).
 - Tier 2 forwarded offer emails: built, needs a mail provider.
+- **Tier 2b the portal, pasted (built 2026-09-23).** Targeted offers and credit usage exist only behind the cardholder's login, and no aggregator sells either. So the user copies the page they are already signed in to (Chase Offers, Amex Offers, or one benefit page) and pastes it into the card in Insights. `backend/offers/portal_parsers.ts` reads the rendered tiles deterministically, Gemini only sees text the regexes could not, and `POST /portal/paste` writes the same rows the extension will write later: offers with activation state and expiry, credits with used-of-total and the portal's own reset date. A full offers page is authoritative for that card, so offers it stopped showing are marked `disappeared_at` rather than deleted. A page whose account number disagrees with the open card is refused. No automation touches a bank.
 - Tier 3 aggregator (Plaid ~$1.50/user/month) for real spend and caps, behind a paid plan. Nobody contracts with issuers directly.
 
 ## Verified vs not
@@ -71,6 +72,8 @@ No category buttons on Ask: Haider described card *purposes*, he never asked for
 - Expired rotating quarters still counted: Freedom Flex's 5% gas (ended 2024-12-31) beat Blue Cash Preferred's real 3%. `decide` and `profile` now skip categories whose `valid_until` has passed.
 - Offers were matched against the normalised category ("dining") instead of what was said ("Starbucks"), so they never applied. They now add to the card's own rate (they are statement credits on top), respect the minimum spend, and are capped by "up to $X" (stored in `maximum_cashback`).
 - The parser stored "Spend $50, get $10 back" as "Spend $50,, get $10 back".
+
+**Verified 2026-09-23 (`scripts/smoke-portal.mjs`, 11 checks, branch `feat/portal-sync`):** a pasted Chase Offers page writes 17 offers with the right rates and flags; a pasted "$300 Annual Travel Credit" page stores $290 of $300 resetting 2027-06-15 and retires nothing; Insights lists the ones still needing activation first; a later, shorter sync retires the 16 offers the page dropped; a page for a different card is refused with nothing written. Parser bugs found and fixed on real text: "Blue Apron" was read as an April 15 expiry (a month prefix matcher), and one tile's "Added" flag leaked onto the tile above it.
 
 **Verified 2026-09-17:** Gemini phrasing end to end (`ai/chat` returns `fallback=false` with the engine's card and rate), with `GeminiApiKey` in `backend/.secrets.local.cue`.
 
@@ -121,7 +124,8 @@ On first run Encore also bumped `encore.dev` to ^1.58.5 and regenerated `bun.loc
 
 1. ~~Get the backend running and fix whatever the real database exposes.~~ Done 2026-09-14 (see "Verified vs not").
 2. **Security fix plan above.** It can now be tested locally; `scripts/smoke-backend.mjs` will need to send the token once endpoints require auth.
-3. Merge `feat/decision-engine` to `main`, deploy to test, then production.
+3. **The browser extension** (`feat/portal-sync` groundwork is done). It reads the same portal pages automatically instead of by paste, and can click "add to card" on a tap. It must emit the shape `POST /portal/paste` already accepts, so nothing in the app changes when it lands. Never start Encore or the extension work expecting the daemon inside a Claude session; see "Running the backend on this PC".
+4. Merge `feat/decision-engine` to `main`, deploy to test, then production.
 4. Mail provider + domain for offers; tune parsers against real issuer emails.
 5. Public catalogue scrape (Apify) for "every card on the market".
 6. ElevenLabs voice needs a server-side proxy so the key never reaches the browser.
