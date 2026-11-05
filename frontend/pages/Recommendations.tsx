@@ -15,6 +15,7 @@ import {
   daysUntil,
   formatValue,
   periodEnds,
+  recentChange,
   resetLabel,
   useBenefitLog,
   useCustomBenefits,
@@ -426,6 +427,11 @@ function BenefitRow({ row: r, onUse, onRemove }: { row: Row; onUse: (v: number) 
       <p className="mt-1 text-[12px] leading-snug text-[#9B8FA6]">
         <span className="font-semibold text-[#6E637A]">{b.category}</span> · {b.description}
       </p>
+      {recentChange(b) && (
+        <p className="mt-1.5 inline-flex rounded-full bg-[#E64BD4]/[0.12] px-2 py-0.5 text-[11px] font-semibold text-[#F58EE4]">
+          Updated · {recentChange(b)}
+        </p>
+      )}
 
       <div className="mt-2.5 h-1.5 w-full overflow-hidden rounded-full bg-white/10">
         <div className="h-full rounded-full bg-[linear-gradient(90deg,#E64BD4,#F58EE4)]" style={{ width: `${pct}%` }} />

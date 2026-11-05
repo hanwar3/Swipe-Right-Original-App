@@ -185,5 +185,45 @@ check('a page for a different card is refused', wrongCard.json.kind === 'none' &
   `"${wrongCard.json.message}"`);
 
 await call('POST', '/auth/account/delete', { password: 'Portal-Test-2026!' });
+
+// --- the catalogue follows cardholders' portals ---------------------------
+// Three cardholders' Amex portals show a different Dunkin' credit. Each sees
+// their own portal's figure at once; after the third, everyone does. The value
+// alternates between $12 and $13 so the check repeats cleanly run after run.
+const AMEX_GOLD = 4;
+session = null;
+const catBefore = await call('GET', '/benefits/catalogue');
+const dunkin = (catBefore.json.benefits ?? []).find((b) => b.slug === '102_dunkin' && b.cardId === AMEX_GOLD);
+const target = dunkin?.valueCents === 1200 ? 1300 : 1200;
+const dunkinPage = `Dunkin' Credit
+Benefit overview
+Get up to $${target / 100} in statement credits each month at U.S. Dunkin' locations.
+$4/$${target / 100}
+How it works
+Enroll, then pay with your card at Dunkin'.`;
+const crowd = [];
+for (let i = 1; i <= 3; i++) {
+  session = null;
+  const r = await call('POST', '/auth/register', { email: `crowd-${i}-${Date.now()}@example.test`, password: 'Portal-Test-2026!' });
+  session = r.json.token;
+  crowd.push(session);
+  await call('POST', '/cards/portfolio/add', { cardId: AMEX_GOLD });
+  const pasted = await call('POST', '/portal/paste', { cardId: AMEX_GOLD, text: dunkinPage });
+  const own = await call('GET', `/cards/profile?cardId=${AMEX_GOLD}`);
+  const mineRow = (own.json.benefits ?? []).find((b) => b.benefitId === dunkin?.id);
+  check(`cardholder ${i} sees their own portal's figure at once`, pasted.json.benefitsWritten === 1 && mineRow?.valueCents === target,
+    `${mineRow?.name}: ${mineRow?.usedCents}/${mineRow?.valueCents}`);
+  if (i === 2) {
+    const mid = (await call('GET', '/benefits/catalogue')).json.benefits.find((b) => b.id === dunkin?.id);
+    check('two portals are not enough to change it for everyone', mid?.valueCents === dunkin?.valueCents, `${mid?.valueCents}`);
+  }
+}
+const catAfter = (await call('GET', '/benefits/catalogue')).json.benefits.find((b) => b.id === dunkin?.id);
+check('three agreeing portals update the catalogue, with a note', catAfter?.valueCents === target && /3 cardholders/.test(catAfter?.changeNote ?? ''),
+  `${dunkin?.valueCents} -> ${catAfter?.valueCents} v${catAfter?.version} "${catAfter?.changeNote}"`);
+for (const token of crowd) {
+  session = token;
+  await call('POST', '/auth/account/delete', { password: 'Portal-Test-2026!' });
+}
 console.log(`\n${failures === 0 ? 'ALL PASSED' : `${failures} FAILED`}  (user ${userId})`);
 process.exit(failures === 0 ? 0 : 1);

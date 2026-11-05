@@ -1,6 +1,7 @@
 import { api, Query } from "encore.dev/api";
 import { cardsDB } from "./db";
 import { currentUserId } from "../lib/session";
+import { periodWindow } from "./periods";
 
 /**
  * Everything about one card in one call.
@@ -33,7 +34,8 @@ export interface BenefitRow {
   usedCents: number;
   remainingCents: number;
   period: string;
-  daysLeft: number;
+  /** Unset for credits with no calendar deadline (anniversary, every 4 years). */
+  daysLeft?: number;
   categoryKey?: string;
   /** The figure came off the issuer's portal rather than a manual tap. */
   fromPortal?: boolean;
@@ -81,12 +83,9 @@ export interface CardProfileResponse {
   cardEmail?: string;
 }
 
-function periodEnd(period: string, now: Date): Date {
-  const y = now.getUTCFullYear();
-  const m = now.getUTCMonth();
-  if (period === "month") return new Date(Date.UTC(y, m + 1, 0));
-  if (period === "quarter") return new Date(Date.UTC(y, Math.floor(m / 3) * 3 + 3, 0));
-  return new Date(Date.UTC(y, 11, 31));
+function periodEnd(period: string, now: Date): Date | null {
+  const w = periodWindow(period, now);
+  return w.open ? null : w.end;
 }
 
 const dayMs = 86400000;
@@ -162,9 +161,13 @@ export const profile = api<ProfileParams, CardProfileResponse>(
       period: string; category_key: string | null; used_amount: number | null;
       usage_source: string | null; as_of: Date | null; ends_on: Date | null;
     }>`
-      SELECT b.id, b.name, b.description, b.value_amount, b.period, b.category_key,
+      SELECT b.id, b.name, b.description,
+             COALESCE(p.value_override, b.value_amount) AS value_amount,
+             COALESCE(p.period_override, b.period) AS period, b.category_key,
              u.used_amount, u.source AS usage_source, u.as_of, u.ends_on
       FROM card_benefits b
+      LEFT JOIN user_benefit_prefs p
+        ON p.benefit_id = b.id AND p.user_id = ${userId}
       LEFT JOIN user_benefit_usage u
         ON u.benefit_id = b.id AND u.user_id = ${userId}
        AND u.period_start <= CURRENT_DATE AND u.period_end >= CURRENT_DATE
@@ -172,13 +175,16 @@ export const profile = api<ProfileParams, CardProfileResponse>(
         -- catalogue rows belong to everyone; a user_id row is this cardholder's own,
         -- which is how a credit read off their portal appears here.
         AND (b.user_id IS NULL OR b.user_id = ${userId})
-      ORDER BY b.value_amount DESC
+        AND b.retired_at IS NULL
+        AND COALESCE(p.hidden, FALSE) = FALSE
+      ORDER BY 3 DESC
     `;
 
     const benefits: BenefitRow[] = benefitRows.map((b) => {
       const used = b.used_amount ?? 0;
       // The portal's own "good through" beats a date computed from a period name.
       const end = b.ends_on ? new Date(b.ends_on) : periodEnd(b.period, now);
+      const daysLeft = end ? Math.max(0, Math.ceil((end.getTime() - now.getTime()) / dayMs)) : undefined;
       return {
         benefitId: b.id,
         name: b.name,
@@ -187,7 +193,7 @@ export const profile = api<ProfileParams, CardProfileResponse>(
         usedCents: used,
         remainingCents: Math.max(0, b.value_amount - used),
         period: b.period,
-        daysLeft: Math.max(0, Math.ceil((end.getTime() - now.getTime()) / dayMs)),
+        daysLeft,
         categoryKey: b.category_key ?? undefined,
         fromPortal: b.usage_source === "portal",
         checkedAt: b.as_of ? b.as_of.toISOString() : undefined,
@@ -234,7 +240,10 @@ export const profile = api<ProfileParams, CardProfileResponse>(
     const unusedBenefitCents = benefits.reduce((s, b) => s + b.remainingCents, 0);
 
     const expiries = [
-      ...benefits.filter((b) => b.remainingCents > 0).map((b) => b.daysLeft),
+      ...benefits
+        .filter((b) => b.remainingCents > 0)
+        .map((b) => b.daysLeft)
+        .filter((d): d is number => d !== undefined),
       ...offers.map((o) => o.daysLeft).filter((d): d is number => d !== undefined),
     ];
 

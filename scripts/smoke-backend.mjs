@@ -131,6 +131,12 @@ check("user with no cards gets the empty-wallet sentence", /don't have any cards
 const gas = await decideAt("gas", 6000);
 check("gas: Flex's 5% rotation ended in 2024, so Blue Cash Preferred's 3% wins", gas.winner?.cardId === CARDS.bcp, `winner=${brief(gas.winner)} runnerUp=${brief(gas.runnerUp)}`);
 
+// Merchant credits steer only at their merchant (the 45-day window always covers a monthly credit).
+const restaurant = await decideAt("dining", 8000);
+check("Blue Cash's Equinox credit does not steer a restaurant bill", !/Equinox/.test(`${restaurant.nudge?.headline ?? ""} ${restaurant.spoken}`), `nudge=${restaurant.nudge?.headline ?? "-"} spoken="${restaurant.spoken}"`);
+const gym = await decideAt("Equinox", 3000);
+check("at Equinox, the expiring Equinox credit is brought up", /Equinox/.test(`${gym.nudge?.headline ?? ""} ${gym.spoken}`), `nudge=${gym.nudge?.headline ?? "-"} spoken="${gym.spoken}"`);
+
 // --- profile ------------------------------------------------------------------
 const flexRates = await call("GET", `/cards/profile?${new URLSearchParams({ cardId: String(CARDS.flex) })}`);
 check("Flex profile hides expired rotating rates", flexRates.status === 200 && !flexRates.json.rates.some((r) => r.isRotating && r.rate === 5), `rates=[${(flexRates.json.rates ?? []).map((r) => `${r.categoryKey} ${r.rate}${r.isRotating ? " (rotating)" : ""}`).join(", ")}]`);
@@ -234,6 +240,47 @@ check(`ai/chat answers (${chat.json.fallback === false ? "phrased by Gemini" : "
   `${chat.status} fallback=${chat.json.fallback} response="${chat.json.response ?? short(chat.json)}"`);
 const chatAnon = await call("POST", "/ai/chat", { message: "I'm buying gas" }, { as: null });
 check("ai/chat without a session asks you to sign in", chatAnon.status === 200 && /Sign in/.test(chatAnon.json.response ?? ""), `${chatAnon.status} "${chatAnon.json.response}"`);
+
+// --- card credits: shared catalogue, usage that follows the account -----------
+const cat = await call("GET", "/benefits/catalogue", undefined, { as: null });
+const dd = cat.json.benefits?.find((b) => b.slug === "107_doordash_credit" && b.cardId === CARDS.reserve);
+check("catalogue is public and has the updated DoorDash credit", cat.status === 200 && dd?.valueCents === 1500 && /\$15/.test(dd?.changeNote ?? ""), `${cat.status} ${dd ? `${dd.name} ${dd.valueCents}c v${dd.version} "${dd.changeNote}"` : "missing"}`);
+const dash = cat.json.benefits?.find((b) => b.slug === "107_dashpass" && b.cardId === CARDS.reserve);
+const delta = cat.json.benefits?.filter((b) => b.cardId === 36) ?? [];
+check("Delta's Platinum card does not inherit Amex Platinum credits", delta.length === 0, `${delta.length} credits on card 36`);
+
+if (dd && dash) {
+  const logged = await call("POST", "/benefits/usage", { benefitId: dd.id, usedCents: 800 });
+  const mineAfter = await call("GET", "/benefits/mine");
+  const prof = await call("GET", `/cards/profile?cardId=${CARDS.reserve}`);
+  const ddRow = prof.json.benefits?.find((b) => b.benefitId === dd.id);
+  check("manual usage is saved for this period and shows in the profile",
+    logged.status === 200 && mineAfter.json.usage?.some((u) => u.benefitId === dd.id && u.usedCents === 800) && ddRow?.remainingCents === 700,
+    `${logged.status} period ends ${logged.json.periodEnd}; profile ${ddRow?.usedCents}/${ddRow?.valueCents}`);
+  const over = await call("POST", "/benefits/usage", { benefitId: dd.id, usedCents: 99999 });
+  check("usage cannot exceed the credit", over.json.usedCents === 1500, `${over.json.usedCents}`);
+  const foreign = await call("POST", "/benefits/usage", { benefitId: dd.id, usedCents: 100 }, { as: otherToken });
+  check("someone without the card cannot log against it", foreign.status === 404, `${foreign.status}`);
+
+  const hid = await call("POST", `/benefits/${dash.id}/visibility`, { hidden: true });
+  const profHidden = await call("GET", `/cards/profile?cardId=${CARDS.reserve}`);
+  const unhid = await call("POST", `/benefits/${dash.id}/visibility`, { hidden: false });
+  check("hiding a credit removes it for this user only", hid.status === 200 && unhid.status === 200 && !profHidden.json.benefits?.some((b) => b.benefitId === dash.id), `${hid.status}/${unhid.status}`);
+
+  const added = await call("POST", "/benefits/custom", { cardId: CARDS.reserve, name: "Lounge guest passes", valueCents: 2, unit: "count", period: "year", category: "Travel" });
+  const listedCustom = await call("GET", "/benefits/mine");
+  const removed = await call("POST", `/benefits/custom/${added.json.id}/delete`);
+  check("custom credit: add, list, remove", added.status === 200 && listedCustom.json.custom?.some((c) => c.id === added.json.id) && removed.status === 200, `${added.status} ${added.json.name}/${removed.status}`);
+  const notMine = await call("POST", "/benefits/custom", { cardId: 36, name: "Nope", valueCents: 500, period: "year" });
+  check("custom credits only go on cards you hold", notMine.status === 404, `${notMine.status}`);
+
+  const travel = cat.json.benefits?.find((b) => b.slug === "107_travel" && b.cardId === CARDS.reserve);
+  const imp1 = await call("POST", "/benefits/import", { credits: [{ slug: "107_travel", usedCents: 5000 }], subscriptions: [], hidden: [], custom: [] });
+  const imp2 = await call("POST", "/benefits/import", { credits: [{ slug: "107_travel", usedCents: 9999 }], subscriptions: [], hidden: [], custom: [] });
+  const afterImport = await call("GET", "/benefits/mine");
+  const travelUse = afterImport.json.usage?.find((u) => u.benefitId === travel?.id);
+  check("browser log import fills gaps and never overwrites", imp1.json.imported === 1 && travelUse?.usedCents === 5000, `imported ${imp1.json.imported}/${imp2.json.imported}, travel used ${travelUse?.usedCents}`);
+}
 
 // --- browser extension pairing ------------------------------------------------
 const code = await call("POST", "/auth/extension/pairing-code");

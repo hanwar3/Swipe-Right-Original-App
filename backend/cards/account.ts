@@ -1,4 +1,5 @@
 import { Subscription } from "encore.dev/pubsub";
+import { createHash } from "node:crypto";
 import log from "encore.dev/log";
 import { cardsDB } from "./db";
 import { userDeleted } from "../auth/events";
@@ -19,6 +20,14 @@ const _ = new Subscription(userDeleted, "cards-erase-user", {
       await tx.exec`DELETE FROM portal_syncs WHERE user_id = ${userId}`;
       await tx.exec`DELETE FROM offer_ingests WHERE user_id = ${userId}`;
       await tx.exec`DELETE FROM offer_inboxes WHERE user_id = ${userId}`;
+      await tx.exec`DELETE FROM user_benefit_prefs WHERE user_id = ${userId}`;
+      // Portal observations are stored under a one-way hash of (user, credit);
+      // recompute those hashes so a deleted account's readings go too.
+      const listed = await tx.queryAll<{ id: number }>`SELECT id FROM card_benefits WHERE user_id IS NULL`;
+      const reporters = listed.map((b) => createHash("sha256").update(`${userId}:${b.id}`).digest("hex"));
+      if (reporters.length) {
+        await tx.exec`DELETE FROM benefit_observations WHERE reporter = ANY(${reporters})`;
+      }
       await tx.commit();
     } catch (err) {
       await tx.rollback();

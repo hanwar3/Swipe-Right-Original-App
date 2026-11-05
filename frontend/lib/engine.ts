@@ -204,6 +204,50 @@ export function revokeExtension(id: string) {
   return postJSON<{ revoked: boolean }>(`/auth/extension/devices/${encodeURIComponent(id)}/revoke`);
 }
 
+// ---------------------------------------------------------------------------
+// Card credits: the shared catalogue and this account's usage
+// ---------------------------------------------------------------------------
+
+export type {
+  CatalogueBenefit,
+  MyBenefits,
+  BenefitUsage,
+  AddCustomRequest,
+  ImportRequest,
+} from '~backend/cards/benefits';
+import type { AddCustomRequest, CatalogueBenefit, ImportRequest, MyBenefits } from '~backend/cards/benefits';
+
+/** Every card's credits as they stand today, changes noted. Public. */
+export function benefitCatalogue() {
+  return getJSON<{ benefits: CatalogueBenefit[] }>('/benefits/catalogue');
+}
+
+/** This account's usage this period, custom credits, hidden credits, portal overrides. */
+export function myBenefits() {
+  return getJSON<MyBenefits>('/benefits/mine');
+}
+
+/** Total used this period, in cents (or uses for counted credits). */
+export function logBenefitUsage(benefitId: number, usedCents: number) {
+  return postJSON<{ usedCents: number; periodEnd: string }>('/benefits/usage', { benefitId, usedCents });
+}
+
+export function addCustomBenefit(input: AddCustomRequest) {
+  return postJSON<CatalogueBenefit>('/benefits/custom', input);
+}
+
+export function removeCustomBenefit(id: number) {
+  return postJSON<{ removed: boolean }>(`/benefits/custom/${id}/delete`);
+}
+
+export function setBenefitHidden(id: number, hidden: boolean) {
+  return postJSON<{ hidden: boolean }>(`/benefits/${id}/visibility`, { hidden });
+}
+
+export function importLocalBenefits(input: ImportRequest) {
+  return postJSON<{ imported: number }>('/benefits/import', input);
+}
+
 export function formatMoney(cents: number): string {
   return '$' + (cents / 100).toFixed(cents % 100 === 0 ? 0 : 2);
 }

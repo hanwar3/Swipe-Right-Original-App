@@ -4,6 +4,7 @@ import { secret } from "encore.dev/config";
 import log from "encore.dev/log";
 import { cardsDB } from "../cards/db";
 import { currentUserId } from "../lib/session";
+import { matchCatalogue, observeCatalogueValue } from "../cards/benefit_crowd";
 import { generateText } from "../lib/gemini";
 import { detectIssuer, validateAgainstSource } from "./parsers";
 import {
@@ -281,17 +282,43 @@ export async function ingestPortalText(
 
     // --- benefits -------------------------------------------------------
     let benefitsWritten = 0;
+    // The catalogue's credits for this card, to match what the portal calls them.
+    const catalogueRows = await cardsDB.queryAll<{ id: number; name: string; value_amount: number; period: string }>`
+      SELECT id, name, value_amount, period FROM card_benefits
+      WHERE card_id = ${req.cardId} AND user_id IS NULL AND retired_at IS NULL
+    `;
+
     for (const b of benefits) {
       // Catalogue first: if this card already lists the benefit for everyone,
       // attach the usage to that row instead of making a private duplicate.
-      const existing = await cardsDB.queryRow<{ id: number }>`
-        SELECT id FROM card_benefits
-        WHERE card_id = ${req.cardId}
-          AND LOWER(name) = ${b.name.toLowerCase()}
-          AND (user_id IS NULL OR user_id = ${req.userId})
-        ORDER BY user_id NULLS LAST
-        LIMIT 1
-      `;
+      // Portals word things their own way ("$300 Annual Travel Credit" for
+      // "Travel credit"), so the match is on the distinctive words.
+      const listed = matchCatalogue(b.name, catalogueRows);
+      const existing = listed
+        ? { id: listed.id }
+        : await cardsDB.queryRow<{ id: number }>`
+            SELECT id FROM card_benefits
+            WHERE card_id = ${req.cardId}
+              AND LOWER(name) = ${b.name.toLowerCase()}
+              AND (user_id IS NULL OR user_id = ${req.userId})
+            ORDER BY user_id NULLS LAST
+            LIMIT 1
+          `;
+
+      if (listed) {
+        const differs = b.valueCents !== listed.value_amount || b.period !== listed.period;
+        // This cardholder sees what their own portal says, at once.
+        await cardsDB.exec`
+          INSERT INTO user_benefit_prefs (user_id, benefit_id, value_override, period_override, updated_at)
+          VALUES (${req.userId}, ${listed.id}, ${differs ? b.valueCents : null}, ${differs ? b.period : null}, NOW())
+          ON CONFLICT (user_id, benefit_id) DO UPDATE SET
+            value_override = EXCLUDED.value_override,
+            period_override = EXCLUDED.period_override,
+            updated_at = NOW()
+        `;
+        // Everyone else sees it once enough cardholders' portals agree.
+        if (b.valueCents > 0) await observeCatalogueValue(req.userId, listed.id, b.valueCents, b.period);
+      }
 
       let benefitId = existing?.id;
       if (!benefitId) {

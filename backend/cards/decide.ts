@@ -1,6 +1,7 @@
 import { api, Query } from "encore.dev/api";
 import { cardsDB } from "./db";
 import { currentUserId } from "../lib/session";
+import { periodWindow } from "./periods";
 
 /**
  * The single source of truth for "which card should I use right now".
@@ -73,19 +74,8 @@ export function normalizeCategory(input: string): string {
 // Period helpers
 // ---------------------------------------------------------------------------
 
-function periodBounds(period: string, now: Date): { start: Date; end: Date } {
-  const y = now.getUTCFullYear();
-  const m = now.getUTCMonth();
-  switch (period) {
-    case "month":
-      return { start: new Date(Date.UTC(y, m, 1)), end: new Date(Date.UTC(y, m + 1, 0)) };
-    case "quarter": {
-      const q = Math.floor(m / 3) * 3;
-      return { start: new Date(Date.UTC(y, q, 1)), end: new Date(Date.UTC(y, q + 3, 0)) };
-    }
-    default:
-      return { start: new Date(Date.UTC(y, 0, 1)), end: new Date(Date.UTC(y, 11, 31)) };
-  }
+function periodBounds(period: string, now: Date): { start: Date; end: Date; open: boolean } {
+  return periodWindow(period, now);
 }
 
 function daysUntil(d: Date, now: Date): number {
@@ -391,18 +381,29 @@ export async function runDecision(
     const benefitRows = await cardsDB.queryAll<{
       benefit_id: number; card_id: number; card_name: string; name: string;
       description: string | null; value_amount: number; period: string;
-      category_key: string | null; used_amount: number | null;
+      category_key: string | null; used_amount: number | null; ends_on: Date | string | null;
+      merchants: string[] | null;
     }>`
       SELECT b.id AS benefit_id, b.card_id, c.name AS card_name, b.name,
-             b.description, b.value_amount, b.period, b.category_key,
-             u.used_amount
+             b.description,
+             COALESCE(p.value_override, b.value_amount) AS value_amount,
+             COALESCE(p.period_override, b.period) AS period,
+             b.category_key, b.merchants, u.used_amount, u.ends_on
       FROM card_benefits b
       JOIN cards c ON c.id = b.card_id
       JOIN user_portfolios up ON up.card_id = b.card_id
         AND up.user_id = ${userId} AND up.is_active = TRUE
+      LEFT JOIN user_benefit_prefs p
+        ON p.benefit_id = b.id AND p.user_id = ${userId}
       LEFT JOIN user_benefit_usage u
         ON u.benefit_id = b.id AND u.user_id = ${userId}
         AND u.period_start <= CURRENT_DATE AND u.period_end >= CURRENT_DATE
+      -- Catalogue rows are everyone's; a user_id row is only its owner's.
+      WHERE (b.user_id IS NULL OR b.user_id = ${userId})
+        AND b.retired_at IS NULL
+        AND COALESCE(p.hidden, FALSE) = FALSE
+        -- Memberships are not spendable credit, so they never steer a purchase.
+        AND b.kind = 'statement_credit' AND b.unit = 'usd'
     `;
 
     const expiring: ExpiringBenefit[] = [];
@@ -410,7 +411,10 @@ export async function runDecision(
       const remaining = b.value_amount - (b.used_amount || 0);
       if (remaining <= 0) continue;
 
-      const { end } = periodBounds(b.period, now);
+      const window = periodBounds(b.period, now);
+      // The portal's own "good through" beats a computed one; no deadline, no nudge.
+      if (window.open && !b.ends_on) continue;
+      const end = b.ends_on ? new Date(b.ends_on) : window.end;
       const daysLeft = daysUntil(end, now);
       if (daysLeft > EXPIRY_WARNING_DAYS) continue;
 
@@ -428,9 +432,13 @@ export async function runDecision(
     // --- 8. The tradeoff -----------------------------------------------------
     // Only surface a benefit the user could actually use on THIS purchase.
     let nudge: Nudge | undefined;
+    // A merchant credit counts only at that merchant; otherwise the credit's
+    // spend category must cover this purchase. Neither means it never steers.
     const relevant = expiring.find((e) => {
       const b = benefitRows.find((r) => r.card_id === e.cardId && r.name === e.name);
-      return !b?.category_key || applicable.includes(b.category_key);
+      if (!b) return false;
+      if (b.merchants?.length) return b.merchants.some((m) => mentions(said, m));
+      return !!b.category_key && applicable.includes(b.category_key);
     });
 
     if (relevant && winner) {
