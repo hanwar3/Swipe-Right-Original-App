@@ -87,10 +87,11 @@ export default function CardStack({
     window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
 
   const baseH = compact ? 150 : 190;
-  const idealStep = compact ? 62 : 78;
+  // A tight deck: slabs sit close so it reads as one stack in the hand.
+  const idealStep = compact ? 44 : 52;
   const step =
     fitHeight && cards.length > 1
-      ? Math.max(40, Math.min(idealStep, (fitHeight - baseH) / (cards.length - 1)))
+      ? Math.max(34, Math.min(idealStep, (fitHeight - baseH) / (cards.length - 1)))
       : idealStep;
 
   // The engine's answer selects a card, same as a tap would.
