@@ -1,6 +1,7 @@
-import { api, Query } from "encore.dev/api";
+import { api } from "encore.dev/api";
 import { randomBytes } from "node:crypto";
 import { cardsDB } from "../cards/db";
+import { currentUserId } from "../lib/session";
 
 /**
  * Each user gets one forwarding address. The token in the address is the
@@ -11,9 +12,6 @@ import { cardsDB } from "../cards/db";
 /** Set to your real inbound domain once the provider is configured. */
 export const INBOX_DOMAIN = "offers.swiperight.app";
 
-export interface InboxParams {
-  userId: Query<string>;
-}
 
 export interface RecentIngest {
   id: number;
@@ -43,10 +41,10 @@ function newToken(): string {
 }
 
 /** Get the user's forwarding address, creating it on first ask. */
-export const inbox = api<InboxParams, InboxResponse>(
-  { expose: true, method: "GET", path: "/offers/inbox" },
-  async (params) => {
-    const userId = params.userId;
+export const inbox = api(
+  { expose: true, auth: true, method: "GET", path: "/offers/inbox" },
+  async (): Promise<InboxResponse> => {
+    const userId = currentUserId();
 
     let row = await cardsDB.queryRow<{
       token: string; received_count: number; last_received_at: Date | null;
@@ -99,19 +97,19 @@ export const inbox = api<InboxParams, InboxResponse>(
 );
 
 /** Rotate the address, for when a user has shared it somewhere they regret. */
-export const rotateInbox = api<{ userId: string }, { address: string }>(
-  { expose: true, method: "POST", path: "/offers/inbox/rotate" },
-  async (req) => {
+export const rotateInbox = api(
+  { expose: true, auth: true, method: "POST", path: "/offers/inbox/rotate" },
+  async (): Promise<{ address: string }> => {
+    const userId = currentUserId();
     const token = newToken();
     await cardsDB.exec`
-      UPDATE offer_inboxes SET token = ${token} WHERE user_id = ${req.userId}
+      UPDATE offer_inboxes SET token = ${token} WHERE user_id = ${userId}
     `;
     return { address: `offers+${token}@${INBOX_DOMAIN}` };
   }
 );
 
 export interface CardIdentityRequest {
-  userId: string;
   cardId: number;
   /** Last four digits, the strongest attribution signal in issuer mail. */
   lastFour?: string;
@@ -136,21 +134,22 @@ export interface CardIdentityResponse {
  * headers, and a dedicated address removes the guessing altogether.
  */
 export const setCardIdentity = api<CardIdentityRequest, CardIdentityResponse>(
-  { expose: true, method: "POST", path: "/offers/card-identity" },
+  { expose: true, auth: true, method: "POST", path: "/offers/card-identity" },
   async (req) => {
+    const userId = currentUserId();
     const digits = req.lastFour?.replace(/\D/g, "").slice(-4);
     const lastFour = digits && digits.length === 4 ? digits : undefined;
     const cardEmail = req.cardEmail?.trim().toLowerCase() || undefined;
 
     const owner = await cardsDB.queryRow<{ token: string }>`
-      SELECT token FROM offer_inboxes WHERE user_id = ${req.userId}
+      SELECT token FROM offer_inboxes WHERE user_id = ${userId}
     `;
 
     let cardToken: string | undefined;
     if (req.wantOwnAddress) {
       const existing = await cardsDB.queryRow<{ inbox_token: string | null }>`
         SELECT inbox_token FROM user_portfolios
-        WHERE user_id = ${req.userId} AND card_id = ${req.cardId}
+        WHERE user_id = ${userId} AND card_id = ${req.cardId}
       `;
       cardToken = existing?.inbox_token ?? newToken().slice(0, 10);
     }
@@ -163,7 +162,7 @@ export const setCardIdentity = api<CardIdentityRequest, CardIdentityResponse>(
           card_email  = COALESCE(${cardEmail ?? null}, card_email),
           inbox_token = COALESCE(${cardToken ?? null}, inbox_token),
           updated_at  = NOW()
-      WHERE user_id = ${req.userId} AND card_id = ${req.cardId}
+      WHERE user_id = ${userId} AND card_id = ${req.cardId}
       RETURNING last_four, card_email, inbox_token
     `;
 

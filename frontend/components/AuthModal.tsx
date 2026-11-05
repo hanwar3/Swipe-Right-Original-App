@@ -153,7 +153,8 @@ export default function AuthModal({ isOpen, onClose, initialMode = 'signin' }: A
             <div className="space-y-2">
               <div className="flex items-baseline justify-between">
                 <Label htmlFor="password" className={labelClass}>Password</Label>
-                {mode === 'signin' && (
+                {/* Reset links need an email provider; switch this on with VITE_PASSWORD_RESET=on once one is wired. */}
+                {mode === 'signin' && import.meta.env.VITE_PASSWORD_RESET === 'on' && (
                   <button type="button" onClick={() => setMode('forgot')} className={`text-[12.5px] ${linkClass}`}>
                     Forgot password?
                   </button>
@@ -165,6 +166,8 @@ export default function AuthModal({ isOpen, onClose, initialMode = 'signin' }: A
                   id="password"
                   type={showPassword ? 'text' : 'password'}
                   autoComplete={mode === 'signup' ? 'new-password' : 'current-password'}
+                  minLength={mode === 'signup' ? 8 : undefined}
+                  maxLength={72}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   className={`${inputClass} pr-11`}

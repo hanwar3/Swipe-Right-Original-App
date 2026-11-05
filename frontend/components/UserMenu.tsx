@@ -1,5 +1,5 @@
-import React from 'react';
-import { LogOut } from 'lucide-react';
+import React, { useState } from 'react';
+import { LogOut, ShieldCheck } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -10,6 +10,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useAuth } from '../contexts/AuthContext';
+import AccountSheet from './AccountSheet';
 
 /**
  * Who you are and a way out. Wallet and Insights already sit in the bottom
@@ -17,6 +18,7 @@ import { useAuth } from '../contexts/AuthContext';
  */
 export default function UserMenu() {
   const { user, logout } = useAuth();
+  const [sheet, setSheet] = useState(false);
 
   if (!user) return null;
 
@@ -25,6 +27,7 @@ export default function UserMenu() {
   const name = [user.firstName, user.lastName].filter(Boolean).join(' ');
 
   return (
+    <>
     <DropdownMenu>
       <DropdownMenuTrigger
         aria-label="Account"
@@ -47,11 +50,17 @@ export default function UserMenu() {
           <p className="truncate text-xs text-[#A99DB3]">{user.email}</p>
         </DropdownMenuLabel>
         <DropdownMenuSeparator className="bg-white/[0.07]" />
+        <DropdownMenuItem onClick={() => setSheet(true)} className="rounded-xl px-2.5 py-2 text-[13px] text-[#F3EBF8]">
+          <ShieldCheck className="mr-2 h-4 w-4" />
+          Account &amp; security
+        </DropdownMenuItem>
         <DropdownMenuItem onClick={logout} className="rounded-xl px-2.5 py-2 text-[13px] text-[#F3EBF8]">
           <LogOut className="mr-2 h-4 w-4" />
           Sign out
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
+    <AccountSheet open={sheet} onClose={() => setSheet(false)} />
+    </>
   );
 }

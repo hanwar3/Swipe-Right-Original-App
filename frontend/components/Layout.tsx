@@ -18,7 +18,7 @@ interface LayoutProps {
  */
 const NAV = [
   { path: '/', icon: Sparkles, label: 'Ask' },
-  { path: '/cards', icon: CreditCard, label: 'Wallet' },
+  { path: '/wallet', icon: CreditCard, label: 'Wallet' },
   { path: '/recommendations', icon: Target, label: 'Insights' },
 ];
 

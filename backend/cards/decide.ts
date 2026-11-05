@@ -1,5 +1,6 @@
 import { api, Query } from "encore.dev/api";
 import { cardsDB } from "./db";
+import { currentUserId } from "../lib/session";
 
 /**
  * The single source of truth for "which card should I use right now".
@@ -108,7 +109,6 @@ function mentions(haystack: string, needle: string): boolean {
 // ---------------------------------------------------------------------------
 
 export interface DecideParams {
-  userId: Query<string>;
   /** Free text is fine: "gas", "I'm at Costco", "buying groceries". */
   category: Query<string>;
   /** Optional purchase amount in cents; unlocks real dollar comparisons. */
@@ -166,8 +166,8 @@ export interface DecideResponse {
 // ---------------------------------------------------------------------------
 
 export const decide = api<DecideParams, DecideResponse>(
-  { expose: true, method: "GET", path: "/cards/decide" },
-  async (params) => runDecision(params.userId, params.category, params.amountCents)
+  { expose: true, auth: true, method: "GET", path: "/cards/decide" },
+  async (params) => runDecision(currentUserId(), params.category, params.amountCents)
 );
 
 /**

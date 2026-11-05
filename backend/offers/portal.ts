@@ -1,7 +1,9 @@
 import { api, APIError, Query } from "encore.dev/api";
+import { getAuthData } from "~encore/auth";
 import { secret } from "encore.dev/config";
 import log from "encore.dev/log";
 import { cardsDB } from "../cards/db";
+import { currentUserId } from "../lib/session";
 import { generateText } from "../lib/gemini";
 import { detectIssuer, validateAgainstSource } from "./parsers";
 import {
@@ -34,8 +36,10 @@ interface PortfolioCard {
   last_four: string | null;
 }
 
+/** How a portal page reached us. Recorded per sync for support and trust. */
+export type SyncMethod = "paste" | "extension" | "screenshot";
+
 export interface PasteRequest {
-  userId: string;
   /** The card open in Insights. A paste always lands on a card the user chose. */
   cardId: number;
   text: string;
@@ -149,9 +153,28 @@ Rules:
 }
 
 export const paste = api<PasteRequest, PasteResponse>(
-  { expose: true, method: "POST", path: "/portal/paste" },
+  { expose: true, auth: true, method: "POST", path: "/portal/paste", sensitive: true },
   async (req) => {
-    const text = (req.text || "").slice(0, MAX_PASTE);
+    const userId = currentUserId({ allowExtension: true });
+    const method: SyncMethod = getAuthData()?.kind === "extension" ? "extension" : "paste";
+    return ingestPortalText(userId, req.cardId, req.text, method);
+  }
+);
+
+/**
+ * Reads one portal page onto one card the user holds. The paste box, the
+ * browser extension and screenshots all land here, so they reconcile the
+ * same way: same parsers, same retirement of vanished offers, same guards.
+ */
+export async function ingestPortalText(
+  userId: string,
+  cardId: number,
+  rawText: string,
+  method: SyncMethod
+): Promise<PasteResponse> {
+  {
+    const req = { userId, cardId, text: typeof rawText === "string" ? rawText : "" };
+    const text = req.text.slice(0, MAX_PASTE);
     if (text.trim().length < 20) {
       throw APIError.invalidArgument("nothing to read in that paste");
     }
@@ -312,13 +335,13 @@ export const paste = api<PasteRequest, PasteResponse>(
         (user_id, card_id, issuer, kind, method, parser, offers_found, offers_written,
          offers_retired, benefits_found, benefits_written, status)
       VALUES
-        (${req.userId}, ${req.cardId}, ${issuer}, ${kind}, 'paste', ${parser},
+        (${req.userId}, ${req.cardId}, ${issuer}, ${kind}, ${method}, ${parser},
          ${offers.length}, ${writtenIds.length}, ${offersRetired}, ${benefits.length},
          ${benefitsWritten}, ${kind === "none" ? "unparsed" : "ok"})
     `;
 
     if (kind === "none") {
-      log.warn("portal paste unparsed", { userId: req.userId, cardId: req.cardId, chars: text.length });
+      log.warn("portal page unparsed", { method, cardId: req.cardId, chars: text.length });
     }
 
     const parts: string[] = [];
@@ -340,10 +363,9 @@ export const paste = api<PasteRequest, PasteResponse>(
       message,
     };
   }
-);
+}
 
 export interface StatusParams {
-  userId: Query<string>;
   cardId: Query<number>;
 }
 
@@ -367,11 +389,12 @@ export function portalUrlFor(issuer: string): string | undefined {
 }
 
 export const status = api<StatusParams, StatusResponse>(
-  { expose: true, method: "GET", path: "/portal/status" },
+  { expose: true, auth: true, method: "GET", path: "/portal/status" },
   async (params) => {
+    const userId = currentUserId({ allowExtension: true });
     const last = await cardsDB.queryRow<{ created_at: Date; kind: string }>`
       SELECT created_at, kind FROM portal_syncs
-      WHERE user_id = ${params.userId} AND card_id = ${params.cardId} AND status = 'ok'
+      WHERE user_id = ${userId} AND card_id = ${params.cardId} AND status = 'ok'
       ORDER BY created_at DESC LIMIT 1
     `;
 
@@ -379,7 +402,7 @@ export const status = api<StatusParams, StatusResponse>(
       SELECT COUNT(*)::int AS live,
              COUNT(*) FILTER (WHERE is_activated = FALSE)::int AS to_activate
       FROM merchant_offers
-      WHERE user_id = ${params.userId}
+      WHERE user_id = ${userId}
         AND card_id = ${params.cardId}
         AND is_used = FALSE
         AND disappeared_at IS NULL

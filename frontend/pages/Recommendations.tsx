@@ -111,7 +111,7 @@ export default function Recommendations() {
 
   const { data: offerData } = useQuery({
     queryKey: ['offers', user?.userId],
-    queryFn: () => backend.cards.getUserMerchantOffers({ userId: user!.userId }),
+    queryFn: () => backend.cards.getUserMerchantOffers(),
     enabled: wallet.mode === 'account',
     retry: 0,
   });
@@ -136,7 +136,7 @@ export default function Recommendations() {
           <p className="mx-auto mt-1.5 max-w-[34ch] text-[13px] leading-relaxed text-[#9B8FA6]">
             Insights track the credits, deadlines and offers on the cards you carry. Add your cards in Wallet first.
           </p>
-          <Link to="/cards" className="mt-5 inline-block rounded-full bg-[#E64BD4] px-5 py-2.5 text-[13.5px] font-bold text-black hover:bg-[#F06BDD]">
+          <Link to="/wallet" className="mt-5 inline-block rounded-full bg-[#E64BD4] px-5 py-2.5 text-[13.5px] font-bold text-black hover:bg-[#F06BDD]">
             Go to Wallet
           </Link>
         </div>

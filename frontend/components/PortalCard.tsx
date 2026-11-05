@@ -51,18 +51,18 @@ export default function PortalCard({ userId, cardId, cardName, issuer }: Props) 
 
   const { data: profile } = useQuery({
     queryKey: ['card-profile', userId, cardId],
-    queryFn: () => cardProfile(userId, cardId),
+    queryFn: () => cardProfile(cardId),
     retry: 0,
   });
 
   const { data: status } = useQuery({
     queryKey: ['portal-status', userId, cardId],
-    queryFn: () => portalStatus(userId, cardId),
+    queryFn: () => portalStatus(cardId),
     retry: 0,
   });
 
   const save = useMutation({
-    mutationFn: () => portalPaste(userId, cardId, text),
+    mutationFn: () => portalPaste(cardId, text),
     onSuccess: (result) => {
       toast({
         title: result.kind === 'none' ? 'Nothing to read in that' : `Updated ${cardName}`,

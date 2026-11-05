@@ -1,5 +1,6 @@
 import { api, Query } from "encore.dev/api";
 import { cardsDB } from "./db";
+import { currentUserId } from "../lib/session";
 
 /**
  * Everything about one card in one call.
@@ -10,7 +11,6 @@ import { cardsDB } from "./db";
  */
 
 export interface ProfileParams {
-  userId: Query<string>;
   cardId: Query<number>;
 }
 
@@ -92,10 +92,11 @@ function periodEnd(period: string, now: Date): Date {
 const dayMs = 86400000;
 
 export const profile = api<ProfileParams, CardProfileResponse>(
-  { expose: true, method: "GET", path: "/cards/profile" },
+  { expose: true, auth: true, method: "GET", path: "/cards/profile" },
   async (params) => {
     const now = new Date();
-    const { userId, cardId } = params;
+    const userId = currentUserId();
+    const { cardId } = params;
 
     const card = await cardsDB.queryRow<{
       id: number; name: string; issuer: string; network: string | null;

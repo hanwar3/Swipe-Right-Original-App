@@ -23,7 +23,9 @@ function Screens() {
       <Routes location={location}>
         {/* The counter screen is the app. Everything else supports it. */}
         <Route path="/" element={<Counter />} />
-        <Route path="/cards" element={<Cards />} />
+        <Route path="/wallet" element={<Cards />} />
+        {/* /cards is the catalogue API on the same origin; old links land on /wallet. */}
+        <Route path="/cards" element={<Navigate to="/wallet" replace />} />
         <Route path="/recommendations" element={<Recommendations />} />
         {/* Kept reachable by link; no longer a tab, Ask replaced it. */}
         <Route path="/ai-chat" element={<AIChat />} />

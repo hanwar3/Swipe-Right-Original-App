@@ -35,7 +35,7 @@ export default function OfferInboxView({ userId, cards }: OfferInboxProps) {
   async function load() {
     setError(null);
     try {
-      const [i, p] = await Promise.all([offerInbox(userId), pendingOffers(userId)]);
+      const [i, p] = await Promise.all([offerInbox(), pendingOffers()]);
       setInbox(i);
       setPending(p.offers);
     } catch {
@@ -59,7 +59,7 @@ export default function OfferInboxView({ userId, cards }: OfferInboxProps) {
   async function place(offerId: number, cardId: number) {
     setAssigning(offerId);
     try {
-      await attributeOffer(userId, offerId, cardId);
+      await attributeOffer(offerId, cardId);
       setPending((p) => p.filter((o) => o.id !== offerId));
     } catch {
       setError('Could not save that. Try again.');

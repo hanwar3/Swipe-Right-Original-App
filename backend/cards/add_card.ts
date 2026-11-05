@@ -1,5 +1,7 @@
 import { api, APIError } from "encore.dev/api";
 import { cardsDB } from "./db";
+import { currentUserId } from "../lib/session";
+import { rateLimit } from "../lib/ratelimit";
 import type { Card, CardCategory } from "./list";
 
 export interface AddCardRequest {
@@ -12,14 +14,18 @@ export interface AddCardResponse {
   isNew: boolean;
 }
 
-// Adds a card to the database or returns existing card with updated image.
+// Finds a card in the shared catalogue, or adds it at a flat 1% until its real
+// rates are known. Signed-in only and rate-limited, since every user sees the catalogue.
 export const addCard = api<AddCardRequest, AddCardResponse>(
-  { expose: true, method: "POST", path: "/cards/add" },
+  { expose: true, auth: true, method: "POST", path: "/cards/add" },
   async (req) => {
-    const cardName = req.name.trim();
+    const userId = currentUserId();
+    const cardName = String(req.name ?? "").replace(/[\u0000-\u001f\u007f]/g, "").replace(/\s+/g, " ").trim();
     if (!cardName) {
       throw APIError.invalidArgument("Card name is required");
     }
+    if (cardName.length > 80) throw APIError.invalidArgument("Card names are 80 characters or fewer");
+    rateLimit(`add-card:${userId}`, 20, 60 * 60_000, "That's a lot of new cards. Try again in a while.");
 
     // First, try to find existing card by exact name match
     let existingCard = await cardsDB.queryRow`

@@ -220,7 +220,6 @@ export default function SiriOverlay({ isOpen, onClose }: SiriOverlayProps) {
         setDetectedCategory(parsedCat);
         const recommendations = await backend.cards.recommend({
           category: parsedCat,
-          userId: user?.userId,
         });
 
         const cards = recommendations.portfolioRecommendations.length > 0

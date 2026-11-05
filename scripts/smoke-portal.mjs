@@ -109,10 +109,11 @@ const BASE = 'http://127.0.0.1:4000';
 const SAPPHIRE_RESERVE = 1;
 let failures = 0;
 
+let session = null;
 const call = async (method, path, body) => {
   const res = await fetch(BASE + path, {
     method,
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', ...(session ? { Authorization: `Bearer ${session}` } : {}) },
     body: body ? JSON.stringify(body) : undefined,
   });
   const text = await res.text();
@@ -130,25 +131,26 @@ const reg = await call('POST', '/auth/register', {
   firstName: 'Portal',
 });
 const userId = reg.json.user?.userId;
-check('register test user', !!userId, userId);
+session = reg.json.token;
+check('register test user', !!userId && !!session, userId);
 if (!userId) process.exit(1);
 
-await call('POST', `/cards/portfolio/${userId}/add`, { cardId: SAPPHIRE_RESERVE });
+await call('POST', '/cards/portfolio/add', { cardId: SAPPHIRE_RESERVE });
 
 // --- the offers page -------------------------------------------------------
-const offersPaste = await call('POST', '/portal/paste', { userId, cardId: SAPPHIRE_RESERVE, text: CHASE_OFFERS });
+const offersPaste = await call('POST', '/portal/paste', { cardId: SAPPHIRE_RESERVE, text: CHASE_OFFERS });
 check('paste the Chase offers page', offersPaste.status === 200 && offersPaste.json.offersWritten >= 15,
   `${offersPaste.status} kind=${offersPaste.json.kind} parser=${offersPaste.json.parser} written=${offersPaste.json.offersWritten} "${offersPaste.json.message}"`);
 
 // --- the benefit page ------------------------------------------------------
-const benefitPaste = await call('POST', '/portal/paste', { userId, cardId: SAPPHIRE_RESERVE, text: CHASE_BENEFIT });
+const benefitPaste = await call('POST', '/portal/paste', { cardId: SAPPHIRE_RESERVE, text: CHASE_BENEFIT });
 check('paste the $300 travel credit page', benefitPaste.status === 200 && benefitPaste.json.benefitsWritten === 1,
   `${benefitPaste.status} kind=${benefitPaste.json.kind} benefits=${benefitPaste.json.benefitsWritten} retired=${benefitPaste.json.offersRetired} "${benefitPaste.json.message}"`);
 
 check('a benefit page does not retire the offers', benefitPaste.json.offersRetired === 0, `retired=${benefitPaste.json.offersRetired}`);
 
 // --- what Insights will render --------------------------------------------
-const profile = await call('GET', `/cards/profile?userId=${userId}&cardId=${SAPPHIRE_RESERVE}`);
+const profile = await call('GET', `/cards/profile?cardId=${SAPPHIRE_RESERVE}`);
 const offers = profile.json.offers ?? [];
 const credits = (profile.json.benefits ?? []).filter((b) => b.fromPortal);
 const added = offers.filter((o) => o.isActivated);
@@ -160,27 +162,28 @@ check('the travel credit shows real usage', credits.length === 1 && credits[0].u
   credits.map((c) => `${c.name}: ${c.usedCents / 100}/${c.valueCents / 100} resets ${c.resetsOn} checked ${c.checkedAt?.slice(0, 10)}`).join(' | '));
 
 // --- status, for the "checked" line and the activate count ------------------
-const status = await call('GET', `/portal/status?userId=${userId}&cardId=${SAPPHIRE_RESERVE}`);
+const status = await call('GET', `/portal/status?cardId=${SAPPHIRE_RESERVE}`);
 check('status counts what still needs adding', status.status === 200 && status.json.offersToActivate >= 14,
   `${status.status} live=${status.json.liveOffers} toActivate=${status.json.offersToActivate} portal=${status.json.portalUrl ? 'linked' : 'none'}`);
 
 // --- a second sync retires what the portal stopped showing ------------------
 const shorter = CHASE_OFFERS.split('All offers')[0] + 'All offers\nFood Lion\n5% cash back\nExpiring soon\n';
-const resync = await call('POST', '/portal/paste', { userId, cardId: SAPPHIRE_RESERVE, text: shorter });
+const resync = await call('POST', '/portal/paste', { cardId: SAPPHIRE_RESERVE, text: shorter });
 check('a later sync retires offers the portal dropped', resync.json.offersRetired > 0,
   `written=${resync.json.offersWritten} retired=${resync.json.offersRetired}`);
 
-const after = await call('GET', `/cards/profile?userId=${userId}&cardId=${SAPPHIRE_RESERVE}`);
+const after = await call('GET', `/cards/profile?cardId=${SAPPHIRE_RESERVE}`);
 check('retired offers leave the card', (after.json.offers ?? []).length < offers.length,
   `${offers.length} before, ${(after.json.offers ?? []).length} after`);
 
 // --- pasting another card's page must not write here ------------------------
 const wrongCard = await call('POST', '/portal/paste', {
-  userId,
   cardId: SAPPHIRE_RESERVE,
   text: CHASE_OFFERS.replace('(...0771)', '(...9999)'),
 });
 check('a page for a different card is refused', wrongCard.json.kind === 'none' && !!wrongCard.json.cardMismatch,
   `"${wrongCard.json.message}"`);
 
+await call('POST', '/auth/account/delete', { password: 'Portal-Test-2026!' });
 console.log(`\n${failures === 0 ? 'ALL PASSED' : `${failures} FAILED`}  (user ${userId})`);
+process.exit(failures === 0 ? 0 : 1);

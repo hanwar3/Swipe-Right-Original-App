@@ -1,6 +1,8 @@
 import { api, APIError, Header } from "encore.dev/api";
 import { secret } from "encore.dev/config";
 import { cardsDB } from "../cards/db";
+import { currentUserId } from "../lib/session";
+import { safeEqual } from "../lib/crypto";
 import { generateText } from "../lib/gemini";
 import {
   detectIssuer,
@@ -136,7 +138,7 @@ export const ingest = api<InboundEmail, IngestResponse>(
     // 1. Only our mail provider may call this.
     let expected = "";
     try { expected = inboxSecret(); } catch { expected = ""; }
-    if (!expected || mail.secretHeader !== expected) {
+    if (!expected || !safeEqual(mail.secretHeader ?? "", expected)) {
       throw APIError.unauthenticated("bad inbox secret");
     }
 
@@ -316,19 +318,22 @@ export const ingest = api<InboundEmail, IngestResponse>(
  * The user answers once and we remember the last four, so the same card
  * places itself automatically from then on.
  */
-export const pendingOffers = api<{ userId: string }, {
+export interface PendingOffersResponse {
   offers: { id: number; merchantName: string; offerDescription: string;
             issuer?: string; lastFour?: string; endDate?: string }[];
-}>(
-  { expose: true, method: "GET", path: "/offers/pending" },
-  async (req) => {
+}
+
+export const pendingOffers = api(
+  { expose: true, auth: true, method: "GET", path: "/offers/pending" },
+  async (): Promise<PendingOffersResponse> => {
+    const userId = currentUserId();
     const rows = await cardsDB.queryAll<{
       id: number; merchant_name: string; offer_description: string;
       pending_issuer: string | null; pending_last_four: string | null; end_date: Date | null;
     }>`
       SELECT id, merchant_name, offer_description, pending_issuer, pending_last_four, end_date
       FROM merchant_offers
-      WHERE user_id = ${req.userId} AND card_id IS NULL AND is_used = FALSE
+      WHERE user_id = ${userId} AND card_id IS NULL AND is_used = FALSE
       ORDER BY created_at DESC
       LIMIT 50
     `;
@@ -347,13 +352,18 @@ export const pendingOffers = api<{ userId: string }, {
 );
 
 /** Place a held offer on a card, and learn the card's last four while we are at it. */
-export const attributeOffer = api<{ userId: string; offerId: number; cardId: number }, { ok: boolean }>(
-  { expose: true, method: "POST", path: "/offers/attribute" },
+export const attributeOffer = api<{ offerId: number; cardId: number }, { ok: boolean }>(
+  { expose: true, auth: true, method: "POST", path: "/offers/attribute" },
   async (req) => {
+    const userId = currentUserId();
+    const holds = await cardsDB.queryRow`
+      SELECT 1 AS ok FROM user_portfolios WHERE user_id = ${userId} AND card_id = ${req.cardId}
+    `;
+    if (!holds) throw APIError.notFound("That card is not in your wallet");
     const row = await cardsDB.queryRow<{ pending_last_four: string | null }>`
       UPDATE merchant_offers
       SET card_id = ${req.cardId}, pending_issuer = NULL, pending_last_four = NULL, updated_at = NOW()
-      WHERE id = ${req.offerId} AND user_id = ${req.userId} AND card_id IS NULL
+      WHERE id = ${req.offerId} AND user_id = ${userId} AND card_id IS NULL
       RETURNING pending_last_four
     `;
     if (!row) return { ok: false };
@@ -363,7 +373,7 @@ export const attributeOffer = api<{ userId: string; offerId: number; cardId: num
       await cardsDB.exec`
         UPDATE user_portfolios
         SET last_four = ${row.pending_last_four}
-        WHERE user_id = ${req.userId} AND card_id = ${req.cardId} AND last_four IS NULL
+        WHERE user_id = ${userId} AND card_id = ${req.cardId} AND last_four IS NULL
       `;
     }
     return { ok: true };

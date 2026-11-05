@@ -15,7 +15,7 @@ interface OfferMatchingProps {
  * which card an offer belongs to. Any one of these hints helps; together they
  * make it exact.
  */
-export default function OfferMatching({ userId, cardId }: OfferMatchingProps) {
+export default function OfferMatching({ cardId }: OfferMatchingProps) {
   const [lastFour, setLastFour] = useState('');
   const [cardEmail, setCardEmail] = useState('');
   const [address, setAddress] = useState<string | null>(null);
@@ -24,7 +24,6 @@ export default function OfferMatching({ userId, cardId }: OfferMatchingProps) {
   async function save(wantOwnAddress = false) {
     try {
       const r = await setCardIdentity({
-        userId,
         cardId,
         lastFour: lastFour || undefined,
         cardEmail: cardEmail || undefined,

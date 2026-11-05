@@ -1,7 +1,10 @@
-import { api } from "encore.dev/api";
+import { api, APIError } from "encore.dev/api";
+import { getAuthData } from "~encore/auth";
 import { secret } from "encore.dev/config";
 import { runDecision, normalizeCategory, type DecideResponse } from "../cards/decide";
 import { generateText } from "../lib/gemini";
+import { currentUserId } from "../lib/session";
+import { rateLimit } from "../lib/ratelimit";
 
 const geminiApiKey = secret("GeminiApiKey");
 
@@ -20,8 +23,6 @@ const geminiApiKey = secret("GeminiApiKey");
 
 export interface ChatRequest {
   message: string;
-  /** Without this the answer cannot be personal — it falls back to general advice. */
-  userId?: string;
   /** Purchase amount in cents. Unlocks the cashback-versus-expiring-credit math. */
   amountCents?: number;
   context?: string;
@@ -69,11 +70,18 @@ async function phrase(decision: DecideResponse, message: string): Promise<string
   );
 }
 
+// Public, so a signed-out visitor gets an honest "sign in" instead of an error.
+// Personal answers need a valid session; the user id comes from it, never the body.
 export const chat = api<ChatRequest, ChatResponse>(
   { expose: true, method: "POST", path: "/ai/chat" },
   async (req) => {
+    const auth = getAuthData();
+    const userId = auth?.kind === "session" ? auth.userID : undefined;
+    const message = typeof req.message === "string" ? req.message.trim().slice(0, 500) : "";
+    if (!message) throw APIError.invalidArgument("Ask about a purchase, a store or an offer");
+
     // No user means no portfolio, so there is nothing honest to recommend.
-    if (!req.userId) {
+    if (!userId) {
       return {
         response:
           "Sign in and add your cards, and I can tell you exactly which one to pull out. Right now I don't know what's in your wallet.",
@@ -81,8 +89,9 @@ export const chat = api<ChatRequest, ChatResponse>(
       };
     }
 
-    const decision = await runDecision(req.userId, req.message, req.amountCents);
-    const spoken = await phrase(decision, req.message);
+    rateLimit(`chat:${userId}`, 40, 5 * 60_000);
+    const decision = await runDecision(userId, message, req.amountCents);
+    const spoken = await phrase(decision, message);
 
     return {
       response: spoken || decision.spoken,
@@ -98,7 +107,6 @@ export const chat = api<ChatRequest, ChatResponse>(
  * that arrives now.
  */
 export interface AssistantRequest {
-  userId: string;
   query: string;
   amountCents?: number;
 }
@@ -109,12 +117,12 @@ export interface AssistantResponse {
 }
 
 export const assistantRecommend = api<AssistantRequest, AssistantResponse>(
-  { expose: true, method: "GET", path: "/ai/assistant/recommend" },
+  { expose: true, auth: true, method: "GET", path: "/ai/assistant/recommend" },
   async (req) => {
-    if (!req.userId || !req.query) {
-      return { response: "I need to know who you are and what you're buying." };
-    }
-    const decision = await runDecision(req.userId, req.query, req.amountCents);
+    const userId = currentUserId();
+    const query = typeof req.query === "string" ? req.query.trim().slice(0, 500) : "";
+    if (!query) return { response: "Tell me what you're buying." };
+    const decision = await runDecision(userId, query, req.amountCents);
     return { response: decision.spoken, decision };
   }
 );
@@ -122,5 +130,5 @@ export const assistantRecommend = api<AssistantRequest, AssistantResponse>(
 /** Exposed so the frontend can pre-resolve a spoken phrase to a category chip. */
 export const categoryOf = api<{ text: string }, { categoryKey: string }>(
   { expose: true, method: "GET", path: "/ai/category" },
-  async (req) => ({ categoryKey: normalizeCategory(req.text) })
+  async (req) => ({ categoryKey: normalizeCategory(String(req.text ?? "").slice(0, 200)) })
 );

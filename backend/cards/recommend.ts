@@ -1,5 +1,6 @@
 import { api } from "encore.dev/api";
 import { Query } from "encore.dev/api";
+import { getAuthData } from "~encore/auth";
 import { cardsDB } from "./db";
 import type { Card, CardCategory } from "./list";
 import type { UserCard } from "./portfolio";
@@ -7,7 +8,6 @@ import type { MerchantOffer } from "./merchant_offers";
 
 export interface RecommendCardsParams {
   category: Query<string>;
-  userId?: Query<string>;
 }
 
 export interface CardRecommendation {
@@ -31,7 +31,9 @@ export const recommend = api<RecommendCardsParams, RecommendCardsResponse>(
   { expose: true, method: "GET", path: "/cards/recommend" },
   async (params) => {
     const category = params.category.toLowerCase();
-    const userId = params.userId;
+    // Public endpoint: personalised only when a valid session is sent.
+    const auth = getAuthData();
+    const userId = auth?.kind === "session" ? auth.userID : undefined;
     
     const allRecommendations: CardRecommendation[] = [];
     const portfolioRecommendations: CardRecommendation[] = [];

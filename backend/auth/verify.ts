@@ -1,5 +1,7 @@
 import { api, APIError } from "encore.dev/api";
 import { authDB } from "./db";
+import { SESSION_REFRESH_AFTER_SECONDS, signSession, verifySession } from "./tokens";
+import { toUser } from "./user";
 import type { User } from "./register";
 
 export interface VerifyTokenRequest {
@@ -8,50 +10,29 @@ export interface VerifyTokenRequest {
 
 export interface VerifyTokenResponse {
   user: User;
+  /** A replacement token when the one sent is more than a day old. Store it. */
+  token?: string;
 }
 
-// Verifies JWT token and returns user information.
+const ENDED = "Your session has ended. Sign in again.";
+
+// Checks a session token's signature, expiry and revocation, and returns its user.
 export const verifyToken = api<VerifyTokenRequest, VerifyTokenResponse>(
-  { expose: true, method: "POST", path: "/auth/verify" },
-  async (req) => {
-    const { token } = req;
+  { expose: true, method: "POST", path: "/auth/verify", sensitive: true },
+  async ({ token }) => {
+    const claims = verifySession(token);
+    if (!claims) throw APIError.unauthenticated(ENDED);
 
-    try {
-      // Decode JWT token
-      const payload = JSON.parse(Buffer.from(token, 'base64').toString());
-      
-      // Check if token is expired
-      if (Date.now() > payload.exp) {
-        throw APIError.unauthenticated("Token has expired");
-      }
+    const row = await authDB.queryRow`
+      SELECT user_id, email, first_name, last_name, profile_picture_url, auth_provider,
+             email_verified, created_at, last_login, session_version
+      FROM users WHERE user_id = ${claims.sub}::uuid
+    `;
+    if (!row || row.session_version !== claims.sv) throw APIError.unauthenticated(ENDED);
 
-      // Find user
-      const userRow = await authDB.queryRow`
-        SELECT user_id, email, first_name, last_name, profile_picture_url, 
-               auth_provider, email_verified, created_at, last_login
-        FROM users 
-        WHERE user_id = ${payload.userId}
-      `;
-
-      if (!userRow) {
-        throw APIError.unauthenticated("Invalid token");
-      }
-
-      const user: User = {
-        userId: userRow.user_id,
-        email: userRow.email,
-        firstName: userRow.first_name,
-        lastName: userRow.last_name,
-        profilePictureUrl: userRow.profile_picture_url,
-        authProvider: userRow.auth_provider,
-        emailVerified: userRow.email_verified,
-        createdAt: userRow.created_at.toISOString(),
-        lastLogin: userRow.last_login?.toISOString(),
-      };
-
-      return { user };
-    } catch (error) {
-      throw APIError.unauthenticated("Invalid token");
-    }
+    // Sliding sessions: someone who opens the app weekly stays signed in.
+    const age = Date.now() / 1000 - claims.iat;
+    const fresh = age > SESSION_REFRESH_AFTER_SECONDS ? signSession(claims.sub, row.session_version) : undefined;
+    return { user: toUser(row), token: fresh };
   }
 );

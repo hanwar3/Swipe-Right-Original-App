@@ -1,5 +1,6 @@
 import { api, APIError } from "encore.dev/api";
 import { cardsDB } from "./db";
+import { currentUserId } from "../lib/session";
 
 export interface MerchantOffer {
   id: number;
@@ -20,31 +21,15 @@ export interface MerchantOffer {
   maxUsage: number;
 }
 
-export interface SyncMerchantOffersRequest {
-  userId: string;
-  offers: {
-    cardId: number;
-    merchantName: string;
-    offerDescription: string;
-    cashbackRate?: number;
-    cashbackAmount?: number;
-    minimumSpend?: number;
-    maximumCashback?: number;
-    offerType?: string;
-    startDate?: string;
-    endDate?: string;
-    isActivated?: boolean;
-  }[];
-}
-
 export interface UserMerchantOffersResponse {
   offers: MerchantOffer[];
 }
 
 // Retrieves user's merchant offers.
-export const getUserMerchantOffers = api<{ userId: string }, UserMerchantOffersResponse>(
-  { expose: true, method: "GET", path: "/cards/merchant-offers/:userId" },
-  async (params) => {
+export const getUserMerchantOffers = api(
+  { expose: true, auth: true, method: "GET", path: "/cards/merchant-offers" },
+  async (): Promise<UserMerchantOffersResponse> => {
+    const userId = currentUserId();
     const offers: MerchantOffer[] = [];
     
     const offerRows = await cardsDB.queryAll`
@@ -55,7 +40,7 @@ export const getUserMerchantOffers = api<{ userId: string }, UserMerchantOffersR
              c.name as card_name
       FROM merchant_offers mo
       JOIN cards c ON mo.card_id = c.id
-      WHERE mo.user_id = ${params.userId}
+      WHERE mo.user_id = ${userId}
         AND mo.disappeared_at IS NULL
         AND (mo.end_date IS NULL OR mo.end_date >= CURRENT_DATE)
         AND mo.is_used = FALSE
@@ -87,77 +72,12 @@ export const getUserMerchantOffers = api<{ userId: string }, UserMerchantOffersR
   }
 );
 
-// Syncs merchant offers from browser extension.
-export const syncMerchantOffers = api<SyncMerchantOffersRequest, { synced: number; updated: number }>(
-  { expose: true, method: "POST", path: "/cards/merchant-offers/sync" },
-  async (req) => {
-    const { userId, offers } = req;
-    
-    let syncedCount = 0;
-    let updatedCount = 0;
-    
-    // Store sync data for audit
-    await cardsDB.exec`
-      INSERT INTO merchant_offer_sync (user_id, sync_data)
-      VALUES (${userId}, ${JSON.stringify(offers)})
-    `;
-    
-    for (const offer of offers) {
-      // Check if offer already exists
-      const existingOffer = await cardsDB.queryRow`
-        SELECT id, is_activated, is_used FROM merchant_offers
-        WHERE user_id = ${userId} 
-          AND card_id = ${offer.cardId}
-          AND merchant_name = ${offer.merchantName}
-          AND offer_description = ${offer.offerDescription}
-      `;
-      
-      if (existingOffer) {
-        // Update existing offer
-        await cardsDB.exec`
-          UPDATE merchant_offers
-          SET cashback_rate = COALESCE(${offer.cashbackRate}, cashback_rate),
-              cashback_amount = COALESCE(${offer.cashbackAmount}, cashback_amount),
-              minimum_spend = COALESCE(${offer.minimumSpend}, minimum_spend),
-              maximum_cashback = COALESCE(${offer.maximumCashback}, maximum_cashback),
-              offer_type = COALESCE(${offer.offerType}, offer_type),
-              start_date = COALESCE(${offer.startDate ? new Date(offer.startDate) : null}, start_date),
-              end_date = COALESCE(${offer.endDate ? new Date(offer.endDate) : null}, end_date),
-              is_activated = COALESCE(${offer.isActivated}, is_activated),
-              updated_at = NOW()
-          WHERE id = ${existingOffer.id}
-        `;
-        updatedCount++;
-      } else {
-        // Insert new offer
-        await cardsDB.exec`
-          INSERT INTO merchant_offers (
-            user_id, card_id, merchant_name, offer_description,
-            cashback_rate, cashback_amount, minimum_spend, maximum_cashback,
-            offer_type, start_date, end_date, is_activated
-          ) VALUES (
-            ${userId}, ${offer.cardId}, ${offer.merchantName}, ${offer.offerDescription},
-            ${offer.cashbackRate || null}, ${offer.cashbackAmount || null}, 
-            ${offer.minimumSpend || null}, ${offer.maximumCashback || null},
-            ${offer.offerType || 'cashback'}, 
-            ${offer.startDate ? new Date(offer.startDate) : null},
-            ${offer.endDate ? new Date(offer.endDate) : null},
-            ${offer.isActivated || false}
-          )
-        `;
-        syncedCount++;
-      }
-    }
-    
-    return { synced: syncedCount, updated: updatedCount };
-  }
-);
-
 // Activates a merchant offer.
-export const activateMerchantOffer = api<{ userId: string; offerId: number }, { success: boolean }>(
-  { expose: true, method: "POST", path: "/cards/merchant-offers/:userId/:offerId/activate" },
-  async (params) => {
-    const { userId, offerId } = params;
+// Records that the user added the offer in their issuer's portal.
+export const activateMerchantOffer = api<{ offerId: number }, { success: boolean }>(
+  { expose: true, auth: true, method: "POST", path: "/cards/merchant-offers/:offerId/activate" },
+  async ({ offerId }) => {
+    const userId = currentUserId();
     
     const result = await cardsDB.queryRow`
       UPDATE merchant_offers
@@ -175,10 +95,10 @@ export const activateMerchantOffer = api<{ userId: string; offerId: number }, { 
 );
 
 // Marks a merchant offer as used.
-export const markOfferAsUsed = api<{ userId: string; offerId: number }, { success: boolean }>(
-  { expose: true, method: "POST", path: "/cards/merchant-offers/:userId/:offerId/use" },
-  async (params) => {
-    const { userId, offerId } = params;
+export const markOfferAsUsed = api<{ offerId: number }, { success: boolean }>(
+  { expose: true, auth: true, method: "POST", path: "/cards/merchant-offers/:offerId/use" },
+  async ({ offerId }) => {
+    const userId = currentUserId();
     
     const result = await cardsDB.queryRow`
       UPDATE merchant_offers
@@ -196,10 +116,10 @@ export const markOfferAsUsed = api<{ userId: string; offerId: number }, { succes
 );
 
 // Gets relevant merchant offers for a category.
-export const getRelevantOffers = api<{ userId: string; category: string }, UserMerchantOffersResponse>(
-  { expose: true, method: "GET", path: "/cards/merchant-offers/:userId/category/:category" },
-  async (params) => {
-    const { userId, category } = params;
+export const getRelevantOffers = api<{ category: string }, UserMerchantOffersResponse>(
+  { expose: true, auth: true, method: "GET", path: "/cards/merchant-offers/category/:category" },
+  async ({ category }) => {
+    const userId = currentUserId();
     const offers: MerchantOffer[] = [];
     
     const offerRows = await cardsDB.queryAll`

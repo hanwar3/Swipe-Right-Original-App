@@ -105,7 +105,7 @@ export default function Counter() {
     }
     if (owned.mode === 'device') return localDecide(owned.cards, question);
     if (!user) return null;
-    return decide(user.userId, question);
+    return decide(question);
   }
 
   async function ask(text: string) {
@@ -184,7 +184,7 @@ export default function Counter() {
 
   function open(card: StackCard) {
     if (isTemplate(card)) {
-      navigate('/cards');
+      navigate('/wallet');
       return;
     }
     navigate(`/recommendations?card=${card.cardId}`);
@@ -294,7 +294,7 @@ export default function Counter() {
               </p>
             </div>
             <Link
-              to="/cards"
+              to="/wallet"
               className="shrink-0 rounded-full bg-[#E64BD4] px-4 py-2 text-[13px] font-bold text-black hover:bg-[#F06BDD]"
             >
               Add cards

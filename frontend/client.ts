@@ -5,6 +5,8 @@
 /* jshint ignore:start */
 /*jslint-disable*/
 import type { CookieWithOptions } from "encore.dev/api";
+import { getSessionToken, notifySessionEnded } from "./lib/session";
+import { API_BASE } from "./lib/api";
 
 /**
  * BaseURL is the base URL for calling the Encore application's API.
@@ -110,7 +112,6 @@ export namespace ai {
             // Convert our params into the objects we need for the request
             const query = makeRecord<string, string | string[]>({
                 query:  params.query,
-                userId: params.userId,
             })
 
             // Now make the actual call to the API
@@ -139,7 +140,6 @@ import {
     forgotPassword as api_auth_reset_password_forgotPassword,
     resetPassword as api_auth_reset_password_resetPassword
 } from "~backend/auth/reset_password";
-import { getAllUsers as api_auth_users_getAllUsers } from "~backend/auth/users";
 import { verifyToken as api_auth_verify_verifyToken } from "~backend/auth/verify";
 
 export namespace auth {
@@ -150,7 +150,6 @@ export namespace auth {
         constructor(baseClient: BaseClient) {
             this.baseClient = baseClient
             this.forgotPassword = this.forgotPassword.bind(this)
-            this.getAllUsers = this.getAllUsers.bind(this)
             this.login = this.login.bind(this)
             this.oauth = this.oauth.bind(this)
             this.register = this.register.bind(this)
@@ -167,14 +166,6 @@ export namespace auth {
             return JSON.parse(await resp.text(), dateReviver) as ResponseType<typeof api_auth_reset_password_forgotPassword>
         }
 
-        /**
-         * Retrieves all registered users. Useful for long-term administration and management.
-         */
-        public async getAllUsers(): Promise<ResponseType<typeof api_auth_users_getAllUsers>> {
-            // Now make the actual call to the API
-            const resp = await this.baseClient.callTypedAPI(`/auth/users`, {method: "GET", body: undefined})
-            return JSON.parse(await resp.text(), dateReviver) as ResponseType<typeof api_auth_users_getAllUsers>
-        }
 
         /**
          * Authenticates a user with email and password.
@@ -236,8 +227,7 @@ import {
     activateMerchantOffer as api_cards_merchant_offers_activateMerchantOffer,
     getRelevantOffers as api_cards_merchant_offers_getRelevantOffers,
     getUserMerchantOffers as api_cards_merchant_offers_getUserMerchantOffers,
-    markOfferAsUsed as api_cards_merchant_offers_markOfferAsUsed,
-    syncMerchantOffers as api_cards_merchant_offers_syncMerchantOffers
+    markOfferAsUsed as api_cards_merchant_offers_markOfferAsUsed
 } from "~backend/cards/merchant_offers";
 import {
     addToPortfolio as api_cards_portfolio_addToPortfolio,
@@ -268,16 +258,14 @@ export namespace cards {
             this.recommend = this.recommend.bind(this)
             this.removeFromPortfolio = this.removeFromPortfolio.bind(this)
             this.search = this.search.bind(this)
-            this.syncMerchantOffers = this.syncMerchantOffers.bind(this)
             this.updatePortfolioCard = this.updatePortfolioCard.bind(this)
         }
 
         /**
          * Activates a merchant offer.
          */
-        public async activateMerchantOffer(params: { userId: string, offerId: number }): Promise<ResponseType<typeof api_cards_merchant_offers_activateMerchantOffer>> {
-            // Now make the actual call to the API
-            const resp = await this.baseClient.callTypedAPI(`/cards/merchant-offers/${encodeURIComponent(params.userId)}/${encodeURIComponent(params.offerId)}/activate`, {method: "POST", body: undefined})
+        public async activateMerchantOffer(params: { offerId: number }): Promise<ResponseType<typeof api_cards_merchant_offers_activateMerchantOffer>> {
+            const resp = await this.baseClient.callTypedAPI(`/cards/merchant-offers/${encodeURIComponent(params.offerId)}/activate`, {method: "POST", body: undefined})
             return JSON.parse(await resp.text(), dateReviver) as ResponseType<typeof api_cards_merchant_offers_activateMerchantOffer>
         }
 
@@ -294,15 +282,12 @@ export namespace cards {
          * Adds a card to user's portfolio.
          */
         public async addToPortfolio(params: RequestType<typeof api_cards_portfolio_addToPortfolio>): Promise<ResponseType<typeof api_cards_portfolio_addToPortfolio>> {
-            // Construct the body with only the fields which we want encoded within the body (excluding query string or header fields)
             const body: Record<string, any> = {
                 cardId:      params.cardId,
                 creditLimit: params.creditLimit,
                 nickname:    params.nickname,
             }
-
-            // Now make the actual call to the API
-            const resp = await this.baseClient.callTypedAPI(`/cards/portfolio/${encodeURIComponent(params.userId)}/add`, {method: "POST", body: JSON.stringify(body)})
+            const resp = await this.baseClient.callTypedAPI(`/cards/portfolio/add`, {method: "POST", body: JSON.stringify(body)})
             return JSON.parse(await resp.text(), dateReviver) as ResponseType<typeof api_cards_portfolio_addToPortfolio>
         }
 
@@ -339,27 +324,24 @@ export namespace cards {
         /**
          * Gets relevant merchant offers for a category.
          */
-        public async getRelevantOffers(params: { userId: string, category: string }): Promise<ResponseType<typeof api_cards_merchant_offers_getRelevantOffers>> {
-            // Now make the actual call to the API
-            const resp = await this.baseClient.callTypedAPI(`/cards/merchant-offers/${encodeURIComponent(params.userId)}/category/${encodeURIComponent(params.category)}`, {method: "GET", body: undefined})
+        public async getRelevantOffers(params: { category: string }): Promise<ResponseType<typeof api_cards_merchant_offers_getRelevantOffers>> {
+            const resp = await this.baseClient.callTypedAPI(`/cards/merchant-offers/category/${encodeURIComponent(params.category)}`, {method: "GET", body: undefined})
             return JSON.parse(await resp.text(), dateReviver) as ResponseType<typeof api_cards_merchant_offers_getRelevantOffers>
         }
 
         /**
          * Retrieves user's merchant offers.
          */
-        public async getUserMerchantOffers(params: { userId: string }): Promise<ResponseType<typeof api_cards_merchant_offers_getUserMerchantOffers>> {
-            // Now make the actual call to the API
-            const resp = await this.baseClient.callTypedAPI(`/cards/merchant-offers/${encodeURIComponent(params.userId)}`, {method: "GET", body: undefined})
+        public async getUserMerchantOffers(): Promise<ResponseType<typeof api_cards_merchant_offers_getUserMerchantOffers>> {
+            const resp = await this.baseClient.callTypedAPI(`/cards/merchant-offers`, {method: "GET", body: undefined})
             return JSON.parse(await resp.text(), dateReviver) as ResponseType<typeof api_cards_merchant_offers_getUserMerchantOffers>
         }
 
         /**
          * Retrieves user's card portfolio.
          */
-        public async getUserPortfolio(params: { userId: string }): Promise<ResponseType<typeof api_cards_portfolio_getUserPortfolio>> {
-            // Now make the actual call to the API
-            const resp = await this.baseClient.callTypedAPI(`/cards/portfolio/${encodeURIComponent(params.userId)}`, {method: "GET", body: undefined})
+        public async getUserPortfolio(): Promise<ResponseType<typeof api_cards_portfolio_getUserPortfolio>> {
+            const resp = await this.baseClient.callTypedAPI(`/cards/portfolio`, {method: "GET", body: undefined})
             return JSON.parse(await resp.text(), dateReviver) as ResponseType<typeof api_cards_portfolio_getUserPortfolio>
         }
 
@@ -375,9 +357,8 @@ export namespace cards {
         /**
          * Marks a merchant offer as used.
          */
-        public async markOfferAsUsed(params: { userId: string, offerId: number }): Promise<ResponseType<typeof api_cards_merchant_offers_markOfferAsUsed>> {
-            // Now make the actual call to the API
-            const resp = await this.baseClient.callTypedAPI(`/cards/merchant-offers/${encodeURIComponent(params.userId)}/${encodeURIComponent(params.offerId)}/use`, {method: "POST", body: undefined})
+        public async markOfferAsUsed(params: { offerId: number }): Promise<ResponseType<typeof api_cards_merchant_offers_markOfferAsUsed>> {
+            const resp = await this.baseClient.callTypedAPI(`/cards/merchant-offers/${encodeURIComponent(params.offerId)}/use`, {method: "POST", body: undefined})
             return JSON.parse(await resp.text(), dateReviver) as ResponseType<typeof api_cards_merchant_offers_markOfferAsUsed>
         }
 
@@ -388,7 +369,6 @@ export namespace cards {
             // Convert our params into the objects we need for the request
             const query = makeRecord<string, string | string[]>({
                 category: params.category,
-                userId:   params.userId,
             })
 
             // Now make the actual call to the API
@@ -399,9 +379,8 @@ export namespace cards {
         /**
          * Removes a card from user's portfolio.
          */
-        public async removeFromPortfolio(params: { userId: string, portfolioId: number }): Promise<ResponseType<typeof api_cards_portfolio_removeFromPortfolio>> {
-            // Now make the actual call to the API
-            const resp = await this.baseClient.callTypedAPI(`/cards/portfolio/${encodeURIComponent(params.userId)}/${encodeURIComponent(params.portfolioId)}`, {method: "DELETE", body: undefined})
+        public async removeFromPortfolio(params: { portfolioId: number }): Promise<ResponseType<typeof api_cards_portfolio_removeFromPortfolio>> {
+            const resp = await this.baseClient.callTypedAPI(`/cards/portfolio/${encodeURIComponent(params.portfolioId)}`, {method: "DELETE", body: undefined})
             return JSON.parse(await resp.text(), dateReviver) as ResponseType<typeof api_cards_portfolio_removeFromPortfolio>
         }
 
@@ -419,30 +398,12 @@ export namespace cards {
             return JSON.parse(await resp.text(), dateReviver) as ResponseType<typeof api_cards_search_search>
         }
 
-        /**
-         * Syncs merchant offers from browser extension.
-         */
-        public async syncMerchantOffers(params: RequestType<typeof api_cards_merchant_offers_syncMerchantOffers>): Promise<ResponseType<typeof api_cards_merchant_offers_syncMerchantOffers>> {
-            // Now make the actual call to the API
-            const resp = await this.baseClient.callTypedAPI(`/cards/merchant-offers/sync`, {method: "POST", body: JSON.stringify(params)})
-            return JSON.parse(await resp.text(), dateReviver) as ResponseType<typeof api_cards_merchant_offers_syncMerchantOffers>
-        }
 
         /**
          * Updates a card in user's portfolio.
          */
         public async updatePortfolioCard(params: RequestType<typeof api_cards_portfolio_updatePortfolioCard>): Promise<ResponseType<typeof api_cards_portfolio_updatePortfolioCard>> {
-            // Construct the body with only the fields which we want encoded within the body (excluding query string or header fields)
-            const body: Record<string, any> = {
-                creditLimit:    params.creditLimit,
-                currentBalance: params.currentBalance,
-                isActive:       params.isActive,
-                nickname:       params.nickname,
-                portfolioId:    params.portfolioId,
-            }
-
-            // Now make the actual call to the API
-            const resp = await this.baseClient.callTypedAPI(`/cards/portfolio/${encodeURIComponent(params.userId)}/update`, {method: "PUT", body: JSON.stringify(body)})
+            const resp = await this.baseClient.callTypedAPI(`/cards/portfolio/update`, {method: "PUT", body: JSON.stringify(params)})
             return JSON.parse(await resp.text(), dateReviver) as ResponseType<typeof api_cards_portfolio_updatePortfolioCard>
         }
     }
@@ -735,7 +696,8 @@ class BaseClient {
     }
 
     async getAuthData(): Promise<CallParameters | undefined> {
-        return undefined;
+        const token = getSessionToken();
+        return token ? { headers: { Authorization: `Bearer ${token}` } } : undefined;
     }
 
     // createStreamInOut sets up a stream to a streaming API endpoint.
@@ -839,6 +801,7 @@ class BaseClient {
 
         // handle any error responses
         if (!response.ok) {
+            if (response.status === 401) notifySessionEnded()
             // try and get the error message from the response body
             let body: APIErrorResponse = { code: ErrCode.Unknown, message: `request failed: status ${response.status}` }
 
@@ -1141,4 +1104,4 @@ export enum ErrCode {
     Unauthenticated = "unauthenticated",
 }
 
-export default new Client(import.meta.env.VITE_CLIENT_TARGET, { requestInit: { credentials: "include" } });
+export default new Client(API_BASE, { requestInit: { credentials: "omit" } });

@@ -1,14 +1,25 @@
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import React, { createContext, useCallback, useContext, useEffect, useState, ReactNode } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import backend from '~backend/client';
 import type { User } from '~backend/auth/register';
+import {
+  clearSessionToken,
+  getSessionToken,
+  onSessionEnded,
+  setSessionToken,
+} from '../lib/session';
+import { deleteAccount as deleteAccountCall, logoutEverywhere as logoutEverywhereCall } from '../lib/engine';
 
 interface AuthContextType {
   user: User | null;
   isLoading: boolean;
   login: (email: string, password: string) => Promise<void>;
   register: (email: string, password: string, firstName?: string, lastName?: string) => Promise<void>;
-  loginWithOAuth: (provider: 'google' | 'apple', data: any) => Promise<void>;
   logout: () => void;
+  /** Signs this account out on every device, this one included. */
+  logoutEverywhere: () => Promise<void>;
+  /** Deletes the account and everything stored for it. */
+  deleteAccount: (password: string) => Promise<void>;
   forgotPassword: (email: string) => Promise<void>;
   resetPassword: (token: string, newPassword: string) => Promise<void>;
 }
@@ -23,103 +34,112 @@ export function useAuth() {
   return context;
 }
 
-interface AuthProviderProps {
-  children: ReactNode;
+function messageOf(error: unknown, fallback: string): string {
+  const m = (error as { message?: unknown })?.message;
+  return typeof m === 'string' && m ? m : fallback;
 }
 
-export function AuthProvider({ children }: AuthProviderProps) {
+export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const queryClient = useQueryClient();
+
+  // Signing out, or switching accounts, must never leave the last person's
+  // cards and offers in the query cache.
+  const signOutLocally = useCallback(() => {
+    clearSessionToken();
+    setUser(null);
+    queryClient.clear();
+  }, [queryClient]);
 
   useEffect(() => {
-    // Check for existing token on app load
-    const token = localStorage.getItem('auth_token');
-    if (token) {
-      verifyToken(token);
-    } else {
+    const token = getSessionToken();
+    if (!token) {
       setIsLoading(false);
+      return;
     }
-  }, []);
+    backend.auth
+      .verifyToken({ token })
+      .then((res) => {
+        // Sliding session: the backend hands back a fresh token once a day.
+        if (res.token) setSessionToken(res.token);
+        setUser(res.user);
+      })
+      .catch(() => signOutLocally())
+      .finally(() => setIsLoading(false));
+  }, [signOutLocally]);
 
-  const verifyToken = async (token: string) => {
-    try {
-      const response = await backend.auth.verifyToken({ token });
-      setUser(response.user);
-      localStorage.setItem('auth_token', token);
-    } catch (error) {
-      localStorage.removeItem('auth_token');
-      setUser(null);
-    } finally {
-      setIsLoading(false);
-    }
-  };
+  // Any request answered 401 (revoked or expired) signs the UI out.
+  useEffect(() => onSessionEnded(() => {
+    setUser(null);
+    queryClient.clear();
+  }), [queryClient]);
 
   const login = async (email: string, password: string) => {
     try {
       const response = await backend.auth.login({ email, password });
+      queryClient.clear();
+      setSessionToken(response.token);
       setUser(response.user);
-      localStorage.setItem('auth_token', response.token);
-    } catch (error: any) {
-      throw new Error(error.message || 'Login failed');
+    } catch (error) {
+      throw new Error(messageOf(error, 'Sign in failed'));
     }
   };
 
   const register = async (email: string, password: string, firstName?: string, lastName?: string) => {
     try {
       const response = await backend.auth.register({ email, password, firstName, lastName });
+      queryClient.clear();
+      setSessionToken(response.token);
       setUser(response.user);
-      localStorage.setItem('auth_token', response.token);
-    } catch (error: any) {
-      throw new Error(error.message || 'Registration failed');
+    } catch (error) {
+      throw new Error(messageOf(error, 'Could not create the account'));
     }
   };
 
-  const loginWithOAuth = async (provider: 'google' | 'apple', data: any) => {
+  const logout = () => signOutLocally();
+
+  const logoutEverywhere = async () => {
     try {
-      const response = await backend.auth.oauth({
-        provider,
-        accessToken: data.accessToken,
-        email: data.email,
-        providerId: data.id,
-        firstName: data.firstName,
-        lastName: data.lastName,
-        profilePictureUrl: data.profilePictureUrl,
-      });
-      setUser(response.user);
-      localStorage.setItem('auth_token', response.token);
-    } catch (error: any) {
-      throw new Error(error.message || 'OAuth login failed');
+      await logoutEverywhereCall();
+    } finally {
+      signOutLocally();
     }
   };
 
-  const logout = () => {
-    setUser(null);
-    localStorage.removeItem('auth_token');
+  const deleteAccount = async (password: string) => {
+    try {
+      await deleteAccountCall(password);
+    } catch (error) {
+      throw new Error(messageOf(error, 'Could not delete the account'));
+    }
+    signOutLocally();
   };
 
   const forgotPassword = async (email: string) => {
     try {
       await backend.auth.forgotPassword({ email });
-    } catch (error: any) {
-      throw new Error(error.message || 'Failed to send reset email');
+    } catch (error) {
+      throw new Error(messageOf(error, 'Failed to send reset email'));
     }
   };
 
   const resetPassword = async (token: string, newPassword: string) => {
     try {
       await backend.auth.resetPassword({ token, newPassword });
-    } catch (error: any) {
-      throw new Error(error.message || 'Failed to reset password');
+    } catch (error) {
+      throw new Error(messageOf(error, 'Failed to reset password'));
     }
   };
 
-  const value = {
+  const value: AuthContextType = {
     user,
     isLoading,
     login,
     register,
-    loginWithOAuth,
     logout,
+    logoutEverywhere,
+    deleteAccount,
     forgotPassword,
     resetPassword,
   };

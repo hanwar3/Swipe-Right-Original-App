@@ -89,7 +89,7 @@ export function useWallet() {
 
   const { data: server, isLoading: serverLoading } = useQuery({
     queryKey: ['portfolio', user?.userId],
-    queryFn: () => withTimeout(backend.cards.getUserPortfolio({ userId: user!.userId })),
+    queryFn: () => withTimeout(backend.cards.getUserPortfolio()),
     enabled: mode === 'account',
     retry: 0,
   });
@@ -120,7 +120,7 @@ export function useWallet() {
     }
     setBusy(card.id);
     try {
-      await backend.cards.addToPortfolio({ userId: user!.userId, cardId: card.id });
+      await backend.cards.addToPortfolio({ cardId: card.id });
       await queryClient.invalidateQueries({ queryKey: ['portfolio', user!.userId] });
       return true;
     } catch {
@@ -140,7 +140,7 @@ export function useWallet() {
     if (!row?.portfolioId) return false;
     setBusy(cardId);
     try {
-      await backend.cards.removeFromPortfolio({ userId: user!.userId, portfolioId: row.portfolioId });
+      await backend.cards.removeFromPortfolio({ portfolioId: row.portfolioId });
       await queryClient.invalidateQueries({ queryKey: ['portfolio', user!.userId] });
       return true;
     } catch {
