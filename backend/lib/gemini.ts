@@ -20,9 +20,12 @@ export interface GenerateOptions {
   thinkingLevel: "minimal" | "low";
 }
 
+/** Text, or an image sent inline (base64) for the model to read. */
+export type GeminiPart = { text: string } | { inline_data: { mime_type: string; data: string } };
+
 export async function generateText(
   apiKey: string,
-  parts: { text: string }[],
+  parts: GeminiPart[],
   opts: GenerateOptions
 ): Promise<string | null> {
   try {
