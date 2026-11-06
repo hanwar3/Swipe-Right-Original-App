@@ -79,6 +79,26 @@ checks need `OFFER_INBOX_SECRET` set to the environment's value in the shell.
   cardholders will see, e.g. `"Now $15 a month (was $5)."`. Crowd updates
   happen on their own once 3 cardholders' portals agree.
 
+## How it handles a crowd
+
+- **Stateless services.** Encore Cloud adds instances as traffic grows. No
+  instance holds anything another needs: sessions are signed tokens checked
+  against Postgres, so any instance can answer any request.
+- **Hot public data from memory.** The card list and the credit catalogue are
+  served from each instance's memory for a minute (about two database queries
+  a minute per instance, instead of 100+ for every app open). Editorial and
+  crowd updates clear that copy at once.
+- **Crowd hints** come from a per-issuer aggregate cached for 5 minutes, not a
+  scan of every user's offers per request.
+- **Bounded inputs.** Page size capped at 50, query lengths capped, per-IP
+  limits on public browsing and search, per-user ceilings on the engine and
+  card profile, per-user limits on model calls (chat, screenshots), and
+  Postgres-backed throttles on login, signup, reset, pairing and deletion.
+- **Slow work off the request path.** Account erasure runs through Pub/Sub; a
+  daily job enforces retention; auth cleanup runs every 6 hours.
+- The in-process caches and cost limits are per instance. A shared store
+  (Redis) would make them global; not needed at launch.
+
 ## Security model, in one place
 
 - Sessions: HS256-signed tokens (7 days, refreshed daily while in use),
