@@ -2,6 +2,7 @@ import { api, APIError, Query } from "encore.dev/api";
 import { secret } from "encore.dev/config";
 import { getAuthData } from "~encore/auth";
 import { cardsDB } from "../cards/db";
+import { crowdMerchants } from "../cards/offer_crowd";
 import { currentUserId } from "../lib/session";
 import { rateLimit } from "../lib/ratelimit";
 import { generateText } from "../lib/gemini";
@@ -229,8 +230,6 @@ export const screenshot = api<ScreenshotRequest, PasteResponse>(
   }
 );
 
-/** Fewer cardholders than this and a merchant is never named, so nobody's offers can be singled out. */
-const K_ANON = 5;
 
 export interface OfferHint {
   merchantName: string;
@@ -251,21 +250,9 @@ export const hints = api<{ cardId: Query<number> }, { issuer?: string; hints: Of
     `;
     if (!card) throw APIError.notFound("that card is not in your wallet");
 
-    const rows = await cardsDB.queryAll<{ merchant: string; holders: number }>`
-      SELECT MIN(mo.merchant_name) AS merchant, COUNT(DISTINCT mo.user_id)::int AS holders
-      FROM merchant_offers mo
-      JOIN cards c ON c.id = mo.card_id
-      WHERE c.issuer = ${card.issuer}
-        AND mo.source IN ('portal', 'email')
-        AND mo.disappeared_at IS NULL
-        AND mo.is_used = FALSE
-        AND (mo.end_date IS NULL OR mo.end_date >= CURRENT_DATE)
-        AND mo.user_id <> ${userId}
-      GROUP BY LOWER(mo.merchant_name)
-      HAVING COUNT(DISTINCT mo.user_id) >= ${K_ANON}
-      ORDER BY holders DESC
-      LIMIT 20
-    `;
+    // Merchants this user already has are dropped below, so every hint shown
+    // is counted entirely from other people's offers.
+    const rows = await crowdMerchants(card.issuer);
     const mine = await cardsDB.queryAll<{ m: string }>`
       SELECT DISTINCT LOWER(merchant_name) AS m FROM merchant_offers
       WHERE user_id = ${userId} AND disappeared_at IS NULL

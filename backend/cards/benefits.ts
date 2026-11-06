@@ -3,6 +3,7 @@ import { randomBytes } from "node:crypto";
 import { cardsDB } from "./db";
 import { currentUserId } from "../lib/session";
 import { rateLimit } from "../lib/ratelimit";
+import { cached, invalidate } from "../lib/cache";
 import { dateOnly, isPeriod, periodWindow } from "./periods";
 
 /*
@@ -52,19 +53,24 @@ function toBenefit(r: Record<string, any>): CatalogueBenefit {
   };
 }
 
-// Every card's credits as they stand today. Public: no user data in it.
+export const CATALOGUE_KEY = "benefits:catalogue";
+
+// Every card's credits as they stand today. Public: no user data in it, so
+// each instance serves it from memory for a minute.
 export const catalogue = api(
   { expose: true, method: "GET", path: "/benefits/catalogue" },
-  async (): Promise<{ benefits: CatalogueBenefit[] }> => {
-    const rows = await cardsDB.queryAll`
+  async (): Promise<{ benefits: CatalogueBenefit[] }> => ({
+    benefits: await cached(CATALOGUE_KEY, 60_000, async () => {
+      const rows = await cardsDB.queryAll`
       SELECT id, card_id, slug, name, description, kind, unit, value_amount, period,
              display_category, version, change_note, changed_at, source
       FROM card_benefits
       WHERE user_id IS NULL AND retired_at IS NULL
       ORDER BY card_id, value_amount DESC
     `;
-    return { benefits: rows.map(toBenefit) };
-  }
+      return rows.map(toBenefit);
+    }),
+  })
 );
 
 export interface BenefitUsage {
@@ -380,6 +386,7 @@ export const updateCatalogue = api<UpdateCatalogueRequest, { updated: number }>(
                 ${t.period}, ${req.period ?? t.period}, 'editorial', ${note})
       `;
     }
+    invalidate(CATALOGUE_KEY);
     return { updated: targets.length };
   }
 );

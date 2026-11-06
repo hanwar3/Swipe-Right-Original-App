@@ -2,6 +2,7 @@ import { api, Query } from "encore.dev/api";
 import { cardsDB } from "./db";
 import { currentUserId } from "../lib/session";
 import { periodWindow } from "./periods";
+import { rateLimit } from "../lib/ratelimit";
 import { answerQuestion, type QuestionAnswer } from "./questions";
 
 /**
@@ -162,6 +163,7 @@ export const decide = api<DecideParams, DecideResponse>(
   { expose: true, auth: true, method: "GET", path: "/cards/decide" },
   async (params) => {
     const userId = currentUserId();
+    rateLimit(`decide:${userId}`, 240, 60_000);
     // Wallet questions first ("any offers at Nike?"); anything else is a purchase.
     return (await answerQuestion(userId, params.category)) ?? runDecision(userId, params.category, params.amountCents);
   }

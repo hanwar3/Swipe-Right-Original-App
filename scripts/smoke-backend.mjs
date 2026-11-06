@@ -93,6 +93,15 @@ for (const [label, token] of Object.entries(forgeries)) {
 const anon = await call("GET", "/cards/portfolio", undefined, { as: null });
 check("no token, no wallet", anon.status === 401, `${anon.status}`);
 
+// --- public card catalogue: batched, cached, bounded --------------------------
+const catalogue = await call("GET", "/cards", undefined, { as: null });
+check("card catalogue loads with categories", catalogue.status === 200 && catalogue.json.cards?.length > 50 && catalogue.json.cards.some((c) => c.categories.length > 0), `${catalogue.status} ${catalogue.json.cards?.length} cards`);
+const huge = await call("GET", "/cards/comprehensive?limit=100000", undefined, { as: null });
+check("browsing cannot ask for unlimited rows", huge.status === 200 && huge.json.cards.length <= 50, `${huge.status} ${huge.json.cards?.length}`);
+const found = await call("GET", "/cards/search?query=sapphire", undefined, { as: null });
+const tiny = await call("GET", "/cards/search?query=%25", undefined, { as: null });
+check("search finds Sapphire cards and refuses a one-character query", found.json.cards?.some((c) => /Sapphire/.test(c.name)) && tiny.status === 400, `${found.json.cards?.length} found, "%" -> ${tiny.status}`);
+
 // --- portfolio: two Chase cards on purpose, so issuer alone is ambiguous ----
 const CARDS = { flex: 3, reserve: 1, bcp: 15, custom: 64 };
 for (const [k, cardId] of Object.entries(CARDS)) {

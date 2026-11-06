@@ -1,6 +1,8 @@
 import { api, APIError } from "encore.dev/api";
 import { cardsDB } from "./db";
-import type { Card, CardCategory } from "./list";
+import { categoriesFor, type Card, type CardCategory } from "./list";
+import { rateLimit } from "../lib/ratelimit";
+import { clientIp } from "../lib/request";
 
 export interface ComprehensiveCard {
   id: number;
@@ -41,16 +43,13 @@ export interface SearchComprehensiveCardsParams {
 export const getComprehensiveCards = api<SearchComprehensiveCardsParams, ComprehensiveCardsResponse>(
   { expose: true, method: "GET", path: "/cards/comprehensive" },
   async (params) => {
-    const {
-      query,
-      issuer,
-      network,
-      category,
-      minCashback,
-      maxAnnualFee,
-      limit = 20,
-      offset = 0
-    } = params;
+    rateLimit(`card-browse:${clientIp()}`, 120, 60_000);
+    const { issuer, network, minCashback, maxAnnualFee } = params;
+    // Public endpoint: keep every input bounded.
+    const query = params.query ? String(params.query).slice(0, 80) : undefined;
+    const category = params.category ? String(params.category).slice(0, 40) : undefined;
+    const limit = Math.min(50, Math.max(1, Math.floor(Number(params.limit ?? 20)) || 20));
+    const offset = Math.min(5000, Math.max(0, Math.floor(Number(params.offset ?? 0)) || 0));
 
     let whereConditions: string[] = [];
     let queryParams: any[] = [];
@@ -130,22 +129,10 @@ export const getComprehensiveCards = api<SearchComprehensiveCardsParams, Compreh
     const cardRows = await cardsDB.rawQueryAll(cardsQuery, ...queryParams);
 
     const cards: ComprehensiveCard[] = [];
-    
+    const cats = await categoriesFor(cardRows.map((r) => Number(r.id)));
+
     for (const cardRow of cardRows) {
-      const categoryRows = await cardsDB.queryAll`
-        SELECT id, category, cashback_rate, is_rotating, valid_until
-        FROM card_categories 
-        WHERE card_id = ${cardRow.id}
-        ORDER BY cashback_rate DESC
-      `;
-      
-      const categories: CardCategory[] = categoryRows.map(cat => ({
-        id: cat.id,
-        category: cat.category,
-        cashbackRate: cat.cashback_rate,
-        isRotating: cat.is_rotating,
-        validUntil: cat.valid_until ? new Date(cat.valid_until).toISOString().split('T')[0] : undefined
-      }));
+      const categories = cats.get(Number(cardRow.id)) ?? [];
       
       cards.push({
         id: cardRow.id,
@@ -156,7 +143,7 @@ export const getComprehensiveCards = api<SearchComprehensiveCardsParams, Compreh
         annualFee: cardRow.annual_fee,
         type: cardRow.type || 'credit',
         categories,
-        features: cardRow.features ? JSON.parse(cardRow.features) : [],
+        features: parseFeatures(cardRow.features),
         welcomeBonus: cardRow.welcome_bonus,
         creditRange: cardRow.credit_range || 'Good to Excellent',
         applyUrl: cardRow.apply_url,
@@ -178,22 +165,10 @@ export const getComprehensiveCards = api<SearchComprehensiveCardsParams, Compreh
     `;
 
     const popularCards: ComprehensiveCard[] = [];
-    
+    const popularCats = await categoriesFor(popularCardsRows.map((r) => Number(r.id)));
+
     for (const cardRow of popularCardsRows) {
-      const categoryRows = await cardsDB.queryAll`
-        SELECT id, category, cashback_rate, is_rotating, valid_until
-        FROM card_categories 
-        WHERE card_id = ${cardRow.id}
-        ORDER BY cashback_rate DESC
-      `;
-      
-      const categories: CardCategory[] = categoryRows.map(cat => ({
-        id: cat.id,
-        category: cat.category,
-        cashbackRate: cat.cashback_rate,
-        isRotating: cat.is_rotating,
-        validUntil: cat.valid_until ? new Date(cat.valid_until).toISOString().split('T')[0] : undefined
-      }));
+      const categories = popularCats.get(Number(cardRow.id)) ?? [];
       
       popularCards.push({
         id: cardRow.id,
@@ -204,7 +179,7 @@ export const getComprehensiveCards = api<SearchComprehensiveCardsParams, Compreh
         annualFee: cardRow.annual_fee,
         type: cardRow.type || 'credit',
         categories,
-        features: cardRow.features ? JSON.parse(cardRow.features) : [],
+        features: parseFeatures(cardRow.features),
         welcomeBonus: cardRow.welcome_bonus,
         creditRange: cardRow.credit_range || 'Good to Excellent',
         applyUrl: cardRow.apply_url,
@@ -268,7 +243,7 @@ export const getCardDetails = api<GetCardDetailsParams, CardDetailsResponse>(
       annualFee: cardRow.annual_fee,
       type: cardRow.type || 'credit',
       categories,
-      features: cardRow.features ? JSON.parse(cardRow.features) : [],
+      features: parseFeatures(cardRow.features),
       welcomeBonus: cardRow.welcome_bonus,
       creditRange: cardRow.credit_range || 'Good to Excellent',
       applyUrl: cardRow.apply_url,
@@ -280,3 +255,20 @@ export const getCardDetails = api<GetCardDetailsParams, CardDetailsResponse>(
     return { card };
   }
 );
+
+/**
+ * Card features are stored as a JSON array for most cards and as plain text
+ * ("No Foreign Transaction Fees") for some; one bad row must not fail the page.
+ */
+function parseFeatures(raw: unknown): string[] {
+  if (Array.isArray(raw)) return raw.map(String);
+  if (typeof raw !== "string" || !raw.trim()) return [];
+  try {
+    const parsed = JSON.parse(raw);
+    if (Array.isArray(parsed)) return parsed.map(String);
+    if (typeof parsed === "string") return [parsed];
+  } catch {
+    /* plain text */
+  }
+  return raw.split(/\s*[;\n]\s*/).map((f) => f.trim()).filter(Boolean);
+}

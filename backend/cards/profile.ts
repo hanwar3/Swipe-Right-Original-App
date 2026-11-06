@@ -2,6 +2,7 @@ import { api, Query } from "encore.dev/api";
 import { cardsDB } from "./db";
 import { currentUserId } from "../lib/session";
 import { periodWindow } from "./periods";
+import { rateLimit } from "../lib/ratelimit";
 
 /**
  * Everything about one card in one call.
@@ -95,6 +96,7 @@ export const profile = api<ProfileParams, CardProfileResponse>(
   async (params) => {
     const now = new Date();
     const userId = currentUserId();
+    rateLimit(`profile:${userId}`, 240, 60_000);
     const { cardId } = params;
 
     const card = await cardsDB.queryRow<{

@@ -1,6 +1,8 @@
 import { createHash } from "node:crypto";
 import log from "encore.dev/log";
 import { cardsDB } from "./db";
+import { invalidate } from "../lib/cache";
+import { CATALOGUE_KEY } from "./benefits";
 
 /**
  * Keeping the catalogue current from the people who hold the cards.
@@ -115,6 +117,8 @@ export async function observeCatalogueValue(
       AND value_override = ${top.value_amount}
       AND COALESCE(period_override, ${top.period}) = ${top.period}
   `;
+  // Everyone should see the new value now, not when the cached catalogue expires.
+  invalidate(CATALOGUE_KEY);
   log.info("catalogue credit updated by consensus", { benefitId, reporters: top.n });
   return true;
 }

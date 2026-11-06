@@ -1,5 +1,6 @@
 import { cardsDB } from "./db";
 import { periodWindow } from "./periods";
+import { crowdMerchants } from "./offer_crowd";
 import type { Contender, DecideResponse } from "./decide";
 
 /**
@@ -197,26 +198,22 @@ async function expiringOffers(userId: string, q: { days: number; label: string }
   );
 }
 
-/** Same rule as the crowd hints: never name a merchant unless 5+ other cardholders have it. */
+/**
+ * Same rule as the crowd hints: a merchant is only mentioned when 5+
+ * cardholders have it. Called only when this user has no such offer, so all
+ * of those cardholders are other people.
+ */
 async function othersHaveIt(userId: string, merchant: string): Promise<string | null> {
-  const row = await cardsDB.queryRow<{ issuer: string; n: number }>`
-    SELECT c.issuer, COUNT(DISTINCT mo.user_id)::int AS n
-    FROM merchant_offers mo
-    JOIN cards c ON c.id = mo.card_id
-    WHERE LOWER(mo.merchant_name) LIKE ${"%" + merchant.toLowerCase() + "%"}
-      AND mo.disappeared_at IS NULL AND mo.is_used = FALSE
-      AND (mo.end_date IS NULL OR mo.end_date >= CURRENT_DATE)
-      AND mo.user_id <> ${userId}
-      AND c.issuer IN (
-        SELECT c2.issuer FROM user_portfolios up JOIN cards c2 ON c2.id = up.card_id
-        WHERE up.user_id = ${userId} AND up.is_active = TRUE
-      )
-    GROUP BY c.issuer
-    HAVING COUNT(DISTINCT mo.user_id) >= 5
-    ORDER BY n DESC
-    LIMIT 1
+  const issuers = await cardsDB.queryAll<{ issuer: string }>`
+    SELECT DISTINCT c.issuer FROM user_portfolios up JOIN cards c ON c.id = up.card_id
+    WHERE up.user_id = ${userId} AND up.is_active = TRUE
   `;
-  return row?.issuer ?? null;
+  const want = merchant.toLowerCase();
+  for (const { issuer } of issuers) {
+    const crowd = await crowdMerchants(issuer);
+    if (crowd.some((c) => c.merchant.toLowerCase().includes(want))) return issuer;
+  }
+  return null;
 }
 
 async function merchantOffers(userId: string, merchant: string, now: Date): Promise<DecideResponse> {
