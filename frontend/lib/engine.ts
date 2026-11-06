@@ -164,6 +164,22 @@ export function portalPaste(cardId: number, text: string) {
   return postJSON<PasteResponse>('/portal/paste', { cardId, text });
 }
 
+/**
+ * A phone screenshot of the issuer app's offers or credit screen. The server
+ * has the model transcribe it, then reads it with the same parsers as a paste.
+ */
+export function portalScreenshot(cardId: number, image: string, mimeType: string) {
+  return postJSON<PasteResponse>('/portal/screenshot', { cardId, image, mimeType });
+}
+
+export type { OfferHint } from '~backend/offers/capture';
+import type { OfferHint } from '~backend/offers/capture';
+
+/** Merchants 5+ other cardholders of this card's issuer have offers at, that you haven't synced. */
+export function offerHints(cardId: number) {
+  return getJSON<{ issuer?: string; hints: OfferHint[] }>('/offers/hints', { cardId });
+}
+
 /** When this card last told us anything, and how many offers still need adding. */
 export function portalStatus(cardId: number) {
   return getJSON<StatusResponse>('/portal/status', { cardId });

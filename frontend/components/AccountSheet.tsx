@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useAuth } from '../contexts/AuthContext';
 import { createPairingCode, listExtensions, revokeExtension } from '../lib/engine';
+import { API_BASE } from '../lib/api';
 
 interface AccountSheetProps {
   open: boolean;
@@ -114,6 +115,7 @@ export default function AccountSheet({ open, onClose }: AccountSheetProps) {
               <p className="mt-1 text-[12px] text-[#8A7E95]">
                 Works once, for {Math.floor(left / 60)}:{String(left % 60).padStart(2, '0')}
               </p>
+              <p className="mt-1 break-all text-[11px] text-[#6E637A]">If it asks for a server: {API_BASE}</p>
             </div>
           ) : (
             <Button className={quiet} onClick={() => pair.mutate()} disabled={pair.isPending}>

@@ -1,7 +1,15 @@
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { ArrowUpRight, Check, ClipboardPaste, RefreshCw } from 'lucide-react';
-import { cardProfile, formatMoney, portalPaste, portalStatus } from '../lib/engine';
+import { ArrowUpRight, Check, ClipboardPaste, ImagePlus, RefreshCw } from 'lucide-react';
+import {
+  cardProfile,
+  formatMoney,
+  offerHints,
+  portalPaste,
+  portalScreenshot,
+  portalStatus,
+  type PortalPasteResult,
+} from '../lib/engine';
 import { useToast } from '@/components/ui/use-toast';
 
 /**
@@ -48,6 +56,7 @@ export default function PortalCard({ userId, cardId, cardName, issuer }: Props) 
   const queryClient = useQueryClient();
   const [pasting, setPasting] = useState(false);
   const [text, setText] = useState('');
+  const fileInput = useRef<HTMLInputElement>(null);
 
   const { data: profile } = useQuery({
     queryKey: ['card-profile', userId, cardId],
@@ -61,28 +70,56 @@ export default function PortalCard({ userId, cardId, cardName, issuer }: Props) 
     retry: 0,
   });
 
+  // Merchants other cardholders of this issuer have offers at: a nudge to check, never a promise.
+  const { data: hintData } = useQuery({
+    queryKey: ['offer-hints', userId, cardId],
+    queryFn: () => offerHints(cardId),
+    retry: 0,
+    staleTime: 10 * 60_000,
+  });
+  const hints = hintData?.hints ?? [];
+
+  const applied = (result: PortalPasteResult) => {
+    toast({
+      title: result.kind === 'none' ? 'Nothing to read in that' : `Updated ${cardName}`,
+      description: result.message,
+      variant: result.kind === 'none' ? 'destructive' : undefined,
+    });
+    if (result.kind !== 'none') {
+      setPasting(false);
+      setText('');
+    }
+    queryClient.invalidateQueries({ queryKey: ['card-profile', userId, cardId] });
+    queryClient.invalidateQueries({ queryKey: ['portal-status', userId, cardId] });
+    queryClient.invalidateQueries({ queryKey: ['offer-hints', userId, cardId] });
+  };
+  const failed = (error: any) =>
+    toast({
+      title: 'Could not save that',
+      description: error?.message ?? 'Try again.',
+      variant: 'destructive',
+    });
+
   const save = useMutation({
     mutationFn: () => portalPaste(cardId, text),
-    onSuccess: (result) => {
-      toast({
-        title: result.kind === 'none' ? 'Nothing to read in that' : `Updated ${cardName}`,
-        description: result.message,
-        variant: result.kind === 'none' ? 'destructive' : undefined,
-      });
-      if (result.kind !== 'none') {
-        setPasting(false);
-        setText('');
-      }
-      queryClient.invalidateQueries({ queryKey: ['card-profile', userId, cardId] });
-      queryClient.invalidateQueries({ queryKey: ['portal-status', userId, cardId] });
-    },
-    onError: (error: any) =>
-      toast({
-        title: 'Could not save that',
-        description: error?.message ?? 'Try copying the page again.',
-        variant: 'destructive',
-      }),
+    onSuccess: applied,
+    onError: failed,
   });
+
+  const shot = useMutation({
+    mutationFn: async (file: File) => portalScreenshot(cardId, await readAsDataUrl(file), imageType(file)),
+    onSuccess: applied,
+    onError: failed,
+  });
+
+  function pickScreenshot(file: File | undefined) {
+    if (!file) return;
+    if (file.size > 8 * 1024 * 1024) {
+      toast({ title: 'That image is too big', description: 'Use a screenshot under 8 MB.', variant: 'destructive' });
+      return;
+    }
+    shot.mutate(file);
+  }
 
   const offers = profile?.offers ?? [];
   const credits = (profile?.benefits ?? []).filter((b) => b.fromPortal);
@@ -114,6 +151,14 @@ export default function PortalCard({ userId, cardId, cardName, issuer }: Props) 
         <p className="mt-2 rounded-lg bg-[#E64BD4]/10 px-2.5 py-1.5 text-[11.5px] font-semibold text-[#F58EE4]">
           {needAdding.length} offer{needAdding.length === 1 ? '' : 's'} pay nothing until you add{' '}
           {needAdding.length === 1 ? 'it' : 'them'} in {issuer}.
+        </p>
+      )}
+
+      {hints.length > 0 && (
+        <p className="mt-2 text-[11.5px] leading-relaxed text-[#9B8FA6]">
+          Other {issuer} cardholders have offers at{' '}
+          <span className="font-semibold text-[#DDD0E6]">{hints.slice(0, 4).map((h) => h.merchantName).join(', ')}</span>.
+          Offers differ by person, so check yours and update.
         </p>
       )}
 
@@ -185,7 +230,8 @@ export default function PortalCard({ userId, cardId, cardName, issuer }: Props) 
       {offers.length === 0 && credits.length === 0 && !pasting && (
         <p className="mt-2 text-[11.5px] leading-relaxed text-[#6E637A]">
           Your {issuer} offers and credits are only visible when you are signed in to {issuer}. Copy that page and
-          paste it here to track them.
+          paste it here, or upload a screenshot from your phone. On a computer, the SwipeRight browser extension does
+          it in one click (Account &amp; security, Connect a browser).
         </p>
       )}
 
@@ -206,6 +252,7 @@ export default function PortalCard({ userId, cardId, cardName, issuer }: Props) 
             </li>
             <li>Select all of it and copy.</li>
             <li>Paste below. Nothing leaves your account but the offer text.</li>
+            <li>On your phone? Screenshot the offers screen in the {issuer} app and upload it instead.</li>
           </ol>
           <textarea
             value={text}
@@ -229,9 +276,43 @@ export default function PortalCard({ userId, cardId, cardName, issuer }: Props) 
             >
               Cancel
             </button>
+            <input
+              ref={fileInput}
+              type="file"
+              accept="image/*"
+              hidden
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                e.target.value = '';
+                pickScreenshot(file);
+              }}
+            />
+            <button
+              onClick={() => fileInput.current?.click()}
+              disabled={shot.isPending}
+              className="ml-auto flex items-center gap-1.5 rounded-full border border-white/15 px-3 py-1.5 text-[12px] font-semibold text-[#DDD0E6] hover:border-[#E64BD4]/50 hover:text-[#F3EBF8] disabled:opacity-40"
+            >
+              <ImagePlus className="h-3.5 w-3.5" />
+              {shot.isPending ? 'Reading screenshot' : 'Screenshot instead'}
+            </button>
           </div>
         </div>
       )}
     </div>
   );
+}
+
+function readAsDataUrl(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result));
+    reader.onerror = () => reject(new Error('Could not read that file'));
+    reader.readAsDataURL(file);
+  });
+}
+
+/** iPhones sometimes hand over HEIC with no type; the server accepts it either way. */
+function imageType(file: File): string {
+  if (file.type) return file.type;
+  return /\.hei[cf]$/i.test(file.name) ? 'image/heic' : 'image/jpeg';
 }

@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 // End-to-end check for portal sync: paste a portal page, see it in Insights.
 // Start the backend (scripts/run-backend.cmd), then: node scripts/smoke-portal.mjs
 // It registers a throwaway user and uses card 1 (Chase Sapphire Reserve).
@@ -222,6 +223,93 @@ const catAfter = (await call('GET', '/benefits/catalogue')).json.benefits.find((
 check('three agreeing portals update the catalogue, with a note', catAfter?.valueCents === target && /3 cardholders/.test(catAfter?.changeNote ?? ''),
   `${dunkin?.valueCents} -> ${catAfter?.valueCents} v${catAfter?.version} "${catAfter?.changeNote}"`);
 for (const token of crowd) {
+  session = token;
+  await call('POST', '/auth/account/delete', { password: 'Portal-Test-2026!' });
+}
+
+// --- the browser extension's sync --------------------------------------------
+const CHASE_URL = 'https://secure.chase.com/web/auth/dashboard#/dashboard/merchantOffers/offerHub';
+const FLEX = 3;
+session = null;
+const extUser = await call('POST', '/auth/register', { email: `ext-${Date.now()}@example.test`, password: 'Portal-Test-2026!' });
+const extSession = extUser.json.token;
+session = extSession;
+await call('POST', '/cards/portfolio/add', { cardId: SAPPHIRE_RESERVE });
+await call('POST', '/cards/portfolio/add', { cardId: FLEX });
+const code = await call('POST', '/auth/extension/pairing-code');
+session = null;
+const paired = await call('POST', '/auth/extension/pair', { code: code.json.code, label: 'Smoke Chrome' });
+session = paired.json.token;
+const offPortal = await call('POST', '/portal/sync', { text: CHASE_OFFERS, url: 'https://example.com/offers' });
+check('the extension only reads known bank portals', offPortal.status === 400, `${offPortal.status}`);
+const askCard = await call('POST', '/portal/sync', { text: CHASE_OFFERS, url: CHASE_URL });
+check('two Chase cards and a page it cannot place: it asks which card', askCard.status === 200 && askCard.json.needsCard && askCard.json.candidates?.length === 2,
+  `${askCard.status} "${askCard.json.message}"`);
+const picked = await call('POST', '/portal/sync', { text: CHASE_OFFERS, url: CHASE_URL, cardId: SAPPHIRE_RESERVE });
+check('after picking, the page lands on that card and names the other Chase card',
+  picked.json.result?.offersWritten === 17 && /Sapphire Reserve/.test(picked.json.cardName ?? '') && picked.json.otherCards?.some((c) => c.cardId === FLEX),
+  `${picked.status} written=${picked.json.result?.offersWritten} others=${(picked.json.otherCards ?? []).map((c) => c.name).join(', ')}`);
+const again = await call('POST', '/portal/sync', { text: CHASE_OFFERS, url: CHASE_URL });
+check('next time, the account ending on the page places it automatically', again.json.cardId === SAPPHIRE_RESERVE && !again.json.needsCard,
+  `${again.status} card=${again.json.cardName} "${again.json.message}"`);
+session = extSession;
+const seen = await call('GET', `/portal/status?cardId=${SAPPHIRE_RESERVE}`);
+check('the app sees what the extension synced', seen.json.liveOffers === 17, `live=${seen.json.liveOffers}`);
+
+// --- a phone screenshot: the model transcribes, the parsers decide ---------
+const png = readFileSync(new URL('./fixtures/chase-offers-screenshot.png', import.meta.url)).toString('base64');
+const badType = await call('POST', '/portal/screenshot', { cardId: SAPPHIRE_RESERVE, image: png, mimeType: 'text/plain' });
+const notImage = await call('POST', '/portal/screenshot', { cardId: SAPPHIRE_RESERVE, image: '<<not an image>>', mimeType: 'image/png' });
+check('screenshot input is checked before any model call', badType.status === 400 && notImage.status === 400, `${badType.status}/${notImage.status}`);
+const shot = await call('POST', '/portal/screenshot', { cardId: SAPPHIRE_RESERVE, image: png, mimeType: 'image/png' });
+const afterShot = await call('GET', `/cards/profile?cardId=${SAPPHIRE_RESERVE}`);
+const shotOffers = afterShot.json.offers ?? [];
+const harbor = shotOffers.find((o) => /Harbor Tea/i.test(o.merchantName));
+check('a screenshot becomes offers, "Added" included', shot.status === 200 && shot.json.offersWritten === 3 && !!harbor?.isActivated,
+  `${shot.status} parser=${shot.json.parser} written=${shot.json.offersWritten} "${shot.json.message}" harborAdded=${harbor?.isActivated}`);
+check('a screenshot is partial, so it retires nothing', shot.json.offersRetired === 0 && shotOffers.length === 20, `retired=${shot.json.offersRetired} offers=${shotOffers.length}`);
+await call('POST', '/auth/account/delete', { password: 'Portal-Test-2026!' });
+
+// --- crowd hints: named only once 5 other cardholders have the offer ---------
+const tag = Math.random().toString(36).replace(/[^a-z]/g, '').slice(0, 5) || 'zq';
+const crowdPage = `Chase Offers
+Choose account
+Sapphire Reserve (...0771)
+All offers
+Lumina Candles ${tag}
+12% cash back
+Orbit Books ${tag}
+$10 cash back
+`;
+const holders = [];
+const hintFor = async () => {
+  session = null;
+  const r = await call('POST', '/auth/register', { email: `hint-${tag}-${holders.length}-${Date.now()}@example.test`, password: 'Portal-Test-2026!' });
+  session = r.json.token;
+  holders.push(session);
+  await call('POST', '/cards/portfolio/add', { cardId: FLEX });
+  return (await call('GET', `/offers/hints?cardId=${FLEX}`)).json;
+};
+for (let i = 0; i < 4; i++) {
+  session = null;
+  const r = await call('POST', '/auth/register', { email: `crowdoffer-${tag}-${i}-${Date.now()}@example.test`, password: 'Portal-Test-2026!' });
+  session = r.json.token;
+  holders.push(session);
+  await call('POST', '/cards/portfolio/add', { cardId: SAPPHIRE_RESERVE });
+  await call('POST', '/portal/paste', { cardId: SAPPHIRE_RESERVE, text: crowdPage });
+}
+const four = await hintFor();
+check('four cardholders are too few to name a merchant', !(four.hints ?? []).some((h) => h.merchantName.includes(tag)), JSON.stringify(four.hints ?? []).slice(0, 160));
+session = null;
+const fifth = await call('POST', '/auth/register', { email: `crowdoffer-${tag}-5-${Date.now()}@example.test`, password: 'Portal-Test-2026!' });
+session = fifth.json.token;
+holders.push(session);
+await call('POST', '/cards/portfolio/add', { cardId: SAPPHIRE_RESERVE });
+await call('POST', '/portal/paste', { cardId: SAPPHIRE_RESERVE, text: crowdPage });
+const five = await hintFor();
+const named = (five.hints ?? []).filter((h) => h.merchantName.includes(tag));
+check('at five, other Chase cardholders get the merchant as a hint', named.length === 2 && named.every((h) => h.cardholders >= 5), JSON.stringify(named));
+for (const token of holders) {
   session = token;
   await call('POST', '/auth/account/delete', { password: 'Portal-Test-2026!' });
 }

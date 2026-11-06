@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>SwipeRight</title>
+    <link rel="stylesheet" href="popup.css" />
+  </head>
+  <body>
+    <header>
+      <span class="mark" aria-hidden="true"></span>
+      <h1>Swipe<span>Right</span></h1>
+    </header>
+
+    <!-- Not connected yet: trade a one-time code from the app for a token. -->
+    <section id="pair" hidden>
+      <p class="lead">Connect this browser to your SwipeRight account.</p>
+      <ol class="steps">
+        <li>In the app, open your account menu, then <b>Account &amp; security</b>, <b>Connect a browser</b>.</li>
+        <li>Type the code it shows.</li>
+      </ol>
+      <form id="pair-form">
+        <label for="code">Code</label>
+        <input id="code" autocomplete="off" spellcheck="false" placeholder="ABCD-EFGH" maxlength="12" required />
+        <details>
+          <summary>Server</summary>
+          <label for="server">SwipeRight address</label>
+          <input id="server" type="url" spellcheck="false" />
+        </details>
+        <button type="submit" class="primary" id="pair-btn">Connect</button>
+      </form>
+    </section>
+
+    <!-- Connected, but this tab is not a bank offers page. -->
+    <section id="elsewhere" hidden>
+      <p class="lead">Open your card's offers page, then click SwipeRight again.</p>
+      <ul class="links">
+        <li><a href="https://secure.chase.com/web/auth/dashboard#/dashboard/merchantOffers/offerHub" target="_blank" rel="noreferrer">Chase Offers</a></li>
+        <li><a href="https://global.americanexpress.com/offers/eligible" target="_blank" rel="noreferrer">Amex Offers</a></li>
+        <li><a href="https://secure.bankofamerica.com/customer-deals/entry/" target="_blank" rel="noreferrer">BankAmeriDeals</a></li>
+      </ul>
+    </section>
+
+    <!-- On a bank page: the two jobs. -->
+    <section id="portal" hidden>
+      <p class="lead">On <b id="issuer"></b>. Sign in first if you haven't.</p>
+      <button id="add-all" class="primary">Add all offers</button>
+      <p class="hint" id="amex-hint" hidden>Amex puts each offer on one card only: add from the card you'd use.</p>
+      <button id="sync" class="secondary">Sync to SwipeRight</button>
+      <div id="pick" hidden>
+        <p class="lead">Which card is this page for?</p>
+        <div id="choices" class="choices"></div>
+      </div>
+    </section>
+
+    <p id="status" role="status" aria-live="polite"></p>
+
+    <footer id="account" hidden>
+      <span id="who"></span>
+      <button id="disconnect" class="link">Disconnect</button>
+    </footer>
+
+    <script type="module" src="popup.js"></script>
+  </body>
+</html>

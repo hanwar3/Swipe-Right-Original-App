@@ -264,9 +264,10 @@ export async function ingestPortalText(
     }
 
     // A full offers page is the whole truth for that card: anything it stopped
-    // showing is gone. A single benefit page says nothing about offers.
+    // showing is gone. A single benefit page says nothing about offers, and a
+    // screenshot only shows what fit on the screen, so neither retires anything.
     let offersRetired = 0;
-    if (kind === "offers" || kind === "mixed") {
+    if ((kind === "offers" || kind === "mixed") && method !== "screenshot") {
       const retired = await cardsDB.queryAll<{ id: number }>`
         UPDATE merchant_offers
         SET disappeared_at = ${now}, updated_at = NOW()
