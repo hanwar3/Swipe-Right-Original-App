@@ -15,6 +15,8 @@ const LINES: [string, string][] = [
   ['Booking a flight', ' to Denver'],
   ["Groceries at Trader Joe's", ''],
   ['Which card for Uber?', ''],
+  ['Which offers expire', ' this week?'],
+  ['What credits do I have', ' left?'],
 ];
 
 export default function TypingPrompts({ className = '' }: { className?: string }) {

@@ -282,6 +282,29 @@ if (dd && dash) {
   check("browser log import fills gaps and never overwrites", imp1.json.imported === 1 && travelUse?.usedCents === 5000, `imported ${imp1.json.imported}/${imp2.json.imported}, travel used ${travelUse?.usedCents}`);
 }
 
+// --- questions about the wallet itself ----------------------------------------
+const in3 = new Date(Date.now() + 3 * 86400000);
+const nikeMail = await mail(address, "New Chase Offers", `Your card ending in 4242\n\nNike\nSpend $100, get $20 back\nExpires ${in3.getMonth() + 1}/${in3.getDate()}/${in3.getFullYear()}`);
+check("an offer ending in 3 days arrives", nikeMail.json.offersWritten === 1, `${nikeMail.status} ${short(nikeMail.json)}`);
+const ask = async (question) => (await call("GET", `/cards/decide?${new URLSearchParams({ category: question })}`)).json;
+
+const week = await ask("Which offers expire this week?");
+check("\"which offers expire this week?\" names Nike, on Flex, and says to add it",
+  week.answer?.kind === "expiring_offers" && week.answer.items.some((i) => /Nike/.test(i.title)) && week.winner?.cardId === CARDS.flex && /add it/i.test(week.spoken),
+  `"${week.spoken}"`);
+const sbOffer = await ask("Any offers at Starbucks?");
+check("\"any offers at Starbucks?\" finds it on Flex", sbOffer.answer?.kind === "merchant_offers" && /Starbucks/.test(sbOffer.spoken) && sbOffer.winner?.cardId === CARDS.flex, `"${sbOffer.spoken}"`);
+const lulu = await ask("Do I have an offer at Lululemon?");
+check("no offer is said plainly", lulu.answer?.kind === "merchant_offers" && /No Lululemon offer/.test(lulu.spoken), `"${lulu.spoken}"`);
+const left = await ask("What credits do I have left?");
+check("\"what credits do I have left?\" totals them, soonest first", left.answer?.kind === "credits_left" && left.answer.items.length > 0 && /credits left/.test(left.spoken), `"${left.spoken}"`);
+const resets = await ask("Which credits reset this month?");
+check("\"which credits reset this month?\" keeps to this month", resets.answer?.kind === "credits_left" && resets.answer.items.every((i) => i.daysLeft !== undefined && i.daysLeft <= 31), `"${resets.spoken}"`);
+const purchase = await ask("I'm buying gas");
+check("a purchase is still a purchase", !purchase.answer && purchase.winner?.cardId === CARDS.bcp, `winner=${brief(purchase.winner)}`);
+const chatQ = await call("POST", "/ai/chat", { message: "which offers expire this week" });
+check("the chat path answers wallet questions too", /Nike/.test(chatQ.json.response ?? ""), `"${chatQ.json.response}"`);
+
 // --- browser extension pairing ------------------------------------------------
 const code = await call("POST", "/auth/extension/pairing-code");
 check("pairing code issued", code.status === 200 && /^[A-Z2-9]{4}-[A-Z2-9]{4}$/.test(code.json.code ?? ""), `${code.status} ${code.json.code}`);

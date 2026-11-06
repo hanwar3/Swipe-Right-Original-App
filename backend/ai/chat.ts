@@ -2,6 +2,7 @@ import { api, APIError } from "encore.dev/api";
 import { getAuthData } from "~encore/auth";
 import { secret } from "encore.dev/config";
 import { runDecision, normalizeCategory, type DecideResponse } from "../cards/decide";
+import { answerQuestion } from "../cards/questions";
 import { generateText } from "../lib/gemini";
 import { currentUserId } from "../lib/session";
 import { rateLimit } from "../lib/ratelimit";
@@ -32,7 +33,7 @@ export interface ChatResponse {
   response: string;
   /** The structured decision, so the UI can render cards instead of parsing prose. */
   decision?: DecideResponse;
-  /** True when the model was unavailable and the deterministic sentence was used. */
+  /** True when the reply is the engine's own sentence rather than the model's phrasing. */
   fallback: boolean;
 }
 
@@ -90,6 +91,9 @@ export const chat = api<ChatRequest, ChatResponse>(
     }
 
     rateLimit(`chat:${userId}`, 40, 5 * 60_000);
+    // Wallet questions are answered from the data as-is; there is nothing to phrase.
+    const answered = await answerQuestion(userId, message);
+    if (answered) return { response: answered.spoken, decision: answered, fallback: true };
     const decision = await runDecision(userId, message, req.amountCents);
     const spoken = await phrase(decision, message);
 

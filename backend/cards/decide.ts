@@ -2,6 +2,7 @@ import { api, Query } from "encore.dev/api";
 import { cardsDB } from "./db";
 import { currentUserId } from "../lib/session";
 import { periodWindow } from "./periods";
+import { answerQuestion, type QuestionAnswer } from "./questions";
 
 /**
  * The single source of truth for "which card should I use right now".
@@ -149,6 +150,8 @@ export interface DecideResponse {
   nudge?: Nudge;
   /** Deterministic one-liner. Safe to speak verbatim if the LLM is unavailable. */
   spoken: string;
+  /** Set when the question was about the wallet ("which offers expire this week?"). */
+  answer?: QuestionAnswer;
 }
 
 // ---------------------------------------------------------------------------
@@ -157,7 +160,11 @@ export interface DecideResponse {
 
 export const decide = api<DecideParams, DecideResponse>(
   { expose: true, auth: true, method: "GET", path: "/cards/decide" },
-  async (params) => runDecision(currentUserId(), params.category, params.amountCents)
+  async (params) => {
+    const userId = currentUserId();
+    // Wallet questions first ("any offers at Nike?"); anything else is a purchase.
+    return (await answerQuestion(userId, params.category)) ?? runDecision(userId, params.category, params.amountCents);
+  }
 );
 
 /**

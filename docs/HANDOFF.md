@@ -1,6 +1,35 @@
 # SwipeRight: handoff
 
-Read this first in a new session. It is the full state of the work as of 2026-09-14.
+Read this first in a new session. It is the state of the work as of 2026-11-06.
+
+## Latest: branch `feat/launch` (2026-11-05/06)
+
+Built on `feat/portal-sync` (which is on `feat/decision-engine`). Pushed, not merged, not deployed.
+Deploy steps and the security model: **`docs/DEPLOY.md`**.
+
+- **Security, fixed** (`3bf7e41`): HS256-signed sessions with revocation, an Encore auth handler,
+  every user-data endpoint `auth: true` with the user taken from the token, Postgres-backed
+  throttling, hashed single-use reset links, OAuth switched off until provider tokens are verified,
+  user list removed, account deletion via a `user-deleted` Pub/Sub event, sign out everywhere,
+  production CSP. The web app is served from the site root, so the Wallet tab moved to `/wallet`
+  (`GET /cards` is the catalogue API on the same origin).
+- **Credits that change** (`77fa57d`): one server catalogue (`card_benefits` with slugs, versions,
+  change notes), kept current by editorial updates (`cards.updateCatalogue`, internal), each
+  cardholder's own portal (personal override, at once) and crowd consensus (3+ portals agreeing,
+  `benefit_crowd.ts`). Manual usage works as before but is stored per period on the server.
+  DoorDash on Sapphire Reserve seeded at $15/month with "was $5" (Haider's figure).
+  Merchant-only credits now steer only at their merchant (`merchants` column).
+- **Offer capture** (`886c594`): `extension/` (Manifest V3; pairing code from Account & security;
+  "Add all offers" and "Sync"; Safari via Apple's converter), `POST /portal/sync` (places a page
+  on the right card, asks once), `POST /portal/screenshot` (Gemini transcribes, the same parsers
+  read; never retires), `GET /offers/hints` (merchants 5+ other cardholders have; k-anonymous).
+- **Wallet questions** (`backend/cards/questions.ts`): "which offers expire this week?",
+  "any offers at Nike?", "what credits do I have left?" answered from the data, in the decision's
+  shape, so typing, voice and the deck work unchanged; every answer says when an offer still has
+  to be added.
+- Tests: `scripts/smoke-backend.mjs` 83 checks, `scripts/smoke-portal.mjs` 26 (incl. a live Gemini
+  screenshot read and the crowd thresholds). Fresh production build in `backend/frontend/dist`.
+
 
 ## The product
 
@@ -15,19 +44,19 @@ over-complicated competitors it is positioned against.
 ## Where the code is
 
 - Repo: `github.com/hanwar3/Swipe-Right-Original-App` (**public**). Local: `C:\Haider Files\Github Projects\Swipe-Right-Original-App`.
-- All work is on branch **`feat/decision-engine`**, pushed, **not merged to `main`, not deployed**.
+- Latest work is on branch **`feat/launch`**, pushed, **not merged to `main`, not deployed**.
 - `main` is written to by Leap (leap.new), which is why work happens on a branch.
 - Stack: Encore.dev TypeScript backend (`backend/`: services `auth`, `cards`, `ai`, `offers`; Postgres) and Vite + React + Tailwind v4 frontend (`frontend/`).
 - Run the frontend: `npm --prefix frontend run dev` (port 5173). Typecheck: `npm --prefix frontend run typecheck`, and `npx tsc --noEmit -p backend/tsconfig.json` (currently 2 errors, both inside `node_modules/encore.dev/api/node_http.ts`: encore.dev 1.58.5 clashes with `@types/node` 26; none in our code).
 - Run the backend: `scripts\run-backend.cmd` from **your own terminal** (API on port 4000, dev dashboard on 9400). First time: `encore auth login`. See "Running the backend on this PC".
-- Smoke test the running backend: `node scripts/smoke-backend.mjs` (38 checks: auth, portfolio, engine, profile, offer inbox).
+- Smoke test the running backend: `node scripts/smoke-backend.mjs` (83 checks) and `node scripts/smoke-portal.mjs` (26 checks).
 
 ## The three tabs (Haider corrected these once; do not drift)
 
 | Tab | Route | Job |
 |---|---|---|
 | **Ask** | `/` | The deck of the user's cards. Tap flips a card out; tap again opens it in Insights; tap anywhere else puts it back. The orb (top-left, mic badge) is the voice button; beside it "What are you buying?" types out example questions. Typing field at the bottom. |
-| **Wallet** | `/cards` | **Every** card, as data-carrying card faces. Where the portfolio is built (add/remove). "Add a card to the catalogue" form (a new card starts at a flat 1%). |
+| **Wallet** | `/wallet` | **Every** card, as data-carrying card faces. Where the portfolio is built (add/remove). "Add a card to the catalogue" form (a new card starts at a flat 1%). |
 | **Insights** | `/recommendations` | **Only** the user's portfolio: credits used vs. left, reset deadlines, expiring credits, merchant offers. Category filters come from the benefits those cards carry, never a fixed list. Each card also carries a "From your \<issuer\> portal" block (`components/PortalCard.tsx`): the offers targeted at that card, which of them still need adding in the portal, and each credit's real usage. |
 
 No category buttons on Ask: Haider described card *purposes*, he never asked for them as UI.
@@ -46,7 +75,7 @@ No category buttons on Ask: Haider described card *purposes*, he never asked for
 - **Gemini lives in one file:** `backend/lib/gemini.ts` names the model (`gemini-3.6-flash`) for both callers, voice phrasing (thinking `minimal`) and mail offer extraction (thinking `low`). The old `gemini-2.0-flash` was retired and every call had silently fallen back; failures and token-limit cut-offs are now logged and fall back to the engine's sentence. Newer Flash models think by default and burn `maxOutputTokens` on it, so keep the thinking level set.
 - **One source for cards and portfolio:** `frontend/lib/wallet.ts` (`useCatalogue`, `useWallet`). Modes: `account` (server portfolio), `device` (server unreachable: wallet kept in localStorage so the app works at a register with no signal), `signed-out` (browse only).
 - **Offline answers:** `frontend/lib/localDecide.ts` ranks device-wallet cards on headline rates and says so.
-- **Benefits and usage:** `frontend/lib/benefits.ts`. Shipped benefit sets per card family, matched by card name. Usage, custom credits and hidden credits persist in localStorage (`swiperight_logged_credit_savings`, `swiperight_logged_subscription_savings`, `swiperight_logged_merchant_redeemed`, `swiperight_logged_merchant_savings`, `swiperight_custom_benefits`, `swiperight_hidden_benefits`, `swiperight_device_wallet`). Supports dollars or counted uses; monthly, quarterly, semi-annual, yearly, anniversary, every 4 years.
+- **Benefits and usage:** `frontend/lib/benefits.ts` reads the server catalogue (`GET /benefits/catalogue`, cached locally) and, signed in, the account's usage, custom and hidden credits (`/benefits/*`, `backend/cards/benefits.ts`). The shipped sets below are the offline fallback only. Signed out, usage, custom credits and hidden credits persist in localStorage (`swiperight_logged_credit_savings`, `swiperight_logged_subscription_savings`, `swiperight_logged_merchant_redeemed`, `swiperight_logged_merchant_savings`, `swiperight_custom_benefits`, `swiperight_hidden_benefits`, `swiperight_device_wallet`). Supports dollars or counted uses; monthly, quarterly, semi-annual, yearly, anniversary, every 4 years.
 - **Offline card catalogue:** `frontend/lib/seedCatalogue.ts`, 16 cards, headline rates only, used when the API cannot be reached.
 - **Merchant offers by forwarded email ("Tier 2")**: no aggregator sells targeted issuer offers. User forwards issuer offer emails to `offers+<token>@<domain>`. `backend/offers/ingest.ts` (webhook, shared secret), `parsers.ts` (regex for terms, Gemini fallback validated against source text), attribution cascade: per-card address, last four, registered mailbox header, card name, sole issuer card; unplaceable offers are held for one-tap assignment (`/offers/pending`, `/offers/attribute`). UI: `OfferInbox.tsx`, `OfferMatching.tsx`.
 - Migrations added: `8_decision_engine` (category keys, caps, user category choices, card_benefits, usage), `9_offer_inbox` (inboxes, ingest log, attribution columns, dedupe index).
@@ -84,24 +113,14 @@ No category buttons on Ask: Haider described card *purposes*, he never asked for
 - The spoken sentence does not say when the winning offer still has to be activated ("13% back" assumes you activate the Starbucks offer); only the reasons do.
 - No card-network acceptance: Costco in-store takes only Visa, yet the engine can name an Amex or Mastercard there. Ties (four cards at 1%) are broken arbitrarily.
 - A user-chosen category (e.g. Citi Custom Cash's top category) is not held to that card's cap.
-- `card_benefits` is seeded for only a few cards (none in the test wallet), so expiring-credit nudges never fired in testing.
+- Credits are catalogued for Sapphire Preferred/Reserve, Amex Gold/Platinum, Blue Cash Preferred, Venture X, Savor and World of Hyatt; other cards rely on custom credits.
 - Catalogue data is stale in places: rotating quarters from 2024, duplicate "Chase Sapphire Preferred" entries.
-- A non-UUID `userId` makes `decide` return 500. This goes away once userId comes from the auth token.
 
-## SECURITY: critical, unfixed. Fix before any real user signs up.
+## Security
 
-Introduced on this branch:
-1. **No authorization on new endpoints.** They take `userId` from the request: `cards/decide.ts:103`, `cards/profile.ts:13` (returns card last four + registered email, `:230-231`), `offers/inbox.ts:15,102,114` (forwarding address, rotate, card identity), `offers/ingest.ts:323,353` (pending, attribute), `ai/chat.ts:23`. Anyone can read or change any user's data, and learn a victim's forwarding address to inject fake offers.
-
-Pre-existing (from before this work) and making the above trivial:
-2. **Forgeable session tokens.** `auth/login.ts:64`, `auth/oauth.ts:90`, `auth/register.ts:94` build an unsigned base64 `{userId, exp}`; `auth/verify.ts:21` accepts it.
-3. **`GET /auth/users` is public** (`auth/users.ts:12`), listing every user's id, email, name.
-4. **OAuth never verifies the provider token** (`auth/oauth.ts:17`).
-5. `cards/portfolio.ts` and `cards/merchant_offers.ts` have the same client-supplied `userId` pattern.
-
-**Fix plan (do it as one coordinated change, or the app locks everyone out):** signed tokens (HMAC secret), an Encore `authHandler` + `Gateway`, `auth: true` on every user-data endpoint with `userId` from `getAuthData()` (reject mismatched path ids), frontend sends `Authorization: Bearer`, `/auth/users` set `expose: false`, OAuth disabled until real Google/Apple token verification is configured.
-
-Also: a **GitHub personal access token is embedded in the local git remote URL** (`.git/config`). Rotate it and switch the remote to `https://github.com/hanwar3/Swipe-Right-Original-App.git` with `gh auth setup-git`.
+Fixed on `feat/launch`; the model is written up in `docs/DEPLOY.md`. Still open: a **GitHub personal
+access token is embedded in the local git remote URL** (`.git/config`). Rotate it and switch the
+remote to `https://github.com/hanwar3/Swipe-Right-Original-App.git` with `gh auth setup-git`.
 
 ## Running the backend on this PC
 
@@ -112,23 +131,30 @@ It runs (Encore CLI 1.58.5, Docker Desktop). Four things were in the way; `scrip
 3. **`encore auth login`, once.** The app is linked to Encore Cloud, and `encore run` will not start until it has fetched development secrets. Local overrides go in `backend\.secrets.local.cue` (gitignored), e.g. `OfferInboxSecret: "local-smoke-test-secret"` for the smoke test.
 4. **An old local database.** The unlinked `default` namespace holds a database from May whose migration table says version 9 but whose `cards` table has no `type` column, so `/cards` fails there. A linked run gets fresh databases; otherwise use `--namespace smoke` or `encore db reset`.
 
+From a Claude session: launch `.tools\run-smoke.cmd` in a Windows Terminal tab
+(`wt.exe -w 0 new-tab --title SwipeRight-backend cmd /k "<path>"`; a space in `--title` breaks it).
+It logs to `.tools\encore-run.log`. Hot reload picks up code but **not new migrations**: restart
+the run after adding one. Unknown paths return the web app's `index.html` with 200 (the static
+fallback), so a 200 is not proof an API route exists.
+
 On first run Encore also bumped `encore.dev` to ^1.58.5 and regenerated `bun.lock`, which had drifted from package.json (bcryptjs 3, @types/node 26).
 
 ## Blockers
 
-- **Deploying:** the app is linked to Encore Cloud app `swiperight-credit-card-app-x4n2`. Secrets needed: `GeminiApiKey`, `OfferInboxSecret`. The backend now runs locally, so there is no need to deploy just to run it. Do not deploy anywhere reachable until the security fix lands; then a **private test environment** first (test data only).
-- **Offers email:** needs a real inbound domain (`INBOX_DOMAIN` in `backend/offers/inbox.ts` is a placeholder) and a Mailgun/Postmark route to `POST /offers/ingest` with header `X-Inbox-Secret`.
-- **21st.dev MCP:** not connected; needs `API_KEY_21ST` set in an interactive terminal.
+- **Deploying:** follow `docs/DEPLOY.md`. Needs `encore auth login` and three secrets in Encore Cloud:
+  `SessionSecret`, `GeminiApiKey` (paid tier for privacy), `OfferInboxSecret`. Private test
+  environment first.
+- **Offers email:** needs a real inbound domain (`INBOX_DOMAIN` in `backend/offers/inbox.ts` is a placeholder) and a Postmark/Mailgun route to `POST /offers/ingest` with header `X-Inbox-Secret`.
+- **Password reset** has no email provider; the UI link is hidden behind `VITE_PASSWORD_RESET=on`.
 
 ## Next steps, in order
 
-1. ~~Get the backend running and fix whatever the real database exposes.~~ Done 2026-09-14 (see "Verified vs not").
-2. **Security fix plan above.** It can now be tested locally; `scripts/smoke-backend.mjs` will need to send the token once endpoints require auth.
-3. **The browser extension** (`feat/portal-sync` groundwork is done). It reads the same portal pages automatically instead of by paste, and can click "add to card" on a tap. It must emit the shape `POST /portal/paste` already accepts, so nothing in the app changes when it lands. Never start Encore or the extension work expecting the daemon inside a Claude session; see "Running the backend on this PC".
-4. Merge `feat/decision-engine` to `main`, deploy to test, then production.
-4. Mail provider + domain for offers; tune parsers against real issuer emails.
-5. Public catalogue scrape (Apify) for "every card on the market".
-6. ElevenLabs voice needs a server-side proxy so the key never reaches the browser.
+1. Haider: rotate the GitHub token, `encore auth login`, set the three secrets, deploy to a private test environment, run the smoke suites against it (`API_URL=...`).
+2. Set `DEFAULT_SERVER` in `extension/popup.js` to the deployed address; try the extension on real Chase and Amex pages and tune `addAllOffers` selectors if a portal's buttons differ.
+3. Mail provider + domain for offer emails; tune parsers against real issuer mail.
+4. Purchase answers: say "activate it first" in the spoken sentence, not only in the reasons; card-network acceptance (Costco is Visa-only); hold user-chosen categories to their caps.
+5. Public catalogue scrape (Apify) for every card on the market, including rotating quarters.
+6. Email provider for password reset; then real Google/Apple sign-in with verified ID tokens.
 
 ## Data caveats
 
